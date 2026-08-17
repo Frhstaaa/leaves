@@ -43,7 +43,11 @@ Route::middleware(['auth'])->group(function () {
     // HRD / PGA Admin Routes
     Route::get('/hrd', [HrdController::class, 'index'])->name('hrd.index');
     Route::get('/hrd/employees', [HrdController::class, 'employees'])->name('hrd.employees');
+    Route::post('/hrd/employees', [HrdController::class, 'storeEmployee'])->name('hrd.employees.store');
+    Route::post('/hrd/employees/{userId}/update', [HrdController::class, 'updateEmployee'])->name('hrd.employees.update');
+    Route::delete('/hrd/employees/{userId}', [HrdController::class, 'destroyEmployee'])->name('hrd.employees.destroy');
     Route::post('/hrd/employees/{userId}/quota', [HrdController::class, 'updateQuota'])->name('hrd.update-quota');
+    Route::get('/hrd/export', [HrdController::class, 'export'])->name('hrd.export');
     // Profile Avatar Route
     Route::post('/profile/avatar', [\App\Http\Controllers\ProfileController::class, 'updateAvatar'])->name('profile.avatar');
 });

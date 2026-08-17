@@ -105,7 +105,8 @@ export default function AuthenticatedLayout({ children, title }) {
   const isCreateRequest = url.startsWith('/leave-requests/create');
   const isHistoryRequest = (url === '/leave-requests' || url.startsWith('/leave-requests?')) || (url.startsWith('/leave-requests') && !url.startsWith('/leave-requests/create'));
   const isApproval = url.startsWith('/approvals');
-  const isHrd = url.startsWith('/hrd');
+  const isHrdEmployees = url.startsWith('/hrd/employees');
+  const isHrdIndex = (url === '/hrd' || url.startsWith('/hrd?')) || (url.startsWith('/hrd') && !url.startsWith('/hrd/employees'));
 
   const navItems = [
     {
@@ -141,11 +142,19 @@ export default function AuthenticatedLayout({ children, title }) {
       show: isManager || isAdmin,
     },
     {
+      name: 'Data Karyawan',
+      shortName: 'Karyawan',
+      href: route('hrd.employees'),
+      icon: Users,
+      active: isHrdEmployees,
+      show: isAdmin,
+    },
+    {
       name: 'Rekapitulasi HRD',
-      shortName: 'HRD',
+      shortName: 'Rekap',
       href: route('hrd.index'),
       icon: FileSpreadsheet,
-      active: isHrd,
+      active: isHrdIndex,
       show: isAdmin,
     },
   ];

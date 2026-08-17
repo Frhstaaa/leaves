@@ -1,156 +1,854 @@
 import React, { useState } from 'react';
 import { useForm, router } from '@inertiajs/react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Users, Edit3, Shield, User, Building, Calendar, Check, X } from 'lucide-react';
+import AuthenticatedLayout, { UserAvatar } from '@/Layouts/AuthenticatedLayout';
+import {
+  Users,
+  UserPlus,
+  Edit3,
+  Trash2,
+  Building,
+  ShieldCheck,
+  Calendar,
+  Search,
+  Filter,
+  X,
+  Check,
+  Lock,
+  Mail,
+  User,
+  Camera,
+  AlertTriangle,
+  RotateCcw,
+  KeyRound,
+  FileSpreadsheet
+} from 'lucide-react';
 
-export default function HrdEmployees({ employees, departments, managers }) {
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [newQuota, setNewQuota] = useState(12);
+export default function HrdEmployees({ employees = [], departments = [], managers = [], stats = {}, filters = {} }) {
+  // Filter States
+  const [searchQuery, setSearchQuery] = useState(filters.search || '');
+  const [selectedDept, setSelectedDept] = useState(filters.department_id || '');
+  const [selectedRole, setSelectedRole] = useState(filters.role || '');
 
-  const handleOpenQuotaModal = (emp) => {
-    setSelectedUser(emp);
-    setNewQuota(emp.current_quota?.total_quota || 12);
+  // Modal States
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [quotaEmployee, setQuotaEmployee] = useState(null);
+  const [deletingEmployee, setDeletingEmployee] = useState(null);
+
+  // Avatar Previews
+  const [addAvatarPreview, setAddAvatarPreview] = useState(null);
+  const [editAvatarPreview, setEditAvatarPreview] = useState(null);
+
+  // Form for Adding Employee
+  const addForm = useForm({
+    nik: '',
+    name: '',
+    email: '',
+    password: 'password123',
+    role: 'employee',
+    department_id: departments[0]?.id || '',
+    manager_id: '',
+    total_quota: 12,
+    avatar: null,
+  });
+
+  // Form for Editing Employee
+  const editForm = useForm({
+    id: null,
+    nik: '',
+    name: '',
+    email: '',
+    password: '',
+    role: 'employee',
+    department_id: '',
+    manager_id: '',
+    total_quota: 12,
+    avatar: null,
+  });
+
+  // Form for Quick Quota Edit
+  const quotaForm = useForm({
+    total_quota: 12,
+  });
+
+  // Filter Actions
+  const handleApplyFilter = (e) => {
+    e?.preventDefault();
+    router.get(route('hrd.employees'), {
+      search: searchQuery,
+      department_id: selectedDept,
+      role: selectedRole,
+    }, { preserveState: true });
   };
 
-  const handleSaveQuota = (e) => {
-    e.preventDefault();
-    if (!selectedUser) return;
+  const handleResetFilter = () => {
+    setSearchQuery('');
+    setSelectedDept('');
+    setSelectedRole('');
+    router.get(route('hrd.employees'));
+  };
 
-    router.post(route('hrd.update-quota', selectedUser.id), {
-      total_quota: newQuota
-    }, {
+  // NIK Generator Helper
+  const generateNIK = () => {
+    const year = new Date().getFullYear();
+    const randomNum = Math.floor(100 + Math.random() * 900);
+    return `EMP-${year}-${randomNum}`;
+  };
+
+  const handleOpenAddModal = () => {
+    addForm.reset();
+    addForm.setData({
+      nik: generateNIK(),
+      name: '',
+      email: '',
+      password: 'password123',
+      role: 'employee',
+      department_id: departments[0]?.id || '',
+      manager_id: '',
+      total_quota: 12,
+      avatar: null,
+    });
+    setAddAvatarPreview(null);
+    setIsAddOpen(true);
+  };
+
+  const handleAddSubmit = (e) => {
+    e.preventDefault();
+    addForm.post(route('hrd.employees.store'), {
       onSuccess: () => {
-        setSelectedUser(null);
-      }
+        setIsAddOpen(false);
+        addForm.reset();
+        setAddAvatarPreview(null);
+      },
+    });
+  };
+
+  const handleOpenEditModal = (emp) => {
+    setEditingEmployee(emp);
+    editForm.setData({
+      id: emp.id,
+      nik: emp.nik || '',
+      name: emp.name || '',
+      email: emp.email || '',
+      password: '',
+      role: emp.role || 'employee',
+      department_id: emp.department_id || '',
+      manager_id: emp.manager_id || '',
+      total_quota: emp.current_quota?.total_quota || 12,
+      avatar: null,
+    });
+    setEditAvatarPreview(null);
+  };
+
+  const handleEditSubmit = (e) => {
+    e.preventDefault();
+    editForm.post(route('hrd.employees.update', editingEmployee.id), {
+      onSuccess: () => {
+        setEditingEmployee(null);
+        editForm.reset();
+        setEditAvatarPreview(null);
+      },
+    });
+  };
+
+  const handleOpenQuotaModal = (emp) => {
+    setQuotaEmployee(emp);
+    quotaForm.setData({
+      total_quota: emp.current_quota?.total_quota || 12,
+    });
+  };
+
+  const handleQuotaSubmit = (e) => {
+    e.preventDefault();
+    quotaForm.post(route('hrd.update-quota', quotaEmployee.id), {
+      onSuccess: () => {
+        setQuotaEmployee(null);
+      },
+    });
+  };
+
+  const handleDeleteSubmit = () => {
+    if (!deletingEmployee) return;
+    router.delete(route('hrd.employees.destroy', deletingEmployee.id), {
+      onSuccess: () => {
+        setDeletingEmployee(null);
+      },
     });
   };
 
   return (
     <AuthenticatedLayout title="Kelola Data Karyawan & Kuota Cuti">
       <div className="space-y-6">
+
+        {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-extrabold text-white">Master Data Karyawan & Pengaturan Kuota Cuti</h2>
-            <p className="text-xs text-slate-400">Atur departemen, role, dan kuota cuti tahunan karyawan</p>
+            <h2 className="text-xl font-black text-slate-900 tracking-tight">Kelola Master Data Karyawan</h2>
+            <p className="text-xs text-slate-500">Manajemen data staf, departemen, role, dan pengaturan kuota cuti tahunan</p>
+          </div>
+
+          <button
+            onClick={handleOpenAddModal}
+            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-lg shadow-emerald-600/20 flex items-center space-x-2 transition-all duration-200 self-start md:self-auto"
+          >
+            <UserPlus size={16} />
+            <span>+ Tambah Karyawan Baru</span>
+          </button>
+        </div>
+
+        {/* Summary Statistics Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
+              <Users size={20} />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Karyawan</span>
+              <span className="text-lg font-black text-slate-900">{stats.total_employees || employees.length}</span>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0">
+              <Building size={20} />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Departemen</span>
+              <span className="text-lg font-black text-slate-900">{stats.total_departments || departments.length}</span>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold shrink-0">
+              <ShieldCheck size={20} />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Atasan / Manager</span>
+              <span className="text-lg font-black text-slate-900">{stats.total_managers || managers.length}</span>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold shrink-0">
+              <Calendar size={20} />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Sisa Kuota Cuti</span>
+              <span className="text-lg font-black text-teal-700">{stats.active_quotas || 0} <span className="text-xs font-semibold text-slate-500">Hari</span></span>
+            </div>
           </div>
         </div>
 
-        <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 shadow-2xl">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-800 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  <th className="pb-3.5">NIK & Karyawan</th>
-                  <th className="pb-3.5">Email</th>
-                  <th className="pb-3.5">Departemen</th>
-                  <th className="pb-3.5">Role System</th>
-                  <th className="pb-3.5">Atasan Direct</th>
-                  <th className="pb-3.5">Kuota Cuti ({new Date().getFullYear()})</th>
-                  <th className="pb-3.5 text-right">Aksi HRD</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                {employees.map((emp) => {
-                  const quota = emp.current_quota;
-                  return (
-                    <tr key={emp.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-4">
-                        <span className="font-mono text-xs text-indigo-300 font-bold block">{emp.nik || 'EMP-???'}</span>
-                        <span className="font-bold text-white text-sm block mt-0.5">{emp.name}</span>
-                      </td>
-                      <td className="py-4 text-xs text-slate-300 font-medium">
-                        {emp.email}
-                      </td>
-                      <td className="py-4 text-xs font-semibold text-slate-200">
-                        {emp.department?.name || 'General'}
-                      </td>
-                      <td className="py-4">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider ${
-                          emp.role === 'admin' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
-                          emp.role === 'manager' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
-                          'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                        }`}>
-                          {emp.role}
-                        </span>
-                      </td>
-                      <td className="py-4 text-xs text-slate-400">
-                        {emp.manager?.name || '-'}
-                      </td>
-                      <td className="py-4">
-                        <div className="text-xs font-bold text-white">
-                          Sisa: <span className="text-emerald-400">{quota?.remaining_quota ?? 12}</span> / {quota?.total_quota ?? 12} Hari
-                        </div>
-                        <span className="text-[10px] text-slate-500 block">Terkai: {quota?.used_quota ?? 0} Hari</span>
-                      </td>
-                      <td className="py-4 text-right">
-                        <button
-                          onClick={() => handleOpenQuotaModal(emp)}
-                          className="px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 hover:text-white text-xs font-bold transition-all border border-indigo-500/30 flex items-center space-x-1 ml-auto"
-                        >
-                          <Edit3 size={14} />
-                          <span>Edit Kuota</span>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+        {/* Search & Filter Bar */}
+        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm">
+          <form onSubmit={handleApplyFilter} className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Cari Karyawan</label>
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-2.5 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Nama, NIK, atau Email..."
+                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs font-medium focus:bg-white focus:border-emerald-500 outline-none transition-all"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Filter Departemen</label>
+              <select
+                value={selectedDept}
+                onChange={(e) => setSelectedDept(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs font-medium focus:bg-white focus:border-emerald-500 outline-none transition-all"
+              >
+                <option value="">Semua Departemen</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>{dept.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Filter Role</label>
+              <select
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs font-medium focus:bg-white focus:border-emerald-500 outline-none transition-all"
+              >
+                <option value="">Semua Role</option>
+                <option value="employee">Karyawan (Staf)</option>
+                <option value="manager">Manager / Supervisor</option>
+                <option value="admin">HRD / Admin</option>
+              </select>
+            </div>
+
+            <div className="flex items-end space-x-2">
+              <button
+                type="submit"
+                className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 transition-all"
+              >
+                Terapkan Filter
+              </button>
+              <button
+                type="button"
+                onClick={handleResetFilter}
+                className="py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition-all"
+              >
+                Reset
+              </button>
+            </div>
+          </form>
         </div>
 
-        {/* Modal Update Kuota Cuti */}
-        {selectedUser && (
-          <div className="fixed inset-y-0 inset-x-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
-            <div className="w-full max-w-md p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-5">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h3 className="text-base font-bold text-white">Update Kuota Cuti Tahunan</h3>
-                <button onClick={() => setSelectedUser(null)} className="p-1 rounded-lg text-slate-400 hover:text-white">
+        {/* Master Table Card */}
+        <div className="rounded-3xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
+          {employees && employees.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-3.5 px-4">Karyawan & NIK</th>
+                    <th className="py-3.5 px-4">Email</th>
+                    <th className="py-3.5 px-4">Departemen</th>
+                    <th className="py-3.5 px-4">Role System</th>
+                    <th className="py-3.5 px-4">Atasan Direct</th>
+                    <th className="py-3.5 px-4">Kuota Cuti ({new Date().getFullYear()})</th>
+                    <th className="py-3.5 px-4 text-right">Aksi HRD</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {employees.map((emp) => {
+                    const quota = emp.current_quota;
+                    const remaining = quota?.remaining_quota ?? 12;
+                    const total = quota?.total_quota ?? 12;
+                    const used = quota?.used_quota ?? 0;
+
+                    return (
+                      <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center space-x-3">
+                            <UserAvatar user={emp} size="w-9 h-9" textSize="text-xs" />
+                            <div>
+                              <span className="font-extrabold text-slate-900 text-xs block">{emp.name}</span>
+                              <span className="font-mono text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 inline-block mt-0.5">
+                                {emp.nik || 'EMP-???'}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-slate-600 font-medium">
+                          {emp.email}
+                        </td>
+
+                        <td className="py-3.5 px-4 font-semibold text-slate-800">
+                          {emp.department?.name || 'General'}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                            emp.role === 'admin' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+                            emp.role === 'manager' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                            'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          }`}>
+                            {emp.role === 'admin' ? 'HRD / Admin' : emp.role === 'manager' ? 'Manager' : 'Staf Karyawan'}
+                          </span>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-slate-600 font-medium">
+                          {emp.manager ? emp.manager.name : '-'}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <div className="font-extrabold text-slate-900">
+                            Sisa: <span className="text-emerald-600 font-black">{remaining}</span> / {total} Hari
+                          </div>
+                          <div className="w-24 bg-slate-100 h-1.5 rounded-full overflow-hidden mt-1">
+                            <div
+                              className="bg-emerald-500 h-full rounded-full"
+                              style={{ width: `${Math.min(100, (remaining / total) * 100)}%` }}
+                            />
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end space-x-1.5">
+                            <button
+                              onClick={() => handleOpenEditModal(emp)}
+                              title="Edit Data Karyawan"
+                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 transition-colors border border-slate-200"
+                            >
+                              <Edit3 size={15} />
+                            </button>
+
+                            <button
+                              onClick={() => handleOpenQuotaModal(emp)}
+                              title="Edit Kuota Cuti"
+                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-700 transition-colors border border-slate-200"
+                            >
+                              <Calendar size={15} />
+                            </button>
+
+                            <button
+                              onClick={() => setDeletingEmployee(emp)}
+                              title="Hapus Karyawan"
+                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 transition-colors border border-slate-200"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="py-16 text-center text-slate-400">
+              <Users size={40} className="mx-auto mb-3 opacity-30 text-slate-500" />
+              <p className="text-xs font-bold text-slate-600">Tidak ada data karyawan yang sesuai kriteria.</p>
+            </div>
+          )}
+        </div>
+
+        {/* MODAL 1: TAMBAH KARYAWAN BARU */}
+        {isAddOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in">
+            <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setIsAddOpen(false)} />
+            <div className="relative z-10 w-full max-w-lg p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center space-x-2">
+                  <UserPlus size={20} className="text-emerald-600" />
+                  <h3 className="text-base font-extrabold text-slate-900">Tambah Karyawan Baru</h3>
+                </div>
+                <button onClick={() => setIsAddOpen(false)} className="p-1 rounded-lg text-slate-400 hover:text-slate-700">
                   <X size={18} />
                 </button>
               </div>
 
-              <div className="text-xs text-slate-300 space-y-2">
-                <p className="font-medium">Karyawan: <strong className="text-white">{selectedUser.name}</strong> ({selectedUser.nik})</p>
-                <p className="text-slate-400">Departemen: {selectedUser.department?.name || 'General'}</p>
-              </div>
-
-              <form onSubmit={handleSaveQuota} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                    Total Jatah Kuota Cuti (Hari / Tahun)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={newQuota}
-                    onChange={(e) => setNewQuota(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 font-bold text-sm focus:border-indigo-500 outline-none"
-                    required
-                  />
-                  <p className="text-[11px] text-slate-500 mt-1">Sisa kuota akan dihitung ulang secara otomatis berdasarkan cuti terpakai.</p>
+              <form onSubmit={handleAddSubmit} className="space-y-4 text-xs">
+                {/* Avatar File Upload */}
+                <div className="flex items-center space-x-4 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                  <div className="w-14 h-14 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xl overflow-hidden shrink-0">
+                    {addAvatarPreview ? (
+                      <img src={addAvatarPreview} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      addForm.data.name ? addForm.data.name.charAt(0) : 'U'
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Foto Profil (Opsional)</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          addForm.setData('avatar', file);
+                          setAddAvatarPreview(URL.createObjectURL(file));
+                        }
+                      }}
+                      className="text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer"
+                    />
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-end space-x-2 pt-2">
+                {/* NIK & Nama Lengkap */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">No Induk Karyawan (NIK) *</label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="text"
+                        required
+                        value={addForm.data.nik}
+                        onChange={(e) => addForm.setData('nik', e.target.value)}
+                        placeholder="Contoh: EMP-2026-001"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Nama Lengkap *</label>
+                    <input
+                      type="text"
+                      required
+                      value={addForm.data.name}
+                      onChange={(e) => addForm.setData('name', e.target.value)}
+                      placeholder="Nama lengkap karyawan..."
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Email & Password */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Email Terdaftar *</label>
+                    <input
+                      type="email"
+                      required
+                      value={addForm.data.email}
+                      onChange={(e) => addForm.setData('email', e.target.value)}
+                      placeholder="email@perusahaan.com"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-medium focus:bg-white focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Password Awal *</label>
+                    <input
+                      type="text"
+                      required
+                      value={addForm.data.password}
+                      onChange={(e) => addForm.setData('password', e.target.value)}
+                      placeholder="Minimal 6 karakter"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-mono font-bold focus:bg-white focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Role & Departemen */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Role Sistem *</label>
+                    <select
+                      value={addForm.data.role}
+                      onChange={(e) => addForm.setData('role', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
+                    >
+                      <option value="employee">Karyawan (Staf)</option>
+                      <option value="manager">Manager / Supervisor</option>
+                      <option value="admin">HRD / Admin System</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Departemen / Divisi</label>
+                    <select
+                      value={addForm.data.department_id}
+                      onChange={(e) => addForm.setData('department_id', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none"
+                    >
+                      <option value="">Pilih Departemen</option>
+                      {departments.map((dept) => (
+                        <option key={dept.id} value={dept.id}>{dept.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Manager Direct & Jatah Kuota */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Atasan Direct (Manager)</label>
+                    <select
+                      value={addForm.data.manager_id}
+                      onChange={(e) => addForm.setData('manager_id', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none"
+                    >
+                      <option value="">Tidak ada (Direct Admin)</option>
+                      {managers.map((m) => (
+                        <option key={m.id} value={m.id}>{m.name} ({m.department?.name || 'Manager'})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Jatah Kuota Cuti (Hari / Thn)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={addForm.data.total_quota}
+                      onChange={(e) => addForm.setData('total_quota', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
                   <button
                     type="button"
-                    onClick={() => setSelectedUser(null)}
-                    className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700"
+                    onClick={() => setIsAddOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 font-semibold hover:bg-slate-200"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30"
+                    disabled={addForm.processing}
+                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-md shadow-emerald-600/20"
                   >
-                    Simpan Perubahan
+                    {addForm.processing ? 'Menyimpan...' : 'Simpan Karyawan'}
                   </button>
                 </div>
               </form>
             </div>
           </div>
         )}
+
+        {/* MODAL 2: EDIT DATA KARYAWAN */}
+        {editingEmployee && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in">
+            <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setEditingEmployee(null)} />
+            <div className="relative z-10 w-full max-w-lg p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center space-x-2">
+                  <Edit3 size={20} className="text-emerald-600" />
+                  <h3 className="text-base font-extrabold text-slate-900">Edit Data Karyawan</h3>
+                </div>
+                <button onClick={() => setEditingEmployee(null)} className="p-1 rounded-lg text-slate-400 hover:text-slate-700">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleEditSubmit} className="space-y-4 text-xs">
+                {/* Avatar Preview & File Input */}
+                <div className="flex items-center space-x-4 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                  <div className="shrink-0">
+                    {editAvatarPreview ? (
+                      <img src={editAvatarPreview} alt="Preview" className="w-14 h-14 rounded-full object-cover ring-2 ring-emerald-500" />
+                    ) : (
+                      <UserAvatar user={editingEmployee} size="w-14 h-14" textSize="text-xl" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Ganti Foto Profil</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          editForm.setData('avatar', file);
+                          setEditAvatarPreview(URL.createObjectURL(file));
+                        }
+                      }}
+                      className="text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">NIK Karyawan *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editForm.data.nik}
+                      onChange={(e) => editForm.setData('nik', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Nama Lengkap *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editForm.data.name}
+                      onChange={(e) => editForm.setData('name', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Email Terdaftar *</label>
+                    <input
+                      type="email"
+                      required
+                      value={editForm.data.email}
+                      onChange={(e) => editForm.setData('email', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-medium focus:bg-white focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Ubah Password (Opsional)</label>
+                    <input
+                      type="password"
+                      value={editForm.data.password}
+                      onChange={(e) => editForm.setData('password', e.target.value)}
+                      placeholder="Kosongkan jika tidak diubah"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-mono focus:bg-white focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Role Sistem *</label>
+                    <select
+                      value={editForm.data.role}
+                      onChange={(e) => editForm.setData('role', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
+                    >
+                      <option value="employee">Karyawan (Staf)</option>
+                      <option value="manager">Manager / Supervisor</option>
+                      <option value="admin">HRD / Admin System</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Departemen / Divisi</label>
+                    <select
+                      value={editForm.data.department_id}
+                      onChange={(e) => editForm.setData('department_id', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none"
+                    >
+                      <option value="">Pilih Departemen</option>
+                      {departments.map((dept) => (
+                        <option key={dept.id} value={dept.id}>{dept.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Atasan Direct (Manager)</label>
+                    <select
+                      value={editForm.data.manager_id}
+                      onChange={(e) => editForm.setData('manager_id', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none"
+                    >
+                      <option value="">Tidak ada (Direct Admin)</option>
+                      {managers.map((m) => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Total Jatah Kuota Cuti</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={editForm.data.total_quota}
+                      onChange={(e) => editForm.setData('total_quota', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setEditingEmployee(null)}
+                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 font-semibold hover:bg-slate-200"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editForm.processing}
+                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-md shadow-emerald-600/20"
+                  >
+                    {editForm.processing ? 'Memperbarui...' : 'Simpan Perubahan'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL 3: EDIT KUOTA CUTI TAHUNAN */}
+        {quotaEmployee && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in">
+            <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setQuotaEmployee(null)} />
+            <div className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-base font-extrabold text-slate-900">Update Kuota Cuti Tahunan</h3>
+                <button onClick={() => setQuotaEmployee(null)} className="p-1 rounded-lg text-slate-400 hover:text-slate-700">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-slate-700 space-y-1">
+                <p className="font-extrabold text-slate-900">{quotaEmployee.name} ({quotaEmployee.nik})</p>
+                <p className="text-slate-600">Departemen: {quotaEmployee.department?.name || 'General'}</p>
+                <p className="text-emerald-800 font-bold mt-1">Sisa Kuota Saat Ini: {quotaEmployee.current_quota?.remaining_quota ?? 12} Hari</p>
+              </div>
+
+              <form onSubmit={handleQuotaSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Total Jatah Kuota Cuti (Hari / Tahun {new Date().getFullYear()})
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={quotaForm.data.total_quota}
+                    onChange={(e) => quotaForm.setData('total_quota', e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-black text-base focus:bg-white focus:border-emerald-500 outline-none"
+                    required
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">Sisa kuota akan otomatis dihitung berdasarkan jumlah cuti yang sudah terpakai.</p>
+                </div>
+
+                <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setQuotaEmployee(null)}
+                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold hover:bg-slate-200"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20"
+                  >
+                    Simpan Kuota
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL 4: KONFIRMASI HAPUS KARYAWAN */}
+        {deletingEmployee && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in">
+            <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setDeletingEmployee(null)} />
+            <div className="relative z-10 w-full max-w-sm p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+                <AlertTriangle size={24} />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">Hapus Data Karyawan?</h3>
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  Apakah Anda yakin ingin menghapus karyawan <strong className="text-slate-900">{deletingEmployee.name}</strong> ({deletingEmployee.nik})? Data yang dihapus tidak dapat dikembalikan.
+                </p>
+              </div>
+              <div className="flex items-center justify-center space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeletingEmployee(null)}
+                  className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteSubmit}
+                  className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-md shadow-rose-600/20"
+                >
+                  Ya, Hapus
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </AuthenticatedLayout>
   );
