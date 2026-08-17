@@ -1,0 +1,79 @@
+import './bootstrap';
+import '../css/app.css';
+
+import { createRoot } from 'react-dom/client';
+import { createInertiaApp } from '@inertiajs/react';
+
+// Window Error Trap to prevent silent blank screens
+window.addEventListener('error', (event) => {
+  console.error('Global Error Trapped:', event.error || event.message);
+});
+
+// Application Route Helper for Form SGIN
+window.route = function (name, params) {
+  const routes = {
+    'login': '/login',
+    'quick-login': '/quick-login',
+    'logout': '/logout',
+    'dashboard': '/dashboard',
+    'leave-requests.index': '/leave-requests',
+    'leave-requests.create': '/leave-requests/create',
+    'leave-requests.store': '/leave-requests',
+    'leave-requests.show': (id) => `/leave-requests/${id}`,
+    'leave-requests.destroy': (id) => `/leave-requests/${id}`,
+    'approvals.index': '/approvals',
+    'approvals.approve': (id) => `/approvals/${id}/approve`,
+    'approvals.reject': (id) => `/approvals/${id}/reject`,
+    'hrd.index': '/hrd',
+    'hrd.employees': '/hrd/employees',
+    'hrd.update-quota': (id) => `/hrd/employees/${id}/quota`,
+    'hrd.export': '/hrd/export',
+    'profile.avatar': '/profile/avatar',
+  };
+
+  if (!name) {
+    return {
+      current: (routeName) => {
+        const currentPath = window.location.pathname;
+        const targetPath = typeof routes[routeName] === 'function' ? routes[routeName]('') : routes[routeName];
+        return currentPath === targetPath || currentPath.startsWith(targetPath);
+      }
+    };
+  }
+
+  const target = routes[name];
+  if (typeof target === 'function') {
+    return target(params);
+  }
+  return target || `/${name}`;
+};
+
+const appName = window.document.getElementsByTagName('title')[0]?.innerText || 'Form SGIN';
+
+// Eagerly load all Inertia page components
+const pages = import.meta.glob('./Pages/**/*.jsx', { eager: true });
+
+createInertiaApp({
+  title: (title) => `${title} - ${appName}`,
+  resolve: (name) => {
+    const pageKey = `./Pages/${name}.jsx`;
+    const pageModule = pages[pageKey];
+    if (!pageModule) {
+      console.error(`Page component "${name}" not found at path "${pageKey}". Available pages:`, Object.keys(pages));
+    }
+    return pageModule?.default || pageModule;
+  },
+  setup({ el, App, props }) {
+    const targetElement = el || document.getElementById('app');
+    if (!targetElement) {
+      console.error('Target element #app not found!');
+      return;
+    }
+    const root = createRoot(targetElement);
+    root.render(<App {...props} />);
+  },
+  progress: {
+    color: '#14b8a6',
+    showSpinner: true,
+  },
+});
