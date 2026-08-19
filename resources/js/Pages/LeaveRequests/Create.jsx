@@ -122,7 +122,7 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
 
   return (
     <AuthenticatedLayout title="Buat Pengajuan Baru">
-      <div className="max-w-3xl mx-auto space-y-5">
+      <div className="w-full space-y-5">
 
         {/* Symmetrical Mobile & Desktop Header */}
         <div className="flex items-center justify-between">

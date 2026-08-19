@@ -152,7 +152,7 @@ export default function RolePermissionIndex({ roles = [], permissions = [], empl
     <AuthenticatedLayout title="Manajemen Role & Hak Akses">
       <Head title="Superadmin - Spatie Role & Permission" />
 
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="w-full space-y-6">
 
         {/* Page Header matching Form SGIN Emerald Theme */}
         <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-[#0FA172] to-[#1CB67C] text-white shadow-lg shadow-emerald-600/20 relative overflow-hidden">
@@ -167,7 +167,7 @@ export default function RolePermissionIndex({ roles = [], permissions = [], empl
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
                 Manajemen Role & Hak Akses Karyawan
               </h1>
-              <p className="text-sm text-emerald-50 mt-1 max-w-2xl font-medium">
+              <p className="text-sm text-emerald-50 mt-1 max-w-4xl font-medium">
                 Atur granular hak akses menu, role Spatie permission, dan kontrol kewenangan setiap karyawan dalam sistem Form SGIN.
               </p>
             </div>
@@ -266,7 +266,7 @@ export default function RolePermissionIndex({ roles = [], permissions = [], empl
 
         {/* TAB 1: ROLES MATRIX */}
         {activeTab === 'roles' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
             {roles.map((role) => (
               <div
                 key={role.id}
@@ -494,7 +494,7 @@ export default function RolePermissionIndex({ roles = [], permissions = [], empl
                             </td>
 
                             <td className="py-4 px-6">
-                              <div className="flex flex-wrap gap-1 max-w-xs">
+                              <div className="flex flex-wrap gap-1 max-w-md">
                                 {emp.permissions.length === 0 ? (
                                   <span className="text-xs text-slate-400 italic">Ikut permission role</span>
                                 ) : (
@@ -551,7 +551,7 @@ export default function RolePermissionIndex({ roles = [], permissions = [], empl
             </div>
 
             {/* Categorized Permissions Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
               {Object.entries(permissionCategories).map(([category, itemNames]) => {
                 const categoryPerms = permissions.filter((p) => itemNames.includes(p.name));
                 return (

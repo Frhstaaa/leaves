@@ -314,7 +314,7 @@ export default function AuthenticatedLayout({ children, title }) {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto pb-28 md:pb-8"
+          className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 w-full pb-28 md:pb-8"
         >
           {children}
         </motion.main>

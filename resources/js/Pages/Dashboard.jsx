@@ -62,7 +62,7 @@ export default function Dashboard({ user, stats, recentRequests, managerPendingC
               Selamat datang kembali!
             </p>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex md:hidden items-center space-x-2">
             <button
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('open-notifications-menu'))}
