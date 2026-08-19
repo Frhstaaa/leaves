@@ -7,10 +7,11 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
     protected $fillable = [
         'nik',
@@ -75,18 +76,23 @@ class User extends Authenticatable
         return $this->hasMany(LeaveRequest::class);
     }
 
+    public function isSuperadmin(): bool
+    {
+        return $this->role === 'superadmin' || $this->hasRole('superadmin');
+    }
+
     public function isEmployee(): bool
     {
-        return $this->role === 'employee';
+        return $this->role === 'employee' || $this->hasRole('employee');
     }
 
     public function isManager(): bool
     {
-        return $this->role === 'manager';
+        return $this->role === 'manager' || $this->hasRole('manager');
     }
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->role === 'admin' || $this->hasRole('admin') || $this->isSuperadmin();
     }
 }

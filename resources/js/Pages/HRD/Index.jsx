@@ -181,83 +181,143 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
         {/* Master Table List */}
         <div className="rounded-3xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
           {requests.data && requests.data.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="py-3.5 px-4">No Request</th>
-                    <th className="py-3.5 px-4">Karyawan & NIK</th>
-                    <th className="py-3.5 px-4">Departemen</th>
-                    <th className="py-3.5 px-4">Kategori Cuti</th>
-                    <th className="py-3.5 px-4">Periode & Durasi</th>
-                    <th className="py-3.5 px-4">Status Approval</th>
-                    <th className="py-3.5 px-4">Approver</th>
-                    <th className="py-3.5 px-4 text-center">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {requests.data.map((req) => (
-                    <tr
-                      key={req.id}
-                      onClick={() => setSelectedRequest(req)}
-                      className="hover:bg-slate-50/80 cursor-pointer transition-colors"
-                    >
-                      <td className="py-3.5 px-4 font-mono font-bold text-emerald-700">
+            <div>
+              {/* MOBILE RECAP CARD VIEW (< md) */}
+              <div className="block md:hidden divide-y divide-slate-100">
+                {requests.data.map((req) => (
+                  <div
+                    key={req.id}
+                    onClick={() => setSelectedRequest(req)}
+                    className="p-4 space-y-3 hover:bg-slate-50/80 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                         {req.request_number}
-                      </td>
+                      </span>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                        req.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                        req.status === 'rejected' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                        'bg-amber-100 text-amber-800 border border-amber-200'
+                      }`}>
+                        {req.status === 'approved' ? 'Disetujui' : req.status === 'rejected' ? 'Ditolak' : 'Pending'}
+                      </span>
+                    </div>
 
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center space-x-3">
-                          <UserAvatar user={req.user} size="w-8 h-8" textSize="text-xs" />
-                          <div>
-                            <span className="font-extrabold text-slate-900 text-xs block">{req.user?.name}</span>
-                            <span className="text-[10px] text-slate-500 font-mono block">{req.user?.nik}</span>
+                    <div className="flex items-center space-x-3">
+                      <UserAvatar user={req.user} size="w-10 h-10" textSize="text-xs" />
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-extrabold text-slate-900 text-sm truncate">{req.user?.name}</h4>
+                        <p className="text-[11px] text-slate-500 font-medium truncate">{req.user?.nik} &bull; {req.user?.department?.name || 'General'}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60 min-w-0">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase block">Kategori Cuti</span>
+                        <span className="font-bold text-slate-900 truncate block">{req.category?.name || 'Cuti'}</span>
+                      </div>
+
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60 min-w-0">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase block">Durasi</span>
+                        <span className="font-extrabold text-emerald-600 truncate block">{req.amount} {req.unit || 'hari'}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                      <span className="text-slate-500 font-medium">{req.start_date} s/d {req.end_date}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedRequest(req);
+                        }}
+                        className="px-3 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs flex items-center space-x-1 border border-emerald-200"
+                      >
+                        <Eye size={14} />
+                        <span>Detail</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* DESKTOP RECAP TABLE VIEW (>= md) */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="py-3.5 px-4">No Request</th>
+                      <th className="py-3.5 px-4">Karyawan & NIK</th>
+                      <th className="py-3.5 px-4">Departemen</th>
+                      <th className="py-3.5 px-4">Kategori Cuti</th>
+                      <th className="py-3.5 px-4">Periode & Durasi</th>
+                      <th className="py-3.5 px-4">Status Approval</th>
+                      <th className="py-3.5 px-4">Approver</th>
+                      <th className="py-3.5 px-4 text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    {requests.data.map((req) => (
+                      <tr
+                        key={req.id}
+                        onClick={() => setSelectedRequest(req)}
+                        className="hover:bg-slate-50/80 cursor-pointer transition-colors"
+                      >
+                        <td className="py-3.5 px-4 font-mono font-bold text-emerald-700">
+                          {req.request_number}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center space-x-3">
+                            <UserAvatar user={req.user} size="w-8 h-8" textSize="text-xs" />
+                            <div>
+                              <span className="font-extrabold text-slate-900 text-xs block">{req.user?.name}</span>
+                              <span className="text-[10px] text-slate-500 font-mono block">{req.user?.nik}</span>
+                            </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="py-3.5 px-4 text-slate-700 font-medium">
-                        {req.user?.department?.name || 'General'}
-                      </td>
+                        <td className="py-3.5 px-4 text-slate-700 font-medium">
+                          {req.user?.department?.name || 'General'}
+                        </td>
 
-                      <td className="py-3.5 px-4">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                          {req.category?.name || 'Cuti'}
-                        </span>
-                      </td>
+                        <td className="py-3.5 px-4">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            {req.category?.name || 'Cuti'}
+                          </span>
+                        </td>
 
-                      <td className="py-3.5 px-4">
-                        <div className="text-slate-900 font-medium">
-                          {req.start_date} s/d {req.end_date}
-                        </div>
-                        <span className="text-[10px] font-bold text-emerald-700 block mt-0.5">
-                          Total: {req.amount} {req.unit || 'hari'}
-                        </span>
-                      </td>
+                        <td className="py-3.5 px-4">
+                          <div className="text-slate-900 font-medium">
+                            {req.start_date} s/d {req.end_date}
+                          </div>
+                          <span className="text-[10px] font-bold text-emerald-700 block mt-0.5">
+                            Total: {req.amount} {req.unit || 'hari'}
+                          </span>
+                        </td>
 
-                      <td className="py-3.5 px-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-                          req.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                          req.status === 'rejected' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
-                          'bg-amber-100 text-amber-800 border border-amber-200'
-                        }`}>
-                          {req.status === 'approved' ? 'Disetujui' :
-                           req.status === 'rejected' ? 'Ditolak' : 'Pending'}
-                        </span>
-                      </td>
+                        <td className="py-3.5 px-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                            req.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                            req.status === 'rejected' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                            'bg-amber-100 text-amber-800 border border-amber-200'
+                          }`}>
+                            {req.status === 'approved' ? 'Disetujui' :
+                             req.status === 'rejected' ? 'Ditolak' : 'Pending'}
+                          </span>
+                        </td>
 
-                      <td className="py-3.5 px-4 text-slate-500 font-medium">
-                        {req.approver ? req.approver.name : '-'}
-                      </td>
+                        <td className="py-3.5 px-4 text-slate-500 font-medium">
+                          {req.approver ? req.approver.name : '-'}
+                        </td>
 
-                      <td className="py-3.5 px-4 text-center">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedRequest(req);
-                          }}
-                          className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors border border-emerald-200 inline-flex items-center space-x-1"
-                        >
+                        <td className="py-3.5 px-4 text-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedRequest(req);
+                            }}
+                            className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors border border-emerald-200 inline-flex items-center space-x-1"
+                          >
                           <Eye size={14} />
                           <span className="text-[11px] font-bold">Detail</span>
                         </button>
@@ -267,7 +327,8 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
                 </tbody>
               </table>
             </div>
-          ) : (
+          </div>
+        ) : (
             <div className="py-16 text-center text-slate-400">
               <FileSpreadsheet size={42} className="mx-auto mb-3 opacity-30 text-slate-500" />
               <p className="text-xs font-bold text-slate-600">Tidak ada rekapitulasi data yang sesuai kriteria pencarian.</p>

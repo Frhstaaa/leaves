@@ -25,6 +25,7 @@ import {
   Search,
   X
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function CreateLeaveRequest({ user, categories, quota }) {
   const { data, setData, post, processing, errors, reset } = useForm({
@@ -149,20 +150,27 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
         </div>
 
         {/* Form Container matching Mockup Design */}
-        <div className="p-5 sm:p-8 rounded-3xl bg-white border border-slate-200/80 shadow-lg space-y-6">
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="p-5 sm:p-8 rounded-3xl bg-white border border-slate-200/80 shadow-lg space-y-6"
+        >
 
           {/* Stepper Progress Bar (1 Jenis -> 2 Detail -> 3 Review) */}
-          <div className="relative flex items-center justify-between px-4 sm:px-12 py-2">
-            <div className="absolute top-1/2 left-8 right-8 h-1 bg-slate-100 -translate-y-1/2 z-0"></div>
-            <div
-              className="absolute top-1/2 left-8 h-1 bg-emerald-500 -translate-y-1/2 z-0 transition-all duration-300"
-              style={{ width: currentStep === 1 ? '0%' : currentStep === 2 ? '50%' : '100%' }}
-            ></div>
+          <div className="relative flex items-center justify-between px-4 sm:px-10 py-2">
+            {/* Track Container (Center of Step 1 to Center of Step 3) */}
+            <div className="absolute top-[20px] left-8 right-8 h-1 bg-slate-100 -translate-y-1/2 z-0 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#0FA172] transition-all duration-300 rounded-full"
+                style={{ width: currentStep === 1 ? '0%' : currentStep === 2 ? '50%' : '100%' }}
+              />
+            </div>
 
             {/* Step 1 */}
             <div className="relative z-10 flex flex-col items-center space-y-1">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all ${
-                currentStep >= 1 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-4 ring-emerald-50' : 'bg-slate-200 text-slate-500'
+                currentStep >= 1 ? 'bg-[#0FA172] text-white shadow-md shadow-emerald-600/30 ring-4 ring-white' : 'bg-slate-200 text-slate-500 ring-4 ring-white'
               }`}>
                 1
               </div>
@@ -174,7 +182,7 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
             {/* Step 2 */}
             <div className="relative z-10 flex flex-col items-center space-y-1">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all ${
-                currentStep >= 2 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-4 ring-emerald-50' : 'bg-slate-200 text-slate-500'
+                currentStep >= 2 ? 'bg-[#0FA172] text-white shadow-md shadow-emerald-600/30 ring-4 ring-white' : 'bg-slate-200 text-slate-500 ring-4 ring-white'
               }`}>
                 2
               </div>
@@ -186,7 +194,7 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
             {/* Step 3 */}
             <div className="relative z-10 flex flex-col items-center space-y-1">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all ${
-                currentStep >= 3 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-4 ring-emerald-50' : 'bg-slate-200 text-slate-500'
+                currentStep >= 3 ? 'bg-[#0FA172] text-white shadow-md shadow-emerald-600/30 ring-4 ring-white' : 'bg-slate-200 text-slate-500 ring-4 ring-white'
               }`}>
                 3
               </div>
@@ -550,101 +558,112 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
             </div>
 
           </form>
-        </div>
+        </motion.div>
 
       </div>
 
-      {/* CUSTOM CATEGORY SELECT MODAL (Ultra-sleek, clean & mobile-native) */}
-      {categoryModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4 animate-fade-in">
-          {/* Full-screen Dark Backdrop Overlay (0px Gap) */}
-          <div
-            className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity"
-            onClick={() => setCategoryModalOpen(false)}
-          />
+      {/* ALL CATEGORIES SEARCHABLE MODAL WITH FRAMER MOTION */}
+      <AnimatePresence>
+        {categoryModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm"
+              onClick={() => setCategoryModalOpen(false)}
+            />
 
-          <div className="relative z-10 w-full max-w-lg p-5 rounded-t-3xl sm:rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
-              <div className="flex items-center space-x-2">
-                <FileText size={20} className="text-emerald-600" />
-                <h3 className="text-base font-extrabold text-slate-900">Pilih Kategori Tidak Bekerja</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCategoryModalOpen(false)}
-                className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:text-slate-800"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Search Input */}
-            <div className="relative shrink-0">
-              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={categorySearch}
-                onChange={(e) => setCategorySearch(e.target.value)}
-                placeholder="Cari jenis permohonan / izin / sakit..."
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 text-xs font-semibold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none"
-              />
-            </div>
-
-            {/* Category List */}
-            <div className="space-y-2 overflow-y-auto flex-1 pr-1">
-              {filteredCategories.length > 0 ? (
-                filteredCategories.map((cat) => {
-                  const isSelected = data.leave_category_id == cat.id;
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => handleSelectCategory(cat)}
-                      className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all ${
-                        isSelected
-                          ? 'bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20 font-extrabold shadow-sm'
-                          : 'bg-white border-slate-200 hover:border-emerald-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="min-w-0 flex-1 pr-2">
-                        <div className="flex items-center space-x-2">
-                          <h4 className={`text-xs font-extrabold ${isSelected ? 'text-emerald-950' : 'text-slate-900'}`}>{cat.name}</h4>
-                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-slate-100 text-slate-600 shrink-0">
-                            {cat.unit_type === 'jam' ? 'Jam' : 'Hari'}
-                          </span>
-                        </div>
-                        {cat.description && (
-                          <p className="text-[11px] text-slate-500 font-normal mt-0.5 truncate">{cat.description}</p>
-                        )}
-                      </div>
-
-                      {isSelected && (
-                        <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                          <Check size={14} />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="p-8 text-center text-slate-400">
-                  <p className="text-xs font-semibold">Tidak ada kategori yang cocok dengan pencarian.</p>
+            <motion.div
+              initial={{ y: '100%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '100%', opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+              className="relative z-10 w-full max-w-lg p-5 rounded-t-3xl sm:rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 max-h-[85vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
+                <div className="flex items-center space-x-2">
+                  <FileText size={20} className="text-emerald-600" />
+                  <h3 className="text-base font-extrabold text-slate-900">Pilih Kategori Tidak Bekerja</h3>
                 </div>
-              )}
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setCategoryModalOpen(false)}
+                  className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:text-slate-800"
+                >
+                  <X size={18} />
+                </button>
+              </div>
 
-            <div className="pt-2 shrink-0 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setCategoryModalOpen(false)}
-                className="w-full py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
-              >
-                Batal
-              </button>
-            </div>
+              {/* Search Input */}
+              <div className="relative shrink-0">
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={categorySearch}
+                  onChange={(e) => setCategorySearch(e.target.value)}
+                  placeholder="Cari jenis permohonan / izin / sakit..."
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 text-xs font-semibold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none"
+                />
+              </div>
+
+              {/* Category List */}
+              <div className="space-y-2 overflow-y-auto flex-1 pr-1">
+                {filteredCategories.length > 0 ? (
+                  filteredCategories.map((cat) => {
+                    const isSelected = data.leave_category_id == cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => handleSelectCategory(cat)}
+                        className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all ${
+                          isSelected
+                            ? 'bg-emerald-50 border-emerald-500 shadow-sm'
+                            : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1 pr-2">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-bold text-xs text-slate-900">{cat.name}</span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-slate-200 text-slate-700">
+                              {cat.type}
+                            </span>
+                          </div>
+                          {cat.description && (
+                            <p className="text-[11px] text-slate-500 font-normal mt-0.5 truncate">{cat.description}</p>
+                          )}
+                        </div>
+
+                        {isSelected && (
+                          <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                            <Check size={14} />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="p-8 text-center text-slate-400">
+                    <p className="text-xs font-semibold">Tidak ada kategori yang cocok dengan pencarian.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2 shrink-0 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setCategoryModalOpen(false)}
+                  className="w-full py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
+                >
+                  Batal
+                </button>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </AuthenticatedLayout>
   );
 }

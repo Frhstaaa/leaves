@@ -191,5 +191,8 @@ class DatabaseSeeder extends Seeder
                 ]
             );
         }
+
+        // 7. Seed Spatie Roles & Permissions
+        $this->call(RolePermissionSeeder::class);
     }
 }

@@ -79,39 +79,50 @@ export default function ApprovalsIndex({ requests, filters }) {
           </div>
         </div>
 
-        {/* Filter Status Tabs */}
-        <div className="flex items-center space-x-2 border-b border-slate-200 pb-3 overflow-x-auto">
+        {/* Filter Status Tabs (2x2 Grid on Mobile for 100% Full Visibility & Horizontal Scroll on Desktop) */}
+        <div className="w-full border-b border-slate-200 pb-3 grid grid-cols-2 gap-2 sm:flex sm:items-center sm:space-x-2 sm:overflow-x-auto sm:no-scrollbar">
           <button
             onClick={() => handleFilterStatus('pending')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              filters.status === 'pending' ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20' : 'text-slate-600 hover:text-slate-900 bg-white border border-slate-200'
+            className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center space-x-1.5 ${
+              filters.status === 'pending'
+                ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
+                : 'text-slate-700 hover:text-slate-900 bg-white border border-slate-200'
             }`}
           >
-            ⏳ Menunggu Approval (Pending)
+            <span>⏳ Menunggu</span>
           </button>
+
           <button
             onClick={() => handleFilterStatus('approved')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              filters.status === 'approved' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'text-slate-600 hover:text-slate-900 bg-white border border-slate-200'
+            className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center space-x-1.5 ${
+              filters.status === 'approved'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                : 'text-slate-700 hover:text-slate-900 bg-white border border-slate-200'
             }`}
           >
-            ✅ Telah Disetujui (Approved)
+            <span>✅ Disetujui</span>
           </button>
+
           <button
             onClick={() => handleFilterStatus('rejected')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              filters.status === 'rejected' ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20' : 'text-slate-600 hover:text-slate-900 bg-white border border-slate-200'
+            className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center space-x-1.5 ${
+              filters.status === 'rejected'
+                ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
+                : 'text-slate-700 hover:text-slate-900 bg-white border border-slate-200'
             }`}
           >
-            ❌ Telah Ditolak (Rejected)
+            <span>❌ Ditolak</span>
           </button>
+
           <button
-            onClick={() => handleFilterStatus('')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              !filters.status ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20' : 'text-slate-600 hover:text-slate-900 bg-white border border-slate-200'
+            onClick={() => handleFilterStatus('all')}
+            className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center space-x-1.5 ${
+              filters.status === 'all' || !filters.status
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                : 'text-slate-700 hover:text-slate-900 bg-white border border-slate-200'
             }`}
           >
-            Semua Data
+            <span>📋 Semua Data</span>
           </button>
         </div>
 

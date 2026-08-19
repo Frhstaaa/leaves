@@ -19,7 +19,13 @@ class ApprovalController extends Controller
             return redirect()->route('dashboard')->with('error', 'Akses hanya untuk Atasan / Manager & HRD.');
         }
 
-        $status = $request->query('status', 'pending');
+        $rawStatus = $request->query('status');
+
+        if ($request->has('status')) {
+            $status = ($rawStatus === null || $rawStatus === '' || $rawStatus === 'all') ? 'all' : $rawStatus;
+        } else {
+            $status = 'pending';
+        }
 
         $query = LeaveRequest::with(['user.department', 'category', 'approver']);
 
@@ -32,7 +38,7 @@ class ApprovalController extends Controller
             $query->whereIn('user_id', $subordinateIds)->where('user_id', '!=', $user->id);
         }
 
-        if ($status && in_array($status, ['pending', 'approved', 'rejected'])) {
+        if (in_array($status, ['pending', 'approved', 'rejected'])) {
             $query->where('status', $status);
         }
 

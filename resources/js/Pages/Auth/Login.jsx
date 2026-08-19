@@ -35,7 +35,7 @@ export default function Login() {
           <p className="text-xs font-bold text-teal-700 uppercase tracking-wider text-center mb-3">
             ⚡ Quick Demo Switcher (Masuk Instan)
           </p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             <button
               type="button"
               onClick={() => handleQuickLogin('employee')}
@@ -61,6 +61,15 @@ export default function Login() {
             >
               <ShieldCheck size={18} className="text-purple-600 mb-1" />
               <span>HRD Admin</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleQuickLogin('superadmin')}
+              className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 hover:border-amber-400 text-slate-900 transition-all duration-200 text-xs font-bold"
+            >
+              <ShieldCheck size={18} className="text-amber-600 mb-1" />
+              <span className="text-[11px]">Super Admin</span>
             </button>
           </div>
         </div>

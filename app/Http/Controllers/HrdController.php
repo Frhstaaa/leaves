@@ -366,4 +366,201 @@ class HrdController extends Controller
 
         return response()->stream($callback, 200, $headers);
     }
+
+    public function downloadTemplate()
+    {
+        $fileName = 'Template_Import_Karyawan_SGIN.csv';
+
+        $headers = [
+            "Content-type" => "text/csv; charset=UTF-8",
+            "Content-Disposition" => "attachment; filename=$fileName",
+            "Pragma" => "no-cache",
+            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
+            "Expires" => "0",
+        ];
+
+        $callback = function () {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            // Header row
+            fputcsv($file, [
+                'NIK',
+                'Nama Karyawan',
+                'Email',
+                'Password',
+                'Role',
+                'Kode/Nama Departemen',
+                'NIK Atasan',
+                'Kuota Cuti',
+            ]);
+
+            // Sample row 1 (Karyawan)
+            fputcsv($file, [
+                'EMP-2026-001',
+                'Bambang Susilo',
+                'bambang@sgin.com',
+                'password123',
+                'employee',
+                'DEPT-IT',
+                'MGR-101',
+                '12',
+            ]);
+
+            // Sample row 2 (Manager)
+            fputcsv($file, [
+                'MGR-2026-002',
+                'Dewi Sartika',
+                'dewi@sgin.com',
+                'password123',
+                'manager',
+                'DEPT-FIN',
+                '',
+                '12',
+            ]);
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    public function importEmployees(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user->isAdmin()) {
+            return back()->with('error', 'Akses ditolak. Fitur ini khusus untuk HRD / Admin.');
+        }
+
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt,xlsx|max:5120',
+        ]);
+
+        $file = $request->file('file');
+        $filePath = $file->getRealPath();
+
+        $handle = fopen($filePath, 'r');
+        if (!$handle) {
+            return back()->with('error', 'Gagal membaca file CSV yang diupload.');
+        }
+
+        // Remove UTF-8 BOM if present
+        $bom = fread($handle, 3);
+        if ($bom !== "\xEF\xBB\xBF") {
+            rewind($handle);
+        }
+
+        $successCount = 0;
+        $skippedCount = 0;
+        $skippedDetails = [];
+        $rowNumber = 0;
+
+        $currentYear = date('Y');
+        $departments = Department::all();
+        $allManagers = User::whereIn('role', ['manager', 'admin', 'superadmin'])->get();
+
+        while (($row = fgetcsv($handle, 1000, ',')) !== false) {
+            $rowNumber++;
+
+            // Skip header row
+            if ($rowNumber === 1 && (isset($row[0]) && stripos($row[0], 'NIK') !== false)) {
+                continue;
+            }
+
+            // Skip empty rows
+            if (empty(array_filter($row))) {
+                continue;
+            }
+
+            $nik = trim($row[0] ?? '');
+            $name = trim($row[1] ?? '');
+            $email = trim($row[2] ?? '');
+            $password = trim($row[3] ?? '');
+            $roleInput = strtolower(trim($row[4] ?? 'employee'));
+            $deptInput = trim($row[5] ?? '');
+            $managerNik = trim($row[6] ?? '');
+            $quotaInput = (int) trim($row[7] ?? 12);
+
+            if (empty($name) || empty($email)) {
+                $skippedCount++;
+                $skippedDetails[] = "Baris #{$rowNumber}: Nama atau Email tidak boleh kosong.";
+                continue;
+            }
+
+            // Auto-generate NIK if blank
+            if (empty($nik)) {
+                $nik = 'EMP-' . date('Y') . '-' . rand(100, 999);
+            }
+
+            // Check uniqueness
+            if (User::where('email', $email)->orWhere('nik', $nik)->exists()) {
+                $skippedCount++;
+                $skippedDetails[] = "Baris #{$rowNumber}: User dengan NIK '{$nik}' atau Email '{$email}' sudah terdaftar.";
+                continue;
+            }
+
+            // Normalize Role
+            $role = in_array($roleInput, ['employee', 'manager', 'admin', 'superadmin']) ? $roleInput : 'employee';
+
+            // Find Department
+            $department = $departments->first(function ($d) use ($deptInput) {
+                return strcasecmp($d->code, $deptInput) === 0 || strcasecmp($d->name, $deptInput) === 0;
+            });
+            $departmentId = $department ? $department->id : ($departments->first()->id ?? null);
+
+            // Find Manager
+            $managerId = null;
+            if ($managerNik) {
+                $managerUser = User::where('nik', $managerNik)->first();
+                if ($managerUser) {
+                    $managerId = $managerUser->id;
+                }
+            }
+
+            // Default password
+            if (empty($password)) {
+                $password = 'password123';
+            }
+
+            // Create User
+            $newEmp = User::create([
+                'nik' => $nik,
+                'name' => $name,
+                'email' => $email,
+                'password' => Hash::make($password),
+                'role' => $role,
+                'department_id' => $departmentId,
+                'manager_id' => $managerId,
+            ]);
+
+            // Assign Spatie Role
+            try {
+                $newEmp->assignRole($role);
+            } catch (\Exception $e) {
+                // Fallback ignore spatie sync error
+            }
+
+            // Create Annual Leave Quota
+            $totalQuota = $quotaInput > 0 ? $quotaInput : 12;
+            LeaveQuota::create([
+                'user_id' => $newEmp->id,
+                'year' => $currentYear,
+                'total_quota' => $totalQuota,
+                'used_quota' => 0,
+                'remaining_quota' => $totalQuota,
+            ]);
+
+            $successCount++;
+        }
+
+        fclose($handle);
+
+        $message = "Proses import selesai. {$successCount} karyawan berhasil ditambahkan.";
+        if ($skippedCount > 0) {
+            $message .= " {$skippedCount} baris dilewati (duplikat atau data kurang lengkap).";
+        }
+
+        return redirect()->back()->with('success', $message);
+    }
 }
+

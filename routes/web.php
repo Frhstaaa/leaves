@@ -43,6 +43,8 @@ Route::middleware(['auth'])->group(function () {
     // HRD / PGA Admin Routes
     Route::get('/hrd', [HrdController::class, 'index'])->name('hrd.index');
     Route::get('/hrd/employees', [HrdController::class, 'employees'])->name('hrd.employees');
+    Route::get('/hrd/employees/template', [HrdController::class, 'downloadTemplate'])->name('hrd.employees.template');
+    Route::post('/hrd/employees/import', [HrdController::class, 'importEmployees'])->name('hrd.employees.import');
     Route::post('/hrd/employees', [HrdController::class, 'storeEmployee'])->name('hrd.employees.store');
     Route::post('/hrd/employees/{userId}/update', [HrdController::class, 'updateEmployee'])->name('hrd.employees.update');
     Route::delete('/hrd/employees/{userId}', [HrdController::class, 'destroyEmployee'])->name('hrd.employees.destroy');
@@ -50,4 +52,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/hrd/export', [HrdController::class, 'export'])->name('hrd.export');
     // Profile Avatar Route
     Route::post('/profile/avatar', [\App\Http\Controllers\ProfileController::class, 'updateAvatar'])->name('profile.avatar');
+
+    // Superadmin Role & Permission Management Routes
+    Route::middleware(['superadmin'])->prefix('superadmin')->name('superadmin.')->group(function () {
+        Route::get('/roles', [\App\Http\Controllers\Superadmin\RolePermissionController::class, 'index'])->name('roles.index');
+        Route::post('/roles', [\App\Http\Controllers\Superadmin\RolePermissionController::class, 'storeRole'])->name('roles.store');
+        Route::put('/roles/{id}', [\App\Http\Controllers\Superadmin\RolePermissionController::class, 'updateRole'])->name('roles.update');
+        Route::delete('/roles/{id}', [\App\Http\Controllers\Superadmin\RolePermissionController::class, 'destroyRole'])->name('roles.destroy');
+        Route::post('/permissions', [\App\Http\Controllers\Superadmin\RolePermissionController::class, 'storePermission'])->name('permissions.store');
+        Route::post('/users/{userId}/assign-role', [\App\Http\Controllers\Superadmin\RolePermissionController::class, 'assignUserRole'])->name('users.assign-role');
+    });
 });

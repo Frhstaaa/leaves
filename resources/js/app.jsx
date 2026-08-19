@@ -26,9 +26,17 @@ window.route = function (name, params) {
     'approvals.reject': (id) => `/approvals/${id}/reject`,
     'hrd.index': '/hrd',
     'hrd.employees': '/hrd/employees',
+    'hrd.employees.template': '/hrd/employees/template',
+    'hrd.employees.import': '/hrd/employees/import',
     'hrd.update-quota': (id) => `/hrd/employees/${id}/quota`,
     'hrd.export': '/hrd/export',
     'profile.avatar': '/profile/avatar',
+    'superadmin.roles.index': '/superadmin/roles',
+    'superadmin.roles.store': '/superadmin/roles',
+    'superadmin.roles.update': (id) => `/superadmin/roles/${id}`,
+    'superadmin.roles.destroy': (id) => `/superadmin/roles/${id}`,
+    'superadmin.permissions.store': '/superadmin/permissions',
+    'superadmin.users.assign-role': (id) => `/superadmin/users/${id}/assign-role`,
   };
 
   if (!name) {
@@ -45,7 +53,15 @@ window.route = function (name, params) {
   if (typeof target === 'function') {
     return target(params);
   }
-  return target || `/${name}`;
+
+  if (target) return target;
+
+  // Smart fallback for dot-separated route names if missing from dict
+  let fallbackPath = '/' + name.replace(/\./g, '/').replace('/index', '');
+  if (params) {
+    fallbackPath += `/${params}`;
+  }
+  return fallbackPath;
 };
 
 const appName = window.document.getElementsByTagName('title')[0]?.innerText || 'Form SGIN';
