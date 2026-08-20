@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Setting;
 use App\Services\MediaOptimizer;
+use App\Services\SettingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
@@ -12,6 +13,13 @@ use Inertia\Inertia;
 
 class SettingController extends Controller
 {
+    protected SettingService $settingService;
+
+    public function __construct(SettingService $settingService)
+    {
+        $this->settingService = $settingService;
+    }
+
     public function index()
     {
         $user = Auth::user();
@@ -19,7 +27,7 @@ class SettingController extends Controller
             return redirect()->route('dashboard')->with('error', 'Halaman ini khusus untuk HRD / PGA Admin.');
         }
 
-        $settings = Setting::getAll();
+        $settings = $this->settingService->getAllSettings();
 
         return Inertia::render('HRD/Settings', [
             'settings' => $settings,
@@ -104,66 +112,7 @@ class SettingController extends Controller
 
     public function manifest()
     {
-        $settings = Setting::getAll();
-        $appName = $settings['app_name'] ?? 'Form SGIN';
-        $shortName = $settings['app_name'] ?? 'Form SGIN';
-        $themeColor = $settings['theme_color'] ?? '#059669';
-        $description = $settings['app_description'] ?? 'Sistem Informasi Pengajuan Cuti & Slip Gaji Karyawan';
-        $version = substr(md5(($settings['app_logo'] ?? '') . ($settings['app_name'] ?? '')), 0, 8);
-
-        $manifest = [
-            'name' => $appName . ' - Absence & Leave Management',
-            'short_name' => $shortName,
-            'description' => $description,
-            'start_url' => '/',
-            'scope' => '/',
-            'display' => 'standalone',
-            'background_color' => '#F5FAF7',
-            'theme_color' => $themeColor,
-            'orientation' => 'portrait',
-            'icons' => [
-                [
-                    'src' => "/app-icon/192?v={$version}",
-                    'sizes' => '192x192',
-                    'type' => 'image/png',
-                    'purpose' => 'any',
-                ],
-                [
-                    'src' => "/app-icon/192?v={$version}&maskable=1",
-                    'sizes' => '192x192',
-                    'type' => 'image/png',
-                    'purpose' => 'maskable',
-                ],
-                [
-                    'src' => "/app-icon/512?v={$version}",
-                    'sizes' => '512x512',
-                    'type' => 'image/png',
-                    'purpose' => 'any',
-                ],
-                [
-                    'src' => "/app-icon/512?v={$version}&maskable=1",
-                    'sizes' => '512x512',
-                    'type' => 'image/png',
-                    'purpose' => 'maskable',
-                ],
-            ],
-            'shortcuts' => [
-                [
-                    'name' => 'Buat Pengajuan',
-                    'short_name' => 'Pengajuan',
-                    'description' => 'Buat pengajuan cuti atau izin baru',
-                    'url' => '/leave-requests/create',
-                    'icons' => [['src' => "/app-icon/192?v={$version}", 'sizes' => '192x192']],
-                ],
-                [
-                    'name' => 'Persetujuan Team',
-                    'short_name' => 'Approval',
-                    'description' => 'Tinjau persetujuan cuti bawahan',
-                    'url' => '/approvals',
-                    'icons' => [['src' => "/app-icon/192?v={$version}", 'sizes' => '192x192']],
-                ],
-            ],
-        ];
+        $manifest = $this->settingService->generateManifest();
 
         return response()->json($manifest)
             ->header('Content-Type', 'application/manifest+json; charset=utf-8')

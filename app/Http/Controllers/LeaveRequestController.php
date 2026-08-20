@@ -3,55 +3,59 @@
 namespace App\Http\Controllers;
 
 use App\Models\LeaveCategory;
-use App\Models\LeaveQuota;
-use App\Models\LeaveRequest;
-use App\Models\User;
-use App\Services\MediaOptimizer;
+use App\Repositories\Contracts\LeaveRequestRepositoryInterface;
+use App\Services\LeaveQuotaService;
+use App\Services\LeaveRequestService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class LeaveRequestController extends Controller
 {
-    public function index(Request $request)
+    protected LeaveRequestService $leaveRequestService;
+    protected LeaveRequestRepositoryInterface $leaveRequestRepo;
+    protected LeaveQuotaService $quotaService;
+
+    public function __construct(
+        LeaveRequestService $leaveRequestService,
+        LeaveRequestRepositoryInterface $leaveRequestRepo,
+        LeaveQuotaService $quotaService
+    ) {
+        $this->leaveRequestService = $leaveRequestService;
+        $this->leaveRequestRepo = $leaveRequestRepo;
+        $this->quotaService = $quotaService;
+    }
+
+    public function index(Request $request): Response
     {
         $user = Auth::user();
-        $status = $request->query('status');
+        $filters = [
+            'search' => $request->query('search'),
+            'status' => $request->query('status'),
+        ];
 
-        $query = LeaveRequest::with(['category', 'approver', 'approver1', 'approver2', 'approverHrd'])
-            ->where('user_id', $user->id);
-
-        if ($status && in_array($status, ['pending', 'approved', 'rejected'])) {
-            $query->where('status', $status);
-        }
-
-        $requests = $query->latest()->paginate(10)->withQueryString();
-
-        $currentYear = date('Y');
-        $quota = LeaveQuota::syncForUser($user->id, $currentYear);
+        $requests = $this->leaveRequestRepo->getUserRequestsPaginated($user->id, $filters, 10);
+        $quota = $this->quotaService->getOrSyncUserQuota($user->id);
 
         return Inertia::render('LeaveRequests/Index', [
             'requests' => $requests,
-            'filters' => [
-                'status' => $status,
-            ],
+            'filters' => $filters,
             'quota' => $quota,
         ]);
     }
 
-    public function create()
+    public function create(): Response
     {
-        $user = Auth::user()->load(['department.manager', 'department.approver1', 'department.approver2', 'manager', 'approver1', 'approver2']);
+        $user = Auth::user()->loadMissing(['department.manager', 'department.approver1', 'department.approver2', 'manager', 'approver1', 'approver2']);
         $categories = LeaveCategory::all();
-
-        $currentYear = date('Y');
-        $quota = LeaveQuota::syncForUser($user->id, $currentYear);
+        $quota = $this->quotaService->getOrSyncUserQuota($user->id);
 
         $effApprover1 = $user->getEffectiveApprover1();
         $effApprover2 = $user->getEffectiveApprover2();
 
-        // Build Approval Chain Steps based on user & department configuration
         $approvalChain = [];
         if ($effApprover1) {
             $approvalChain[] = [
@@ -69,7 +73,6 @@ class LeaveRequestController extends Controller
                 'department' => $effApprover2->department?->name ?? 'Departemen',
             ];
         }
-        // Final tier is always HRD
         $approvalChain[] = [
             'level' => 3,
             'role_title' => 'Approval HRD / PGA Admin',
@@ -90,9 +93,9 @@ class LeaveRequestController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
-        $user = Auth::user()->load(['department.manager', 'department.approver1', 'department.approver2', 'approver1', 'approver2', 'manager']);
+        $user = Auth::user();
 
         $validated = $request->validate([
             'submission_type' => 'required|in:PEMBERITAHUAN,PERMOHONAN',
@@ -103,119 +106,52 @@ class LeaveRequestController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'reason' => 'required|string|min:3|max:1000',
-            'attachment' => 'nullable|file|mimes:pdf,png,jpg,jpeg|max:10240', // Max 10MB
+            'attachment' => 'nullable|file|mimes:pdf,png,jpg,jpeg|max:10240',
         ], [
             'submission_type.required' => 'Silakan pilih jenis pengajuan (PEMBERITAHUAN / PERMOHONAN).',
             'approval_agreed.required' => 'Anda harus menyetujui persetujuan kepala departemen untuk melanjutkan.',
-            'approval_agreed.in' => 'Anda harus menyetujui persetujuan kepala departemen untuk melanjutkan.',
             'leave_category_id.required' => 'Silakan pilih jenis permohonan / tidak bekerja.',
             'start_date.required' => 'Tanggal permohonan wajib diisi.',
             'end_date.after_or_equal' => 'Tanggal akhir harus sama atau setelah tanggal mulai.',
             'reason.required' => 'Detail alasan cuti / ketidakhadiran wajib diisi.',
-            'reason.min' => 'Detail alasan cuti / ketidakhadiran minimal 3 karakter.',
             'attachment.max' => 'Ukuran file lampiran tidak boleh melebihi 10 MB.',
-            'attachment.mimes' => 'Format lampiran harus berupa PDF, PNG, JPG, atau JPEG.',
         ]);
 
-        $category = LeaveCategory::findOrFail($validated['leave_category_id']);
-
-        // Check attachment requirement
-        if ($category->requires_attachment && !$request->hasFile('attachment')) {
-            return back()->withErrors(['attachment' => 'Kategori ' . $category->name . ' wajib melampirkan file dokumen pendukung (Surat Dokter/dll).']);
-        }
-
-        // Quota check for Cuti Tahunan
-        $currentYear = date('Y');
-        $quota = LeaveQuota::firstOrCreate(
-            ['user_id' => $user->id, 'year' => $currentYear],
-            ['total_quota' => 12, 'used_quota' => 0, 'remaining_quota' => 12]
+        $leaveRequest = $this->leaveRequestService->createRequest(
+            $user,
+            array_merge($validated, ['category_id' => $validated['leave_category_id']]),
+            $request->file('attachment')
         );
 
-        if (strtolower($category->name) === 'cuti tahunan' && $validated['unit'] === 'hari') {
-            if ($quota->remaining_quota < $validated['amount']) {
-                return back()->withErrors(['amount' => 'Sisa kuota cuti tahunan Anda (' . $quota->remaining_quota . ' hari) tidak mencukupi untuk pengajuan ' . $validated['amount'] . ' hari.']);
-            }
-        }
-
-        // Upload attachment (With Automatic WebP Conversion for Images)
-        $attachmentPath = null;
-        $attachmentName = null;
-
-        if ($request->hasFile('attachment')) {
-            $file = $request->file('attachment');
-            $attachmentName = $file->getClientOriginalName();
-
-            $mime = $file->getMimeType();
-            if (str_contains($mime, 'image')) {
-                $attachmentPath = MediaOptimizer::convertImageToWebp($file, 'attachments', 80, 1920, 1920);
-            } elseif (str_contains($mime, 'pdf')) {
-                $attachmentPath = MediaOptimizer::optimizePdfAndStore($file, 'attachments');
-            } else {
-                $attachmentPath = $file->store('attachments', 'public');
-            }
-        }
-
-        // Determine Initial Approval Stage (Checking employee override or department default):
-        $effApprover1 = $user->getEffectiveApprover1();
-        $effApprover2 = $user->getEffectiveApprover2();
-
-        if ($effApprover1) {
-            $initialStage = 'approval_1';
-        } elseif ($effApprover2) {
-            $initialStage = 'approval_2';
-        } else {
-            $initialStage = 'hrd';
-        }
-
-        // Generate Request Number
-        $latestCount = LeaveRequest::whereYear('created_at', date('Y'))->whereMonth('created_at', date('m'))->count() + 1;
-        $requestNumber = ($validated['submission_type'] === 'PEMBERITAHUAN' ? 'NOTIF-' : 'CUTI-') . date('Ym') . '-' . str_pad($latestCount, 4, '0', STR_PAD_LEFT);
-
-        LeaveRequest::create([
-            'request_number' => $requestNumber,
-            'submission_type' => $validated['submission_type'],
-            'approval_agreed' => true,
-            'user_id' => $user->id,
-            'leave_category_id' => $validated['leave_category_id'],
-            'unit' => $validated['unit'],
-            'amount' => $validated['amount'],
-            'start_date' => $validated['start_date'],
-            'end_date' => $validated['end_date'],
-            'reason' => $validated['reason'],
-            'attachment_path' => $attachmentPath,
-            'attachment_name' => $attachmentName,
-            'status' => 'pending',
-            'current_stage' => $initialStage,
-        ]);
-
-        return redirect()->route('leave-requests.index')->with('success', 'Pengajuan cuti berhasil dikirim! Status saat ini: Menunggu Persetujuan (' . strtoupper(str_replace('_', ' ', $initialStage)) . ').');
+        $stageName = strtoupper(str_replace('_', ' ', $leaveRequest->current_stage));
+        return redirect()->route('leave-requests.index')
+            ->with('success', "Pengajuan {$leaveRequest->request_number} berhasil dikirim! Status: Menunggu Persetujuan ({$stageName}).");
     }
 
-    public function show($id)
+    public function show(int $id): JsonResponse
     {
-        $user = Auth::user();
-        $requestItem = LeaveRequest::with(['user.department', 'category', 'approver', 'approver1', 'approver2', 'approverHrd'])
-            ->where(function ($q) use ($user) {
-                $q->where('user_id', $user->id)
-                    ->orWhere('approved_by_1', $user->id)
-                    ->orWhere('approved_by_2', $user->id)
-                    ->orWhere('approved_by_hrd', $user->id)
-                    ->orWhere('approved_by', $user->id)
-                    ->orWhereRaw('? = "admin"', [$user->role])
-                    ->orWhereRaw('? = "manager"', [$user->role]);
-            })
-            ->findOrFail($id);
+        $leaveRequest = $this->leaveRequestRepo->findById($id);
+        if (!$leaveRequest) {
+            return response()->json(['message' => 'Pengajuan tidak ditemukan.'], 404);
+        }
 
-        return response()->json($requestItem);
+        return response()->json($leaveRequest);
     }
 
-    public function destroy($id)
+    public function destroy(int $id): RedirectResponse
     {
         $user = Auth::user();
-        $leaveRequest = LeaveRequest::where('user_id', $user->id)->where('status', 'pending')->findOrFail($id);
+        $leaveRequest = $this->leaveRequestRepo->findById($id);
 
-        $leaveRequest->delete();
+        if (!$leaveRequest) {
+            return redirect()->route('leave-requests.index')->with('error', 'Pengajuan tidak ditemukan.');
+        }
 
-        return redirect()->route('leave-requests.index')->with('success', 'Pengajuan cuti berhasil dibatalkan dan dihapus.');
+        try {
+            $this->leaveRequestService->deleteRequest($leaveRequest, $user);
+            return redirect()->route('leave-requests.index')->with('success', 'Pengajuan cuti berhasil dibatalkan dan dihapus.');
+        } catch (\Exception $e) {
+            return redirect()->route('leave-requests.index')->with('error', $e->getMessage());
+        }
     }
 }

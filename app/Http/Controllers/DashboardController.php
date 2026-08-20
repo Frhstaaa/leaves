@@ -2,105 +2,44 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Department;
-use App\Models\LeaveQuota;
-use App\Models\LeaveRequest;
-use App\Models\User;
+use App\Repositories\Contracts\LeaveRequestRepositoryInterface;
+use App\Services\DashboardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index()
+    protected DashboardService $dashboardService;
+    protected LeaveRequestRepositoryInterface $leaveRequestRepo;
+
+    public function __construct(
+        DashboardService $dashboardService,
+        LeaveRequestRepositoryInterface $leaveRequestRepo
+    ) {
+        $this->dashboardService = $dashboardService;
+        $this->leaveRequestRepo = $leaveRequestRepo;
+    }
+
+    public function index(): Response
     {
-        $user = Auth::user()->load(['department', 'manager']);
-        $currentYear = date('Y');
+        $user = Auth::user()->loadMissing(['department', 'manager']);
+        $currentYear = (int) date('Y');
 
-        // Fetch and synchronize user quota with actual approved leave requests
-        $quota = LeaveQuota::syncForUser($user->id, $currentYear);
+        $stats = $this->dashboardService->getUserStats($user, $currentYear);
+        $recentRequests = $this->leaveRequestRepo->getRecentUserRequests($user->id, 5);
 
-        // Fetch stats based on role with single efficient query
-        $reqStats = LeaveRequest::where('user_id', $user->id)
-            ->selectRaw('
-                COUNT(*) as total,
-                COUNT(CASE WHEN status = "pending" THEN 1 END) as pending,
-                COUNT(CASE WHEN status = "approved" THEN 1 END) as approved,
-                COUNT(CASE WHEN status = "rejected" THEN 1 END) as rejected
-            ')
-            ->first();
-
-        $stats = [
-            'total_requests' => (int) ($reqStats->total ?? 0),
-            'pending_requests' => (int) ($reqStats->pending ?? 0),
-            'approved_requests' => (int) ($reqStats->approved ?? 0),
-            'rejected_requests' => (int) ($reqStats->rejected ?? 0),
-            'remaining_quota' => $quota->remaining_quota,
-            'total_quota' => $quota->total_quota,
-            'used_quota' => $quota->used_quota,
-        ];
-
-        // Recent user requests
-        $recentRequests = LeaveRequest::with(['category', 'approver'])
-            ->where('user_id', $user->id)
-            ->orderBy('created_at', 'desc')
-            ->take(5)
-            ->get();
-
-        // Role-specific data
         $managerPendingCount = 0;
         $teamRequests = [];
         $hrdMetrics = [];
 
         if ($user->isManager() && !$user->isAdmin()) {
-            $managerPendingCount = LeaveRequest::where('status', 'pending')
-                ->where(function ($q) use ($user) {
-                    $q->where(function ($sub) use ($user) {
-                        $sub->where('current_stage', 'approval_1')
-                            ->whereHas('user', function ($u) use ($user) {
-                                $u->where('approver_1_id', $user->id);
-                            });
-                    })->orWhere(function ($sub) use ($user) {
-                        $sub->where('current_stage', 'approval_2')
-                            ->whereHas('user', function ($u) use ($user) {
-                                $u->where('approver_2_id', $user->id)
-                                  ->orWhere('manager_id', $user->id)
-                                  ->orWhere(function ($d) use ($user) {
-                                      $d->whereNull('manager_id')
-                                        ->whereNull('approver_2_id')
-                                        ->where('department_id', $user->department_id);
-                                  });
-                            });
-                    });
-                })->count();
-
-            $subordinateIds = User::where(function ($q) use ($user) {
-                $q->where('approver_1_id', $user->id)
-                  ->orWhere('approver_2_id', $user->id)
-                  ->orWhere('manager_id', $user->id)
-                  ->orWhere(function ($sub) use ($user) {
-                      $sub->whereNull('manager_id')->where('department_id', $user->department_id);
-                  });
-            })->where('id', '!=', $user->id)->pluck('id');
-
-            $teamRequests = LeaveRequest::with(['user.department', 'category'])
-                ->whereIn('user_id', $subordinateIds)
-                ->orderBy('created_at', 'desc')
-                ->take(5)
-                ->get();
+            $managerPendingCount = $this->leaveRequestRepo->countPendingApprovalsForUser($user);
         }
 
         if ($user->isAdmin()) {
-            $hrdMetrics = [
-                'total_employees' => User::count(),
-                'total_departments' => Department::count(),
-                'pending_company_wide' => LeaveRequest::where('status', 'pending')->count(),
-                'approved_today' => LeaveRequest::where('status', 'approved')->whereDate('approved_at', today())->count(),
-                'on_leave_today' => LeaveRequest::where('status', 'approved')
-                    ->whereDate('start_date', '<=', today())
-                    ->whereDate('end_date', '>=', today())
-                    ->count(),
-            ];
+            $hrdMetrics = $this->dashboardService->getHrdMetrics();
         }
 
         return Inertia::render('Dashboard', [
