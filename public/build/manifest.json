@@ -1,47 +1,47 @@
 {
-  "_vendor-icons-a05b6b74.js": {
-    "file": "assets/vendor-icons-a05b6b74.js",
+  "_vendor-icons-397428b5.js": {
+    "file": "assets/vendor-icons-397428b5.js",
     "imports": [
-      "_vendor-react-45e21f80.js"
+      "_vendor-react-b773bfa5.js"
     ]
   },
-  "_vendor-inertia-b5bcaf7d.js": {
-    "file": "assets/vendor-inertia-b5bcaf7d.js",
+  "_vendor-inertia-795c8cd0.js": {
+    "file": "assets/vendor-inertia-795c8cd0.js",
     "imports": [
-      "_vendor-react-45e21f80.js"
+      "_vendor-react-b773bfa5.js"
     ]
   },
-  "_vendor-motion-680332da.js": {
-    "file": "assets/vendor-motion-680332da.js",
+  "_vendor-motion-dd313db2.js": {
+    "file": "assets/vendor-motion-dd313db2.js",
     "imports": [
-      "_vendor-react-45e21f80.js"
+      "_vendor-react-b773bfa5.js"
     ]
   },
-  "_vendor-react-45e21f80.js": {
-    "file": "assets/vendor-react-45e21f80.js"
+  "_vendor-react-b773bfa5.js": {
+    "file": "assets/vendor-react-b773bfa5.js"
   },
   "_vendor-swal-6ddcfacf.js": {
     "file": "assets/vendor-swal-6ddcfacf.js"
   },
   "resources/css/app.css": {
-    "file": "assets/app-ba14047c.css",
+    "file": "assets/app-4c269309.css",
     "src": "resources/js/app.css"
   },
   "resources/js/app.css": {
-    "file": "assets/app-ba14047c.css",
+    "file": "assets/app-4c269309.css",
     "src": "resources/js/app.css"
   },
   "resources/js/app.jsx": {
     "css": [
-      "assets/app-ba14047c.css"
+      "assets/app-4c269309.css"
     ],
-    "file": "assets/app-e12d2ce6.js",
+    "file": "assets/app-ecf690a9.js",
     "imports": [
-      "_vendor-motion-680332da.js",
-      "_vendor-react-45e21f80.js",
-      "_vendor-inertia-b5bcaf7d.js",
+      "_vendor-motion-dd313db2.js",
+      "_vendor-react-b773bfa5.js",
+      "_vendor-inertia-795c8cd0.js",
       "_vendor-swal-6ddcfacf.js",
-      "_vendor-icons-a05b6b74.js"
+      "_vendor-icons-397428b5.js"
     ],
     "isEntry": true,
     "src": "resources/js/app.jsx"
