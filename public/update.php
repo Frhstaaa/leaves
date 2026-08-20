@@ -298,6 +298,10 @@ if ($actionExecuted) {
 
                     // 4. Optimize & Cache
                     echo "[4/4] Membersihkan dan merefresh cache aplikasi...\n";
+                    if (function_exists('opcache_reset')) {
+                        @opcache_reset();
+                        echo "✓ PHP OPcache di-reset.\n";
+                    }
                     \Illuminate\Support\Facades\Artisan::call('optimize:clear');
                     \Illuminate\Support\Facades\Artisan::call('config:cache');
                     \Illuminate\Support\Facades\Artisan::call('route:cache');
