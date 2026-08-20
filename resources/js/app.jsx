@@ -36,6 +36,7 @@ window.route = function (name, params) {
     'hrd.employees.update': (id) => `/hrd/employees/${id}/update`,
     'hrd.employees.destroy': (id) => `/hrd/employees/${id}`,
     'hrd.update-quota': (id) => `/hrd/employees/${id}/quota`,
+    'hrd.requests.override': (id) => `/hrd/requests/${id}/override`,
     'hrd.export': '/hrd/export',
     'hrd.settings': '/hrd/settings',
     'hrd.settings.update': '/hrd/settings',

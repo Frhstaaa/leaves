@@ -58,6 +58,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/hrd/employees/{userId}/update', [HrdController::class, 'updateEmployee'])->name('hrd.employees.update');
     Route::delete('/hrd/employees/{userId}', [HrdController::class, 'destroyEmployee'])->name('hrd.employees.destroy');
     Route::post('/hrd/employees/{userId}/quota', [HrdController::class, 'updateQuota'])->name('hrd.update-quota');
+    Route::post('/hrd/requests/{id}/override', [HrdController::class, 'overrideStatus'])->name('hrd.requests.override');
     Route::get('/hrd/export', [HrdController::class, 'export'])->name('hrd.export');
     // App Settings Routes
     Route::get('/hrd/settings', [\App\Http\Controllers\SettingController::class, 'index'])->name('hrd.settings');

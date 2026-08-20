@@ -17,7 +17,14 @@ import {
   X,
   Paperclip,
   Tag,
-  AlertCircle
+  AlertCircle,
+  Zap,
+  Sliders,
+  Check,
+  RotateCcw,
+  Sparkles,
+  ShieldCheck,
+  ChevronRight
 } from 'lucide-react';
 import {
   Select,
@@ -27,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { showConfirm, showToast } from '@/Utils/swal';
 
 export default function HrdIndex({ requests = { data: [] }, departments = [], categories = [], stats = {}, filters = {} }) {
   const [searchQuery, setSearchQuery] = useState(filters.search || '');
@@ -36,6 +44,13 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
 
   // Detail Modal State
   const [selectedRequest, setSelectedRequest] = useState(null);
+
+  // Manual Status Override Modal State
+  const [overrideRequest, setOverrideRequest] = useState(null);
+  const [overrideStatusVal, setOverrideStatusVal] = useState('approved');
+  const [overrideStageVal, setOverrideStageVal] = useState('hrd');
+  const [overrideNote, setOverrideNote] = useState('');
+  const [overrideProcessing, setOverrideProcessing] = useState(false);
 
   const handleApplyFilter = (e) => {
     e?.preventDefault();
@@ -55,6 +70,133 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
     router.get(route('hrd.index'));
   };
 
+  // Quick 1-Click Force Approve
+  const handleQuickApprove = async (req) => {
+    const confirmed = await showConfirm({
+      title: 'Setujui Pengajuan Langsung?',
+      text: `Pengajuan ${req.request_number} milik ${req.user?.name} akan langsung disetujui (Approved) dan kuota cuti otomatis diperbarui.`,
+      icon: 'question',
+      confirmText: 'Ya, Setujui Langsung!',
+      cancelText: 'Batal',
+    });
+    if (confirmed) {
+      router.post(route('hrd.requests.override', req.id), {
+        status: 'approved',
+        stage: 'completed',
+        note: 'Disetujui langsung oleh HRD / PGA Admin via 1-Click Action',
+      }, {
+        preserveScroll: true,
+        onSuccess: () => {
+          showToast('Pengajuan berhasil disetujui langsung!', 'success');
+          if (selectedRequest?.id === req.id) setSelectedRequest(null);
+          if (overrideRequest?.id === req.id) setOverrideRequest(null);
+        },
+        onError: () => {
+          showToast('Gagal memproses persetujuan.', 'error');
+        }
+      });
+    }
+  };
+
+  // Quick 1-Click Force Reject
+  const handleQuickReject = async (req) => {
+    const confirmed = await showConfirm({
+      title: 'Tolak Pengajuan Ini?',
+      text: `Pengajuan ${req.request_number} milik ${req.user?.name} akan diubah statusnya menjadi Ditolak (Rejected).`,
+      icon: 'warning',
+      confirmText: 'Ya, Tolak!',
+      cancelText: 'Batal',
+    });
+    if (confirmed) {
+      router.post(route('hrd.requests.override', req.id), {
+        status: 'rejected',
+        note: 'Ditolak oleh HRD / PGA Admin via 1-Click Action',
+      }, {
+        preserveScroll: true,
+        onSuccess: () => {
+          showToast('Pengajuan berhasil ditolak.', 'info');
+          if (selectedRequest?.id === req.id) setSelectedRequest(null);
+          if (overrideRequest?.id === req.id) setOverrideRequest(null);
+        },
+        onError: () => {
+          showToast('Gagal memproses penolakan.', 'error');
+        }
+      });
+    }
+  };
+
+  // Open Full Override Modal
+  const handleOpenOverrideModal = (req) => {
+    setOverrideRequest(req);
+    setOverrideStatusVal(req.status || 'approved');
+    setOverrideStageVal(req.current_stage || 'hrd');
+    setOverrideNote('');
+  };
+
+  // Submit Manual Status Override Form
+  const handleSaveOverride = (e) => {
+    e.preventDefault();
+    if (!overrideRequest) return;
+    setOverrideProcessing(true);
+    router.post(route('hrd.requests.override', overrideRequest.id), {
+      status: overrideStatusVal,
+      stage: overrideStageVal,
+      note: overrideNote,
+    }, {
+      preserveScroll: true,
+      onSuccess: () => {
+        showToast('Status pengajuan berhasil diperbarui secara manual!', 'success');
+        setOverrideRequest(null);
+        if (selectedRequest?.id === overrideRequest.id) setSelectedRequest(null);
+        setOverrideProcessing(false);
+      },
+      onError: () => {
+        showToast('Gagal memperbarui status pengajuan.', 'error');
+        setOverrideProcessing(false);
+      }
+    });
+  };
+
+  const getStageBadge = (req) => {
+    if (req.status === 'approved') {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+          ✅ Disetujui (Selesai)
+        </span>
+      );
+    }
+    if (req.status === 'rejected') {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300">
+          ❌ Ditolak
+        </span>
+      );
+    }
+
+    // Pending
+    switch (req.current_stage) {
+      case 'approval_1':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+            ⏳ Menunggu Atasan 1
+          </span>
+        );
+      case 'approval_2':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-900 border border-indigo-300">
+            ⏳ Menunggu Atasan 2
+          </span>
+        );
+      case 'hrd':
+      default:
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-900 border border-purple-300">
+            ⏳ Menunggu HRD
+          </span>
+        );
+    }
+  };
+
   return (
     <AuthenticatedLayout title="Rekapitulasi Cuti HRD / PGA">
       <div className="space-y-6">
@@ -63,7 +205,7 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 className="text-xl font-black text-slate-900 tracking-tight">Rekapitulasi Ketidakhadiran & Cuti Karyawan</h2>
-            <p className="text-xs text-slate-500">Monitoring terpusat seluruh pengajuan permohonan tidak bekerja & laporan HRD</p>
+            <p className="text-xs text-slate-500">Monitoring terpusat, alur multi-tier approval, dan panel override status pengajuan langsung</p>
           </div>
 
           <a
@@ -209,13 +351,7 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
                       <span className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                         {req.request_number}
                       </span>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-                        req.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                        req.status === 'rejected' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
-                        'bg-amber-100 text-amber-800 border border-amber-200'
-                      }`}>
-                        {req.status === 'approved' ? 'Disetujui' : req.status === 'rejected' ? 'Ditolak' : 'Pending'}
-                      </span>
+                      {getStageBadge(req)}
                     </div>
 
                     <div className="flex items-center space-x-3">
@@ -238,18 +374,61 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
-                      <span className="text-slate-500 font-medium">{req.start_date} s/d {req.end_date}</span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedRequest(req);
-                        }}
-                        className="px-3 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs flex items-center space-x-1 border border-emerald-200"
-                      >
-                        <Eye size={14} />
-                        <span>Detail</span>
-                      </button>
+                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
+                      <span className="text-slate-500 font-medium text-[11px]">{req.start_date} s/d {req.end_date}</span>
+
+                      {/* Action Group */}
+                      <div className="flex items-center space-x-1.5">
+                        {req.status === 'pending' && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleQuickApprove(req);
+                              }}
+                              className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs"
+                              title="⚡ Setujui Langsung (1-Klik)"
+                            >
+                              <Check size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleQuickReject(req);
+                              }}
+                              className="p-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs"
+                              title="❌ Tolak Pengajuan (1-Klik)"
+                            >
+                              <X size={14} />
+                            </button>
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenOverrideModal(req);
+                          }}
+                          className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center space-x-1 border border-slate-200"
+                          title="Edit Status Manual"
+                        >
+                          <Sliders size={13} />
+                          <span>Status</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedRequest(req);
+                          }}
+                          className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs flex items-center space-x-1 border border-emerald-200"
+                        >
+                          <Eye size={13} />
+                          <span>Detail</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -265,9 +444,8 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
                       <th className="py-3.5 px-4">Departemen</th>
                       <th className="py-3.5 px-4">Kategori Cuti</th>
                       <th className="py-3.5 px-4">Periode & Durasi</th>
-                      <th className="py-3.5 px-4">Status Approval</th>
-                      <th className="py-3.5 px-4">Approver</th>
-                      <th className="py-3.5 px-4 text-center">Aksi</th>
+                      <th className="py-3.5 px-4">Status & Tahapan</th>
+                      <th className="py-3.5 px-4 text-center">Aksi Override & Detail</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -311,39 +489,59 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
                         </td>
 
                         <td className="py-3.5 px-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-                            req.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                            req.status === 'rejected' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
-                            'bg-amber-100 text-amber-800 border border-amber-200'
-                          }`}>
-                            {req.status === 'approved' ? 'Disetujui' :
-                             req.status === 'rejected' ? 'Ditolak' : 'Pending'}
-                          </span>
-                        </td>
-
-                        <td className="py-3.5 px-4 text-slate-500 font-medium">
-                          {req.approver ? req.approver.name : '-'}
+                          {getStageBadge(req)}
                         </td>
 
                         <td className="py-3.5 px-4 text-center">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedRequest(req);
-                            }}
-                            className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors border border-emerald-200 inline-flex items-center space-x-1"
-                          >
-                          <Eye size={14} />
-                          <span className="text-[11px] font-bold">Detail</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          <div className="flex items-center justify-center space-x-1.5" onClick={(e) => e.stopPropagation()}>
+                            {req.status === 'pending' && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickApprove(req)}
+                                  className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95"
+                                  title="⚡ Setujui Langsung (1-Klik)"
+                                >
+                                  <Check size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickReject(req)}
+                                  className="p-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95"
+                                  title="❌ Tolak Pengajuan (1-Klik)"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenOverrideModal(req)}
+                              className="p-1.5 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors border border-slate-200 inline-flex items-center space-x-1 font-bold"
+                              title="Edit Status & Stage Manual"
+                            >
+                              <Sliders size={13} />
+                              <span className="text-[11px]">Edit Status</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setSelectedRequest(req)}
+                              className="p-1.5 px-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors border border-emerald-200 inline-flex items-center space-x-1 font-bold"
+                            >
+                              <Eye size={13} />
+                              <span className="text-[11px]">Detail</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        ) : (
+          ) : (
             <div className="py-16 text-center text-slate-400">
               <FileSpreadsheet size={42} className="mx-auto mb-3 opacity-30 text-slate-500" />
               <p className="text-xs font-bold text-slate-600">Tidak ada rekapitulasi data yang sesuai kriteria pencarian.</p>
@@ -351,7 +549,9 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
           )}
         </div>
 
-        {/* DETAIL MODAL UNTUK HRD */}
+        {/* ========================================================================= */}
+        {/* MODAL 1: DETAIL PENGURUSAN UNTUK HRD                                      */}
+        {/* ========================================================================= */}
         {selectedRequest && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in">
             <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setSelectedRequest(null)} />
@@ -381,13 +581,14 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
                 {selectedRequest.status === 'pending' && <Clock size={24} className="text-amber-600 shrink-0" />}
                 <div>
                   <h4 className="text-xs font-black uppercase tracking-wider">
-                    {selectedRequest.status === 'approved' ? 'Pengajuan Disetujui' :
-                     selectedRequest.status === 'rejected' ? 'Pengajuan Ditolak' : 'Menunggu Persetujuan Manager'}
+                    {selectedRequest.status === 'approved' ? 'Pengajuan Disetujui (Completed)' :
+                     selectedRequest.status === 'rejected' ? 'Pengajuan Ditolak' :
+                     `Pending Approval (${(selectedRequest.current_stage || 'hrd').toUpperCase()})`}
                   </h4>
                   <p className="text-[11px] opacity-90 mt-0.5">
-                    {selectedRequest.status === 'approved' ? `Disetujui oleh ${selectedRequest.approver?.name || 'Manager'}` :
-                     selectedRequest.status === 'rejected' ? `Ditolak oleh ${selectedRequest.approver?.name || 'Manager'}` :
-                     'Permohonan masih dalam antrean review'}
+                    {selectedRequest.status === 'approved' ? `Disetujui oleh ${selectedRequest.approver?.name || 'HRD / Admin'}` :
+                     selectedRequest.status === 'rejected' ? `Ditolak oleh ${selectedRequest.approver?.name || 'Approver'}` :
+                     `Menunggu persetujuan pada tahapan ${selectedRequest.current_stage || 'hrd'}`}
                   </p>
                 </div>
               </div>
@@ -464,14 +665,175 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
                 </div>
               )}
 
-              <div className="pt-2">
+              {/* Quick Actions inside Detail Modal */}
+              <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center gap-2">
                 <button
-                  onClick={() => setSelectedRequest(null)}
-                  className="w-full py-2.5 rounded-xl bg-slate-950 text-white font-extrabold text-xs"
+                  type="button"
+                  onClick={() => handleOpenOverrideModal(selectedRequest)}
+                  className="w-full sm:w-1/2 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center space-x-1.5 transition-colors"
                 >
-                  Tutup Detail
+                  <Sliders size={14} />
+                  <span>Edit Status Manual</span>
+                </button>
+
+                {selectedRequest.status === 'pending' ? (
+                  <button
+                    type="button"
+                    onClick={() => handleQuickApprove(selectedRequest)}
+                    className="w-full sm:w-1/2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center justify-center space-x-1.5 shadow-md shadow-emerald-600/20 transition-all"
+                  >
+                    <Check size={14} />
+                    <span>⚡ Setujui Langsung</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRequest(null)}
+                    className="w-full sm:w-1/2 py-2.5 rounded-xl bg-slate-950 text-white font-extrabold text-xs"
+                  >
+                    Tutup
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* MODAL 2: MANUAL STATUS OVERRIDE PANEL (PILIHAN 2 OPSI & KUSTOMISASI)      */}
+        {/* ========================================================================= */}
+        {overrideRequest && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 animate-fade-in">
+            <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setOverrideRequest(null)} />
+            <div className="relative z-10 w-full max-w-lg p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center space-x-2.5">
+                  <div className="p-2 rounded-xl bg-emerald-100 text-emerald-700 font-bold">
+                    <Sliders size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900 leading-tight">
+                      Panel Edit Status Pengajuan
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Ubah status secara instan atau sesuaikan tahapan approval manual
+                    </p>
+                  </div>
+                </div>
+                <button onClick={() => setOverrideRequest(null)} className="p-1 rounded-lg text-slate-400 hover:text-slate-700">
+                  <X size={18} />
                 </button>
               </div>
+
+              {/* Request Summary Box */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-bold text-emerald-700">{overrideRequest.request_number}</span>
+                  {getStageBadge(overrideRequest)}
+                </div>
+                <p className="font-bold text-slate-800">
+                  {overrideRequest.user?.name} ({overrideRequest.user?.nik || 'NIK: -'}) &bull; {overrideRequest.user?.department?.name || 'General'}
+                </p>
+                <p className="text-slate-600 text-[11px]">
+                  {overrideRequest.category?.name} &bull; <strong>{overrideRequest.amount} {overrideRequest.unit || 'hari'}</strong> ({overrideRequest.start_date} s/d {overrideRequest.end_date})
+                </p>
+              </div>
+
+              {/* 2 OPSI CEPAT SESUAI PERMINTAAN USER */}
+              <div className="space-y-2">
+                <label className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wider">
+                  ⚡ Opsi Tindakan Cepat:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickApprove(overrideRequest)}
+                    className="p-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-900 flex flex-col items-center justify-center space-y-1 transition-all active:scale-[0.98]"
+                  >
+                    <CheckCircle size={20} className="text-emerald-600" />
+                    <span className="text-xs font-black">1. Setujui Langsung</span>
+                    <span className="text-[10px] text-emerald-700">Bypass multi-tier & potong kuota</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleQuickReject(overrideRequest)}
+                    className="p-3 rounded-2xl bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-900 flex flex-col items-center justify-center space-y-1 transition-all active:scale-[0.98]"
+                  >
+                    <XCircle size={20} className="text-rose-600" />
+                    <span className="text-xs font-black">2. Tolak Pengajuan</span>
+                    <span className="text-[10px] text-rose-700">Hentikan dan batalkan pengajuan</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* OPSI KUSTOMISASI MANUAL STATUS & TAHAPAN */}
+              <form onSubmit={handleSaveOverride} className="space-y-3 pt-2 border-t border-slate-100">
+                <label className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wider">
+                  🔧 Atau Atur Status & Tahapan Tertentu:
+                </label>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Status Baru *</label>
+                    <select
+                      value={overrideStatusVal}
+                      onChange={(e) => setOverrideStatusVal(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none"
+                    >
+                      <option value="approved">✅ Disetujui (Approved)</option>
+                      <option value="rejected">❌ Ditolak (Rejected)</option>
+                      <option value="pending">⏳ Pending Approval</option>
+                    </select>
+                  </div>
+
+                  {overrideStatusVal === 'pending' && (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Tahapan / Stage *</label>
+                      <select
+                        value={overrideStageVal}
+                        onChange={(e) => setOverrideStageVal(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none"
+                      >
+                        <option value="approval_1">Stage 1: Menunggu Atasan 1 (Supervisor)</option>
+                        <option value="approval_2">Stage 2: Menunggu Atasan 2 (Manager)</option>
+                        <option value="hrd">Stage 3: Menunggu HRD / PGA Admin</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Catatan / Alasan Perubahan</label>
+                  <textarea
+                    rows={2}
+                    value={overrideNote}
+                    onChange={(e) => setOverrideNote(e.target.value)}
+                    placeholder="Contoh: Disetujui khusus via memo direksi, revisi status, dll..."
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end space-x-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setOverrideRequest(null)}
+                    className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={overrideProcessing}
+                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 transition-all active:scale-95"
+                  >
+                    {overrideProcessing ? 'Menyimpan...' : 'Simpan Perubahan Manual'}
+                  </button>
+                </div>
+              </form>
+
             </div>
           </div>
         )}

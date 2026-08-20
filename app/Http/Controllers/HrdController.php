@@ -904,6 +904,103 @@ class HrdController extends Controller
         return redirect()->back()->with('success', "Departemen '{$deptName}' berhasil dihapus.");
     }
 
+    public function overrideStatus(Request $request, $id)
+    {
+        $user = Auth::user();
+        if (!$user->isAdmin()) {
+            return redirect()->back()->with('error', 'Akses khusus HRD / Admin.');
+        }
+
+        $validated = $request->validate([
+            'status' => 'required|in:approved,rejected,pending',
+            'stage' => 'nullable|in:approval_1,approval_2,hrd,completed',
+            'note' => 'nullable|string|max:500',
+        ]);
+
+        $leaveRequest = LeaveRequest::with(['category', 'user'])->findOrFail($id);
+        $oldStatus = $leaveRequest->status;
+        $newStatus = $validated['status'];
+        $note = $request->input('note');
+
+        $isAnnualLeave = (strtolower($leaveRequest->category->name ?? '') === 'cuti tahunan' && $leaveRequest->unit === 'hari');
+        $currentYear = date('Y');
+
+        if ($newStatus === 'approved') {
+            $leaveRequest->update([
+                'status' => 'approved',
+                'current_stage' => 'completed',
+                'approved_by' => $user->id,
+                'approved_by_hrd' => $user->id,
+                'approved_at' => now(),
+                'approved_hrd_at' => now(),
+                'approval_note' => $note ?: "Disetujui langsung melalui panel HRD oleh {$user->name}",
+            ]);
+
+            // Deduct quota if not already approved
+            if ($isAnnualLeave && $oldStatus !== 'approved') {
+                $quota = LeaveQuota::firstOrCreate(
+                    ['user_id' => $leaveRequest->user_id, 'year' => $currentYear],
+                    ['total_quota' => 12, 'used_quota' => 0, 'remaining_quota' => 12]
+                );
+
+                $newUsed = $quota->used_quota + (int) $leaveRequest->amount;
+                $newRemaining = max(0, $quota->total_quota - $newUsed);
+
+                $quota->update([
+                    'used_quota' => $newUsed,
+                    'remaining_quota' => $newRemaining,
+                ]);
+            }
+
+            return redirect()->back()->with('success', "Status pengajuan {$leaveRequest->request_number} berhasil disetujui (Approved) secara langsung!");
+        } elseif ($newStatus === 'rejected') {
+            $leaveRequest->update([
+                'status' => 'rejected',
+                'approved_by' => $user->id,
+                'approved_at' => now(),
+                'approval_note' => $note ?: "Ditolak melalui panel HRD oleh {$user->name}",
+            ]);
+
+            // Restore quota if previously approved
+            if ($isAnnualLeave && $oldStatus === 'approved') {
+                $quota = LeaveQuota::where('user_id', $leaveRequest->user_id)->where('year', $currentYear)->first();
+                if ($quota) {
+                    $newUsed = max(0, $quota->used_quota - (int) $leaveRequest->amount);
+                    $newRemaining = min($quota->total_quota, $quota->remaining_quota + (int) $leaveRequest->amount);
+                    $quota->update([
+                        'used_quota' => $newUsed,
+                        'remaining_quota' => $newRemaining,
+                    ]);
+                }
+            }
+
+            return redirect()->back()->with('success', "Status pengajuan {$leaveRequest->request_number} berhasil diubah menjadi Ditolak (Rejected).");
+        } else {
+            // Pending
+            $targetStage = $validated['stage'] ?? 'approval_1';
+            $leaveRequest->update([
+                'status' => 'pending',
+                'current_stage' => $targetStage,
+                'approval_note' => $note ?: "Status diatur ke Pending (" . strtoupper($targetStage) . ") oleh {$user->name}",
+            ]);
+
+            // Restore quota if previously approved
+            if ($isAnnualLeave && $oldStatus === 'approved') {
+                $quota = LeaveQuota::where('user_id', $leaveRequest->user_id)->where('year', $currentYear)->first();
+                if ($quota) {
+                    $newUsed = max(0, $quota->used_quota - (int) $leaveRequest->amount);
+                    $newRemaining = min($quota->total_quota, $quota->remaining_quota + (int) $leaveRequest->amount);
+                    $quota->update([
+                        'used_quota' => $newUsed,
+                        'remaining_quota' => $newRemaining,
+                    ]);
+                }
+            }
+
+            return redirect()->back()->with('success', "Status pengajuan {$leaveRequest->request_number} berhasil diatur ke Pending (" . strtoupper($targetStage) . ").");
+        }
+    }
+
     private function convertAvatarToWebpAndStore($file, string $folder = 'avatars', int $quality = 85): string
     {
         $mime = $file->getMimeType();

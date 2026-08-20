@@ -144,7 +144,38 @@ class User extends Authenticatable
     public function getPendingApprovalsQuery()
     {
         if ($this->isAdmin()) {
-            return LeaveRequest::where('status', 'pending');
+            return LeaveRequest::where('status', 'pending')
+                ->where(function ($q) {
+                    $q->where(function ($h) {
+                        $h->where('current_stage', 'hrd')
+                          ->orWhereNull('current_stage');
+                    })->orWhere(function ($sub) {
+                        $sub->where('current_stage', 'approval_1')
+                            ->whereHas('user', function ($u) {
+                                $u->where('approver_1_id', $this->id)
+                                  ->orWhere(function ($d) {
+                                      $d->whereNull('approver_1_id')
+                                        ->whereHas('department', function ($dept) {
+                                            $dept->where('approver_1_id', $this->id);
+                                        });
+                                  });
+                            });
+                    })->orWhere(function ($sub) {
+                        $sub->where('current_stage', 'approval_2')
+                            ->whereHas('user', function ($u) {
+                                $u->where('approver_2_id', $this->id)
+                                  ->orWhere('manager_id', $this->id)
+                                  ->orWhere(function ($d) {
+                                      $d->whereNull('manager_id')
+                                        ->whereNull('approver_2_id')
+                                        ->whereHas('department', function ($dept) {
+                                            $dept->where('approver_2_id', $this->id)
+                                                 ->orWhere('manager_id', $this->id);
+                                        });
+                                  });
+                            });
+                    });
+                });
         }
 
         if ($this->isManager()) {

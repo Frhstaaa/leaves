@@ -190,7 +190,7 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
           <button
             onClick={() => handleFilterStatus('all')}
             className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center space-x-1.5 ${
-              filters.status === 'all' || !filters.status
+              filters.status === 'all'
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
                 : 'text-slate-700 hover:text-slate-900 bg-white border border-slate-200'
             }`}
@@ -198,6 +198,42 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
             <span>📋 Semua Data</span>
           </button>
         </div>
+
+        {/* HRD Stage Sub-filter (When viewing Pending) */}
+        {isHrdAdmin && (filters.status === 'pending' || !filters.status) && (
+          <div className="flex items-center space-x-2 overflow-x-auto pb-1 text-xs">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Filter Tahap:</span>
+            {[
+              { label: '🎯 Menunggu HRD (Final)', stage: 'hrd' },
+              { label: '1️⃣ Menunggu Atasan 1', stage: 'approval_1' },
+              { label: '2️⃣ Menunggu Atasan 2', stage: 'approval_2' },
+              { label: '🌐 Semua Tahap Pending', stage: 'all' },
+            ].map((st) => {
+              const isActive = (filters.stage === st.stage) || (!filters.stage && st.stage === 'hrd');
+              return (
+                <button
+                  key={st.stage}
+                  type="button"
+                  onClick={() => {
+                    router.get(route('approvals.index'), {
+                      status: 'pending',
+                      stage: st.stage,
+                      department_id: selectedDept,
+                      search: searchQuery,
+                    }, { preserveState: true });
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                    isActive
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {st.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Requests Table & Mobile Cards */}
         <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-sm">

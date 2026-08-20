@@ -104,7 +104,19 @@ class ApprovalController extends Controller
             }
         } else {
             // HRD / Admin / Superadmin:
-            if ($stageFilter && in_array($stageFilter, ['approval_1', 'approval_2', 'hrd'])) {
+            if ($status === 'pending') {
+                if ($stageFilter && in_array($stageFilter, ['approval_1', 'approval_2', 'hrd'])) {
+                    $query->where('current_stage', $stageFilter);
+                } elseif ($stageFilter === 'all') {
+                    // Show all pending stages
+                } else {
+                    // Default to HRD stage
+                    $query->where(function ($q) {
+                        $q->where('current_stage', 'hrd')
+                          ->orWhereNull('current_stage');
+                    });
+                }
+            } elseif ($stageFilter && in_array($stageFilter, ['approval_1', 'approval_2', 'hrd'])) {
                 $query->where('current_stage', $stageFilter);
             }
 
