@@ -29,7 +29,8 @@ import {
   Receipt,
   ChevronDown,
   Settings as SettingsIcon,
-  Smartphone
+  Smartphone,
+  Download
 } from 'lucide-react';
 import {
   DropdownMenu,

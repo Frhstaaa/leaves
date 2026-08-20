@@ -1,6 +1,6 @@
 {
-  "_AuthenticatedLayout-e4098658.js": {
-    "file": "assets/AuthenticatedLayout-e4098658.js",
+  "_AuthenticatedLayout-69103698.js": {
+    "file": "assets/AuthenticatedLayout-69103698.js",
     "imports": [
       "_vendor-core-a233f45f.js",
       "_vendor-swal-6ddcfacf.js",
@@ -13,33 +13,33 @@
       "_vendor-core-a233f45f.js"
     ]
   },
-  "_badge-189a65b6.js": {
-    "file": "assets/badge-189a65b6.js",
+  "_badge-bb5b7694.js": {
+    "file": "assets/badge-bb5b7694.js",
     "imports": [
       "_vendor-core-a233f45f.js",
-      "_button-ec2aaefd.js",
-      "_AuthenticatedLayout-e4098658.js"
+      "_button-c6aeb1e2.js",
+      "_AuthenticatedLayout-69103698.js"
     ]
   },
-  "_button-ec2aaefd.js": {
-    "file": "assets/button-ec2aaefd.js",
+  "_button-c6aeb1e2.js": {
+    "file": "assets/button-c6aeb1e2.js",
     "imports": [
       "_vendor-core-a233f45f.js",
-      "_AuthenticatedLayout-e4098658.js"
+      "_AuthenticatedLayout-69103698.js"
     ]
   },
-  "_card-86a50c88.js": {
-    "file": "assets/card-86a50c88.js",
+  "_card-e81813ea.js": {
+    "file": "assets/card-e81813ea.js",
     "imports": [
       "_vendor-core-a233f45f.js",
-      "_AuthenticatedLayout-e4098658.js"
+      "_AuthenticatedLayout-69103698.js"
     ]
   },
-  "_select-06a946ea.js": {
-    "file": "assets/select-06a946ea.js",
+  "_select-a383f943.js": {
+    "file": "assets/select-a383f943.js",
     "imports": [
       "_vendor-core-a233f45f.js",
-      "_AuthenticatedLayout-e4098658.js"
+      "_AuthenticatedLayout-69103698.js"
     ]
   },
   "_vendor-core-a233f45f.js": {
@@ -53,12 +53,12 @@
     "src": "resources/js/app.css"
   },
   "resources/js/Pages/Approvals/Index.jsx": {
-    "file": "assets/Index-f58b78f5.js",
+    "file": "assets/Index-ad1f7029.js",
     "imports": [
       "_vendor-core-a233f45f.js",
-      "_AuthenticatedLayout-e4098658.js",
-      "_select-06a946ea.js",
-      "_button-ec2aaefd.js",
+      "_AuthenticatedLayout-69103698.js",
+      "_select-a383f943.js",
+      "_button-c6aeb1e2.js",
       "_vendor-swal-6ddcfacf.js",
       "_PwaInstallModal-61d4d7d3.js"
     ],
@@ -75,13 +75,13 @@
     "src": "resources/js/Pages/Auth/Login.jsx"
   },
   "resources/js/Pages/Dashboard.jsx": {
-    "file": "assets/Dashboard-83f7f043.js",
+    "file": "assets/Dashboard-017e7677.js",
     "imports": [
       "_vendor-core-a233f45f.js",
-      "_AuthenticatedLayout-e4098658.js",
-      "_card-86a50c88.js",
-      "_button-ec2aaefd.js",
-      "_badge-189a65b6.js",
+      "_AuthenticatedLayout-69103698.js",
+      "_card-e81813ea.js",
+      "_button-c6aeb1e2.js",
+      "_badge-bb5b7694.js",
       "_vendor-swal-6ddcfacf.js",
       "_PwaInstallModal-61d4d7d3.js"
     ],
@@ -89,14 +89,14 @@
     "src": "resources/js/Pages/Dashboard.jsx"
   },
   "resources/js/Pages/HRD/Departments.jsx": {
-    "file": "assets/Departments-d026364e.js",
+    "file": "assets/Departments-27ed2f3c.js",
     "imports": [
       "_vendor-core-a233f45f.js",
-      "_AuthenticatedLayout-e4098658.js",
-      "_card-86a50c88.js",
-      "_button-ec2aaefd.js",
-      "_badge-189a65b6.js",
-      "_select-06a946ea.js",
+      "_AuthenticatedLayout-69103698.js",
+      "_card-e81813ea.js",
+      "_button-c6aeb1e2.js",
+      "_badge-bb5b7694.js",
+      "_select-a383f943.js",
       "_vendor-swal-6ddcfacf.js",
       "_PwaInstallModal-61d4d7d3.js"
     ],
@@ -104,12 +104,12 @@
     "src": "resources/js/Pages/HRD/Departments.jsx"
   },
   "resources/js/Pages/HRD/Employees.jsx": {
-    "file": "assets/Employees-ab083cd5.js",
+    "file": "assets/Employees-d36bd47b.js",
     "imports": [
       "_vendor-core-a233f45f.js",
-      "_AuthenticatedLayout-e4098658.js",
-      "_select-06a946ea.js",
-      "_button-ec2aaefd.js",
+      "_AuthenticatedLayout-69103698.js",
+      "_select-a383f943.js",
+      "_button-c6aeb1e2.js",
       "_vendor-swal-6ddcfacf.js",
       "_PwaInstallModal-61d4d7d3.js"
     ],
@@ -117,12 +117,12 @@
     "src": "resources/js/Pages/HRD/Employees.jsx"
   },
   "resources/js/Pages/HRD/Index.jsx": {
-    "file": "assets/Index-18f05742.js",
+    "file": "assets/Index-ca70db09.js",
     "imports": [
       "_vendor-core-a233f45f.js",
-      "_AuthenticatedLayout-e4098658.js",
-      "_select-06a946ea.js",
-      "_button-ec2aaefd.js",
+      "_AuthenticatedLayout-69103698.js",
+      "_select-a383f943.js",
+      "_button-c6aeb1e2.js",
       "_vendor-swal-6ddcfacf.js",
       "_PwaInstallModal-61d4d7d3.js"
     ],
@@ -130,14 +130,14 @@
     "src": "resources/js/Pages/HRD/Index.jsx"
   },
   "resources/js/Pages/HRD/Payslips.jsx": {
-    "file": "assets/Payslips-95026fee.js",
+    "file": "assets/Payslips-35215472.js",
     "imports": [
       "_vendor-core-a233f45f.js",
-      "_AuthenticatedLayout-e4098658.js",
-      "_card-86a50c88.js",
-      "_button-ec2aaefd.js",
-      "_badge-189a65b6.js",
-      "_select-06a946ea.js",
+      "_AuthenticatedLayout-69103698.js",
+      "_card-e81813ea.js",
+      "_button-c6aeb1e2.js",
+      "_badge-bb5b7694.js",
+      "_select-a383f943.js",
       "_vendor-swal-6ddcfacf.js",
       "_PwaInstallModal-61d4d7d3.js"
     ],
@@ -145,12 +145,12 @@
     "src": "resources/js/Pages/HRD/Payslips.jsx"
   },
   "resources/js/Pages/HRD/Settings.jsx": {
-    "file": "assets/Settings-e59fe16c.js",
+    "file": "assets/Settings-72c3fd0a.js",
     "imports": [
       "_vendor-core-a233f45f.js",
-      "_AuthenticatedLayout-e4098658.js",
-      "_button-ec2aaefd.js",
-      "_card-86a50c88.js",
+      "_AuthenticatedLayout-69103698.js",
+      "_button-c6aeb1e2.js",
+      "_card-e81813ea.js",
       "_vendor-swal-6ddcfacf.js",
       "_PwaInstallModal-61d4d7d3.js"
     ],
@@ -158,11 +158,11 @@
     "src": "resources/js/Pages/HRD/Settings.jsx"
   },
   "resources/js/Pages/LeaveRequests/Create.jsx": {
-    "file": "assets/Create-94a24abe.js",
+    "file": "assets/Create-8a59891f.js",
     "imports": [
       "_vendor-core-a233f45f.js",
-      "_AuthenticatedLayout-e4098658.js",
-      "_select-06a946ea.js",
+      "_AuthenticatedLayout-69103698.js",
+      "_select-a383f943.js",
       "_vendor-swal-6ddcfacf.js",
       "_PwaInstallModal-61d4d7d3.js"
     ],
@@ -170,12 +170,12 @@
     "src": "resources/js/Pages/LeaveRequests/Create.jsx"
   },
   "resources/js/Pages/LeaveRequests/Index.jsx": {
-    "file": "assets/Index-85fd29e1.js",
+    "file": "assets/Index-6028dc95.js",
     "imports": [
       "_vendor-core-a233f45f.js",
-      "_AuthenticatedLayout-e4098658.js",
-      "_select-06a946ea.js",
-      "_button-ec2aaefd.js",
+      "_AuthenticatedLayout-69103698.js",
+      "_select-a383f943.js",
+      "_button-c6aeb1e2.js",
       "_vendor-swal-6ddcfacf.js",
       "_PwaInstallModal-61d4d7d3.js"
     ],
@@ -183,14 +183,14 @@
     "src": "resources/js/Pages/LeaveRequests/Index.jsx"
   },
   "resources/js/Pages/Payslips/Index.jsx": {
-    "file": "assets/Index-d765af66.js",
+    "file": "assets/Index-368e1f28.js",
     "imports": [
       "_vendor-core-a233f45f.js",
-      "_AuthenticatedLayout-e4098658.js",
-      "_card-86a50c88.js",
-      "_button-ec2aaefd.js",
-      "_badge-189a65b6.js",
-      "_select-06a946ea.js",
+      "_AuthenticatedLayout-69103698.js",
+      "_card-e81813ea.js",
+      "_button-c6aeb1e2.js",
+      "_badge-bb5b7694.js",
+      "_select-a383f943.js",
       "_vendor-swal-6ddcfacf.js",
       "_PwaInstallModal-61d4d7d3.js"
     ],
@@ -198,11 +198,11 @@
     "src": "resources/js/Pages/Payslips/Index.jsx"
   },
   "resources/js/Pages/Superadmin/RolePermission/Index.jsx": {
-    "file": "assets/Index-b3113149.js",
+    "file": "assets/Index-7f4bc125.js",
     "imports": [
       "_vendor-core-a233f45f.js",
-      "_AuthenticatedLayout-e4098658.js",
-      "_select-06a946ea.js",
+      "_AuthenticatedLayout-69103698.js",
+      "_select-a383f943.js",
       "_vendor-swal-6ddcfacf.js",
       "_PwaInstallModal-61d4d7d3.js"
     ],
@@ -231,7 +231,7 @@
       "resources/js/Pages/Payslips/Index.jsx",
       "resources/js/Pages/Superadmin/RolePermission/Index.jsx"
     ],
-    "file": "assets/app-5afc85a8.js",
+    "file": "assets/app-ce281501.js",
     "imports": [
       "_vendor-core-a233f45f.js"
     ],
