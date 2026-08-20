@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="id" class="h-full bg-slate-50 text-slate-900">
 <head>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; script-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; style-src 'self' https: 'unsafe-inline'; font-src 'self' https: data:; img-src 'self' https: data: blob:; connect-src 'self' https: wss:;">
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Sistem Informasi Form SGIN - Pengajuan Cuti, Izin, Sakit, Lembur, dan Distribusi Slip Gaji Karyawan Real-time." />
     <meta name="theme-color" content="#059669" />
