@@ -113,23 +113,6 @@ export default function Dashboard({
 
           {/* Quick Header Actions */}
           <div className="flex items-center space-x-2 shrink-0">
-            <Button
-              variant="outline"
-              size="icon"
-              className="relative rounded-2xl md:hidden"
-              onClick={() => window.dispatchEvent(new CustomEvent('open-notifications-menu'))}
-              title="Notifikasi"
-            >
-              <Bell size={18} className="text-slate-600" />
-              {((user?.pending_approvals_count ?? 0) > 0 || managerPendingCount > 0) ? (
-                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-rose-500 text-[9px] font-black text-white shadow-sm ring-2 ring-white animate-pulse">
-                  {(user?.pending_approvals_count || managerPendingCount) > 9 ? '9+' : (user?.pending_approvals_count || managerPendingCount)}
-                </span>
-              ) : (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full" />
-              )}
-            </Button>
-
             <Link href={route('leave-requests.create')} className="hidden sm:inline-flex">
               <Button variant="default" className="rounded-2xl space-x-2">
                 <Plus size={16} />
