@@ -8,12 +8,12 @@ use Illuminate\Database\Eloquent\Collection;
 
 class DepartmentRepository implements DepartmentRepositoryInterface
 {
-    public function getAll(array $relations = ['manager', 'approver1', 'approver2', 'users']): Collection
+    public function getAll(array $relations = ['manager', 'approver1', 'approver2', 'employees']): Collection
     {
-        return Department::with($relations)->withCount('users')->orderBy('name')->get();
+        return Department::with($relations)->withCount('employees')->orderBy('name')->get();
     }
 
-    public function findById(int $id, array $relations = ['manager', 'approver1', 'approver2', 'users']): ?Department
+    public function findById(int $id, array $relations = ['manager', 'approver1', 'approver2', 'employees']): ?Department
     {
         return Department::with($relations)->find($id);
     }
