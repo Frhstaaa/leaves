@@ -430,16 +430,17 @@ export default function AuthenticatedLayout({ children, title }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm"
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 bg-slate-950/60"
               onClick={() => setMobileMenuOpen(false)}
             />
             <motion.div
-              initial={{ y: '100%', opacity: 0 }}
+              initial={{ y: '100%', opacity: 0.8 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: '100%', opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-              className="relative z-10 w-full max-w-lg p-5 sm:p-6 rounded-t-3xl sm:rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 max-h-[80vh] overflow-y-auto pb-10 sm:pb-6"
+              transition={{ type: 'spring', damping: 30, stiffness: 360, mass: 0.8 }}
+              style={{ willChange: 'transform, opacity' }}
+              className="relative z-10 w-full max-w-lg p-5 sm:p-6 rounded-t-3xl sm:rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 max-h-[82vh] overflow-y-auto pb-10 sm:pb-6 transform-gpu"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center space-x-2.5">
@@ -452,6 +453,7 @@ export default function AuthenticatedLayout({ children, title }) {
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setMobileMenuOpen(false)}
                   className="p-1.5 rounded-xl bg-slate-100 text-slate-400 hover:text-slate-800"
                 >
@@ -461,35 +463,41 @@ export default function AuthenticatedLayout({ children, title }) {
 
               {/* Menu Items Grid - Compact Horizontal Card Design */}
               <div className="grid grid-cols-2 gap-2">
-                {navItems.filter(item => item.show).map((item) => {
+                {navItems.filter(item => item.show).map((item, idx) => {
                   const Icon = item.icon;
                   return (
-                    <Link
+                    <motion.div
                       key={item.name}
-                      href={item.href}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`
-                        p-2.5 rounded-2xl border flex items-center space-x-2.5 transition-all duration-200 group relative
-                        ${item.active
-                          ? 'bg-emerald-50/90 border-emerald-300 text-emerald-900 shadow-sm'
-                          : 'bg-slate-50 border-slate-200/80 text-slate-800 hover:bg-slate-100'}
-                      `}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.15, delay: Math.min(idx * 0.02, 0.15) }}
                     >
-                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-transform group-active:scale-95 ${
-                        item.active ? 'bg-emerald-600 text-white shadow-sm' : 'bg-white text-slate-700 border border-slate-200/60 shadow-sm'
-                      }`}>
-                        <Icon size={16} />
-                      </div>
+                      <Link
+                        href={item.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`
+                          p-2.5 rounded-2xl border flex items-center space-x-2.5 transition-all duration-150 group relative w-full
+                          ${item.active
+                            ? 'bg-emerald-50/90 border-emerald-300 text-emerald-900 shadow-sm'
+                            : 'bg-slate-50 border-slate-200/80 text-slate-800 hover:bg-slate-100 active:scale-[0.98]'}
+                        `}
+                      >
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-transform group-active:scale-95 ${
+                          item.active ? 'bg-emerald-600 text-white shadow-sm' : 'bg-white text-slate-700 border border-slate-200/60 shadow-sm'
+                        }`}>
+                          <Icon size={16} />
+                        </div>
 
-                      <div className="min-w-0 flex-1">
-                        <h4 className="text-xs font-bold text-slate-900 truncate leading-tight">{item.name}</h4>
-                        <span className="text-[10px] text-slate-500 font-semibold block truncate mt-0.5">{item.shortName}</span>
-                      </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-xs font-bold text-slate-900 truncate leading-tight">{item.name}</h4>
+                          <span className="text-[10px] text-slate-500 font-semibold block truncate mt-0.5">{item.shortName}</span>
+                        </div>
 
-                      {item.active && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0"></span>
-                      )}
-                    </Link>
+                        {item.active && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0"></span>
+                        )}
+                      </Link>
+                    </motion.div>
                   );
                 })}
               </div>
@@ -497,11 +505,12 @@ export default function AuthenticatedLayout({ children, title }) {
               {/* Action Buttons Footer */}
               <div className="pt-2 border-t border-slate-100 flex items-center space-x-2">
                 <button
+                  type="button"
                   onClick={() => {
                     setMobileMenuOpen(false);
                     setActionMenuOpen(true);
                   }}
-                  className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center space-x-1.5 transition-colors"
+                  className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center space-x-1.5 transition-colors active:scale-[0.98]"
                 >
                   <User size={15} className="text-slate-600" />
                   <span>Opsi Profil Saya</span>
@@ -521,7 +530,7 @@ export default function AuthenticatedLayout({ children, title }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-950/60"
               onClick={() => setNotificationsOpen(false)}
             />
             <motion.div
@@ -529,7 +538,8 @@ export default function AuthenticatedLayout({ children, title }) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4"
+              style={{ willChange: 'transform, opacity' }}
+              className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 transform-gpu"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center space-x-2">
@@ -537,6 +547,7 @@ export default function AuthenticatedLayout({ children, title }) {
                   <h3 className="text-base font-extrabold text-slate-900">Pemberitahuan & Notifikasi</h3>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setNotificationsOpen(false)}
                   className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:text-slate-800"
                 >
@@ -602,6 +613,7 @@ export default function AuthenticatedLayout({ children, title }) {
                   Lihat Riwayat Cuti
                 </Link>
                 <button
+                  type="button"
                   onClick={() => setNotificationsOpen(false)}
                   className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20"
                 >
@@ -622,7 +634,7 @@ export default function AuthenticatedLayout({ children, title }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-950/60"
               onClick={() => setActionMenuOpen(false)}
             />
             <motion.div
@@ -630,7 +642,8 @@ export default function AuthenticatedLayout({ children, title }) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              className="relative z-10 w-full max-w-sm p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4"
+              style={{ willChange: 'transform, opacity' }}
+              className="relative z-10 w-full max-w-sm p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 transform-gpu"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center space-x-3">
@@ -641,6 +654,7 @@ export default function AuthenticatedLayout({ children, title }) {
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setActionMenuOpen(false)}
                   className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:text-slate-800"
                 >
@@ -653,11 +667,12 @@ export default function AuthenticatedLayout({ children, title }) {
               <div className="space-y-2">
                 {/* Opsi 1: Profil Saya */}
                 <button
+                  type="button"
                   onClick={() => {
                     setActionMenuOpen(false);
                     setMyProfileOpen(true);
                   }}
-                  className="w-full p-3.5 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100 flex items-center justify-between transition-all"
+                  className="w-full p-3.5 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100 flex items-center justify-between transition-all active:scale-[0.98]"
                 >
                   <div className="flex items-center space-x-3">
                     <div className="p-2 rounded-xl bg-emerald-100 text-emerald-700">
@@ -673,8 +688,9 @@ export default function AuthenticatedLayout({ children, title }) {
 
                 {/* Opsi 2: Logout */}
                 <button
+                  type="button"
                   onClick={handleLogout}
-                  className="w-full p-3.5 rounded-2xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 flex items-center justify-between transition-all"
+                  className="w-full p-3.5 rounded-2xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 flex items-center justify-between transition-all active:scale-[0.98]"
                 >
                   <div className="flex items-center space-x-3">
                     <div className="p-2 rounded-xl bg-rose-100 text-rose-700">
@@ -701,7 +717,7 @@ export default function AuthenticatedLayout({ children, title }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-950/60"
               onClick={() => setMyProfileOpen(false)}
             />
             <motion.div
@@ -709,7 +725,8 @@ export default function AuthenticatedLayout({ children, title }) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-5"
+              style={{ willChange: 'transform, opacity' }}
+              className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-5 transform-gpu"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
                 <div className="flex items-center space-x-2">
