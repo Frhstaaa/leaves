@@ -20,6 +20,19 @@
         $imports = isset($manifest['resources/js/app.jsx']['imports']) ? $manifest['resources/js/app.jsx']['imports'] : [];
     @endphp
 
+    @php
+        $settings = \App\Models\Setting::getAll();
+        $appName = $settings['app_name'] ?? 'Form SGIN';
+        $themeColor = $settings['theme_color'] ?? '#F5FAF7';
+    @endphp
+
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="apple-touch-icon" href="/app-icon/192">
+    <link rel="icon" type="image/png" sizes="192x192" href="/app-icon/192">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="{{ $appName }}">
+
     @if($cssFile)
         <link rel="preload" as="style" href="{{ asset($cssFile) }}">
         <link rel="stylesheet" href="{{ asset($cssFile) }}">
@@ -86,5 +99,17 @@
     @if($jsFile)
         <script type="module" src="{{ asset($jsFile) }}"></script>
     @endif
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                    console.log('PWA ServiceWorker registered with scope: ', registration.scope);
+                }, function(err) {
+                    console.log('PWA ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
 </body>
 </html>

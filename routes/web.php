@@ -16,6 +16,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [AuthController::class, 'showLogin']);
 
+// PWA Manifest & Dynamic App Icon Routes
+Route::get('/manifest.webmanifest', [\App\Http\Controllers\SettingController::class, 'manifest'])->name('pwa.manifest');
+Route::get('/manifest.json', [\App\Http\Controllers\SettingController::class, 'manifest']);
+Route::get('/app-icon/{size?}', [\App\Http\Controllers\SettingController::class, 'getAppIcon'])->name('pwa.icon');
+
 // Authentication Routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
@@ -54,6 +59,9 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/hrd/employees/{userId}', [HrdController::class, 'destroyEmployee'])->name('hrd.employees.destroy');
     Route::post('/hrd/employees/{userId}/quota', [HrdController::class, 'updateQuota'])->name('hrd.update-quota');
     Route::get('/hrd/export', [HrdController::class, 'export'])->name('hrd.export');
+    // App Settings Routes
+    Route::get('/hrd/settings', [\App\Http\Controllers\SettingController::class, 'index'])->name('hrd.settings');
+    Route::post('/hrd/settings', [\App\Http\Controllers\SettingController::class, 'update'])->name('hrd.settings.update');
     // Profile Avatar Route
     Route::post('/profile/avatar', [\App\Http\Controllers\ProfileController::class, 'updateAvatar'])->name('profile.avatar');
 

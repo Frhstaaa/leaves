@@ -27,7 +27,9 @@ import {
   Menu,
   Grid,
   Receipt,
-  ChevronDown
+  ChevronDown,
+  Settings as SettingsIcon,
+  Smartphone
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -41,6 +43,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { showConfirm, showToast } from '@/Utils/swal';
 import { DashboardSkeleton, TableSkeleton, CardListSkeleton } from '@/components/PageSkeleton';
+import PwaInstallModal from '@/components/PwaInstallModal';
 
 export function UserAvatar({ user, size = 'w-8 h-8', textSize = 'text-xs' }) {
   const [hasError, setHasError] = useState(false);
@@ -70,8 +73,14 @@ export function UserAvatar({ user, size = 'w-8 h-8', textSize = 'text-xs' }) {
 }
 
 export default function AuthenticatedLayout({ children, title }) {
-  const { auth, flash, notifications } = usePage().props;
+  const { auth, flash, notifications, app_settings } = usePage().props;
   const user = auth?.user || {};
+
+  const appName = app_settings?.app_name || 'Form SGIN';
+  const appSubname = app_settings?.app_subname || 'Cuti & Ketidakhadiran';
+  const appLogo = app_settings?.app_logo
+    ? (app_settings.app_logo.startsWith('http') ? app_settings.app_logo : `/storage/${app_settings.app_logo}`)
+    : null;
 
   // Modals State
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
@@ -263,6 +272,14 @@ export default function AuthenticatedLayout({ children, title }) {
       show: isAdmin,
     },
     {
+      name: 'Pengaturan Aplikasi',
+      shortName: 'Setup App',
+      href: route('hrd.settings'),
+      icon: SettingsIcon,
+      active: url.startsWith('/hrd/settings'),
+      show: isAdmin,
+    },
+    {
       name: 'Hak Akses & Role',
       shortName: 'Role Spatie',
       href: route('superadmin.roles.index'),
@@ -279,13 +296,21 @@ export default function AuthenticatedLayout({ children, title }) {
       <aside className="hidden md:flex w-64 flex-col shrink-0 min-h-screen sticky top-0 h-screen bg-white border-r border-slate-200 shadow-sm">
         {/* Brand Header */}
         <div className="p-5 border-b border-slate-200 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center font-black text-white text-base shadow-lg shadow-emerald-600/20">
-              SG
-            </div>
-            <div>
-              <h2 className="font-extrabold text-base text-slate-900 tracking-tight leading-none">Form SGIN</h2>
-              <span className="text-[11px] font-bold text-emerald-600 tracking-wide uppercase">Cuti & Ketidakhadiran</span>
+          <div className="flex items-center space-x-3 min-w-0">
+            {appLogo ? (
+              <img
+                src={appLogo}
+                alt={appName}
+                className="w-10 h-10 rounded-xl object-cover shadow-md shadow-emerald-600/20 border border-emerald-500/20 shrink-0"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center font-black text-white text-base shadow-lg shadow-emerald-600/20 shrink-0">
+                SG
+              </div>
+            )}
+            <div className="min-w-0">
+              <h2 className="font-extrabold text-base text-slate-900 tracking-tight leading-none truncate">{appName}</h2>
+              <span className="text-[11px] font-bold text-emerald-600 tracking-wide uppercase truncate block mt-0.5">{appSubname}</span>
             </div>
           </div>
         </div>
@@ -352,11 +377,19 @@ export default function AuthenticatedLayout({ children, title }) {
         {/* Top Mobile Bar */}
         <header className="md:hidden flex items-center justify-between px-4 py-2.5 bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 shadow-xs">
           <div className="flex items-center space-x-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center font-black text-white text-xs shadow-md shadow-emerald-600/20 shrink-0">
-              SG
-            </div>
+            {appLogo ? (
+              <img
+                src={appLogo}
+                alt={appName}
+                className="w-8 h-8 rounded-xl object-cover shadow-md shadow-emerald-600/20 border border-emerald-500/20 shrink-0"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center font-black text-white text-xs shadow-md shadow-emerald-600/20 shrink-0">
+                SG
+              </div>
+            )}
             <div className="min-w-0">
-              <h1 className="text-xs sm:text-sm font-extrabold text-slate-900 truncate leading-tight">{title || 'Form SGIN'}</h1>
+              <h1 className="text-xs sm:text-sm font-extrabold text-slate-900 truncate leading-tight">{title || appName}</h1>
               <p className="text-[10px] text-slate-500 truncate">{user.name} &bull; {user.department_name || 'General'}</p>
             </div>
           </div>
@@ -970,7 +1003,28 @@ export default function AuthenticatedLayout({ children, title }) {
                   <ChevronRight size={16} className="text-slate-400" />
                 </button>
 
-                {/* Opsi 2: Logout */}
+                {/* Opsi 2: Install PWA App */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActionMenuOpen(false);
+                    window.dispatchEvent(new CustomEvent('open-pwa-install-modal'));
+                  }}
+                  className="w-full p-3.5 rounded-2xl border border-emerald-200 bg-emerald-50/80 hover:bg-emerald-100/80 flex items-center justify-between transition-all active:scale-[0.98]"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 rounded-xl bg-emerald-600 text-white shadow-xs">
+                      <Smartphone size={20} />
+                    </div>
+                    <div className="text-left">
+                      <h4 className="text-xs font-bold text-emerald-950">Pasang Aplikasi (PWA)</h4>
+                      <p className="text-[10px] text-emerald-700">Install di HP / Desktop untuk akses 1-klik</p>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-emerald-500" />
+                </button>
+
+                {/* Opsi 3: Logout */}
                 <button
                   type="button"
                   onClick={handleLogout}
@@ -982,7 +1036,7 @@ export default function AuthenticatedLayout({ children, title }) {
                     </div>
                     <div className="text-left">
                       <h4 className="text-xs font-bold text-rose-800">Keluar (Logout)</h4>
-                      <p className="text-[10px] text-rose-600">Keluar dari akun Form SGIN</p>
+                      <p className="text-[10px] text-rose-600">Keluar dari akun {appName}</p>
                     </div>
                   </div>
                 </button>
@@ -1114,6 +1168,9 @@ export default function AuthenticatedLayout({ children, title }) {
           </div>
         )}
       </AnimatePresence>
+
+      {/* PWA FLOATING INSTALL PROMPT MODAL */}
+      <PwaInstallModal />
     </div>
   );
 }

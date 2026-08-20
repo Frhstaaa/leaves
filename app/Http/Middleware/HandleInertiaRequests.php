@@ -60,6 +60,7 @@ class HandleInertiaRequests extends Middleware
                     'my_recent_requests' => fn () => $user->leaveRequests()->with('category')->latest()->take(3)->get(),
                 ] : null,
             ],
+            'app_settings' => fn () => \App\Models\Setting::getAll(),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

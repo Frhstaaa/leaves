@@ -37,6 +37,8 @@ window.route = function (name, params) {
     'hrd.employees.destroy': (id) => `/hrd/employees/${id}`,
     'hrd.update-quota': (id) => `/hrd/employees/${id}/quota`,
     'hrd.export': '/hrd/export',
+    'hrd.settings': '/hrd/settings',
+    'hrd.settings.update': '/hrd/settings',
     'payslips.index': '/payslips',
     'payslips.download': (id) => `/payslips/${id}/download`,
     'payslips.preview': (id) => `/payslips/${id}/preview`,

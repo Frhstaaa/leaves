@@ -1,8 +1,16 @@
 import React from 'react';
-import { useForm, router } from '@inertiajs/react';
-import { Lock, Mail, ArrowRight, ShieldCheck, User, Briefcase } from 'lucide-react';
+import { useForm, router, usePage } from '@inertiajs/react';
+import { Lock, Mail, ArrowRight, ShieldCheck, User, Briefcase, Smartphone } from 'lucide-react';
+import PwaInstallModal from '@/components/PwaInstallModal';
 
 export default function Login() {
+  const { app_settings } = usePage().props;
+  const appName = app_settings?.app_name || 'Form SGIN';
+  const appSubname = app_settings?.app_subname || 'Cuti & Ketidakhadiran';
+  const appLogo = app_settings?.app_logo
+    ? (app_settings.app_logo.startsWith('http') ? app_settings.app_logo : `/storage/${app_settings.app_logo}`)
+    : null;
+
   const { data, setData, post, processing, errors } = useForm({
     email: '',
     password: '',
@@ -23,11 +31,19 @@ export default function Login() {
       <div className="w-full max-w-md z-10">
         {/* Header Logo & Title */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-500 text-white font-black text-2xl shadow-lg shadow-teal-600/30 mb-4">
-            SGIN
-          </div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">System Form SGIN Cuti</h1>
-          <p className="text-sm text-slate-500 mt-1">Aplikasi Permohonan Tidak Hadir Bekerja & Management Cuti</p>
+          {appLogo ? (
+            <img
+              src={appLogo}
+              alt={appName}
+              className="w-16 h-16 rounded-2xl object-cover shadow-lg shadow-teal-600/25 border-2 border-white mx-auto mb-4"
+            />
+          ) : (
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-500 text-white font-black text-2xl shadow-lg shadow-teal-600/30 mb-4">
+              SG
+            </div>
+          )}
+          <h1 className="text-2xl font-black tracking-tight text-slate-900">{appName}</h1>
+          <p className="text-sm text-slate-500 mt-1">{appSubname}</p>
         </div>
 
         {/* Quick Demo Login Preset Buttons */}
@@ -132,6 +148,9 @@ export default function Login() {
           </form>
         </div>
       </div>
+
+      {/* PWA Floating Install Modal */}
+      <PwaInstallModal />
     </main>
   );
 }
