@@ -30,7 +30,9 @@ import {
   Check,
   Send,
   MoreVertical,
-  X
+  X,
+  Sparkles,
+  Archive
 } from 'lucide-react';
 import {
   Select,
