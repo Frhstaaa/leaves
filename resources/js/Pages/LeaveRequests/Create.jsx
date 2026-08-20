@@ -22,6 +22,7 @@ import {
   Send,
   HelpCircle,
   Search,
+  Check,
   X
 } from 'lucide-react';
 import {

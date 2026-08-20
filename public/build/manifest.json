@@ -5,8 +5,8 @@
       "_vendor-react-b773bfa5.js"
     ]
   },
-  "_vendor-inertia-795c8cd0.js": {
-    "file": "assets/vendor-inertia-795c8cd0.js",
+  "_vendor-inertia-b63fa8b0.js": {
+    "file": "assets/vendor-inertia-b63fa8b0.js",
     "imports": [
       "_vendor-react-b773bfa5.js"
     ]
@@ -35,11 +35,11 @@
     "css": [
       "assets/app-aaad9961.css"
     ],
-    "file": "assets/app-5f6214cf.js",
+    "file": "assets/app-51932878.js",
     "imports": [
       "_vendor-motion-dd313db2.js",
       "_vendor-react-b773bfa5.js",
-      "_vendor-inertia-795c8cd0.js",
+      "_vendor-inertia-b63fa8b0.js",
       "_vendor-icons-f4125788.js",
       "_vendor-swal-6ddcfacf.js"
     ],
