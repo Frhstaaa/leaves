@@ -175,15 +175,30 @@ export default function PwaInstallModal() {
 
             {/* iOS Safari Instructions */}
             {isIOS && !deferredPrompt && (
-              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-900 text-xs space-y-1.5">
-                <p className="font-bold flex items-center space-x-1.5">
-                  <Share size={14} className="text-amber-700" />
-                  <span>Cara Pasang di iPhone / iPad:</span>
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-900 text-xs space-y-2">
+                <p className="font-extrabold flex items-center space-x-1.5 text-amber-950">
+                  <Share size={15} className="text-amber-700" />
+                  <span>Cara Pasang di iPhone / iPad (Safari):</span>
                 </p>
-                <ol className="list-decimal list-inside text-[11px] text-amber-800 space-y-1 pl-1">
-                  <li>Ketuk ikon <strong>Bagikan (Share)</strong> <Share size={11} className="inline mx-0.5" /> di menu bawah Safari.</li>
-                  <li>Gulir ke bawah dan pilih <strong>'Tambahkan ke Layar Utama'</strong> (Add to Home Screen) <PlusSquare size={11} className="inline mx-0.5" />.</li>
-                  <li>Ketuk <strong>'Tambah'</strong> di pojok kanan atas.</li>
+                <ol className="list-decimal list-inside text-[11px] text-amber-800 space-y-1.5 pl-1 leading-relaxed">
+                  <li>Ketuk ikon <strong>Bagikan (Share)</strong> <Share size={12} className="inline mx-0.5 text-amber-700" /> di bilah bawah Safari.</li>
+                  <li>Gulir ke bawah dan pilih <strong>'Tambahkan ke Layar Utama'</strong> (Add to Home Screen) <PlusSquare size={12} className="inline mx-0.5 text-amber-700" />.</li>
+                  <li>Ketuk <strong>'Tambah'</strong> di pojok kanan atas layar iPhone Anda.</li>
+                </ol>
+              </div>
+            )}
+
+            {/* Android / Desktop Manual Guide when prompt not yet fired */}
+            {!isIOS && !deferredPrompt && (
+              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200/80 text-emerald-950 text-xs space-y-2">
+                <p className="font-extrabold flex items-center space-x-1.5 text-emerald-900">
+                  <Smartphone size={15} className="text-emerald-700" />
+                  <span>Cara Pasang di Android / Google Chrome:</span>
+                </p>
+                <ol className="list-decimal list-inside text-[11px] text-emerald-800 space-y-1.5 pl-1 leading-relaxed">
+                  <li>Ketuk tombol <strong>titik tiga (⋮)</strong> di pojok kanan atas browser.</li>
+                  <li>Pilih menu <strong>'Install aplikasi'</strong> atau <strong>'Tambahkan ke Layar Utama'</strong>.</li>
+                  <li>Ketuk <strong>'Install'</strong> untuk memasang icon logo di layar HP Anda.</li>
                 </ol>
               </div>
             )}
@@ -210,17 +225,11 @@ export default function PwaInstallModal() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (isIOS) {
-                      // iOS already has instructions above
-                      handleDismiss();
-                    } else {
-                      window.location.reload();
-                    }
-                  }}
+                  onClick={handleDismiss}
                   className="w-2/3 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center justify-center space-x-1.5 shadow-md shadow-emerald-600/20 active:scale-[0.98] transition-all"
                 >
-                  <span>{isIOS ? 'Saya Mengerti' : '📲 Pasang Aplikasi'}</span>
+                  <CheckCircle size={15} className="mr-1" />
+                  <span>Saya Mengerti</span>
                 </button>
               )}
             </div>
