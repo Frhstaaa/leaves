@@ -1,5 +1,5 @@
-// Service Worker for Form SGIN PWA
-const CACHE_NAME = 'sgin-pwa-v2';
+// High-Performance Service Worker for Form SGIN PWA
+const CACHE_NAME = 'sgin-pwa-v3';
 const OFFLINE_URL = '/';
 
 const ASSETS_TO_CACHE = [
@@ -11,15 +11,13 @@ const ASSETS_TO_CACHE = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE).catch(() => {
-        // Continue even if some assets fail to cache immediately
-      });
+      return cache.addAll(ASSETS_TO_CACHE).catch(() => {});
     })
   );
   self.skipWaiting();
 });
 
-// Activate Event
+// Activate Event - Clean old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -35,27 +33,30 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch Event (Network-first with offline fallback)
+// Fetch Event
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests
   if (event.request.method !== 'GET') return;
 
-  // Don't intercept API/storage downloads directly
   const url = new URL(event.request.url);
-  if (url.pathname.startsWith('/api') || url.pathname.endsWith('/download')) {
+
+  // Bypass API, export, and download endpoints
+  if (
+    url.pathname.startsWith('/api') ||
+    url.pathname.endsWith('/download') ||
+    url.pathname.endsWith('/export') ||
+    url.pathname.endsWith('/template')
+  ) {
     return;
   }
 
-  // Network-first for manifest and app-icon to always get the latest logo
+  // 1. Dynamic Network-First for Manifest & App Icons (Always fresh branding)
   if (url.pathname.startsWith('/manifest.') || url.pathname.startsWith('/app-icon/')) {
     event.respondWith(
       fetch(event.request)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
           }
           return networkResponse;
         })
@@ -64,19 +65,33 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // 2. Cache-First for Immutable Build Assets (/build/assets/*) and Google Fonts
+  if (
+    url.pathname.startsWith('/build/') ||
+    url.hostname.includes('fonts.googleapis.com') ||
+    url.hostname.includes('fonts.gstatic.com')
+  ) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+          }
+          return networkResponse;
+        });
+      })
+    );
+    return;
+  }
+
+  // 3. Network-First with Cache Fallback for HTML & Inertia Navigation
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
-        // Cache successful response for static assets
-        if (
-          networkResponse.status === 200 &&
-          url.pathname.startsWith('/build/')
-        ) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
         return networkResponse;
       })
       .catch(() => {
