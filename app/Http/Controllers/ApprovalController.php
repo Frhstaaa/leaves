@@ -46,15 +46,21 @@ class ApprovalController extends Controller
         if (!$user->isAdmin()) {
             // Atasan (Supervisor / Manager) Logic:
             // If status is pending, show items where $user is the active approver for that stage:
-            // 1. Stage approval_1 & approver_1_id == $user->id
-            // 2. Stage approval_2 & (approver_2_id == $user->id OR manager_id == $user->id OR (manager_id IS NULL AND dept_id == $user->dept_id))
+            // 1. Stage approval_1 & (approver_1_id == $user->id OR (approver_1_id IS NULL AND dept.approver_1_id == $user->id))
+            // 2. Stage approval_2 & (approver_2_id == $user->id OR manager_id == $user->id OR (approver_2_id IS NULL AND (dept.approver_2_id == $user->id OR dept.manager_id == $user->id)))
             if ($status === 'pending') {
                 $query->where('status', 'pending')
                     ->where(function ($q) use ($user) {
                         $q->where(function ($sub) use ($user) {
                             $sub->where('current_stage', 'approval_1')
                                 ->whereHas('user', function ($u) use ($user) {
-                                    $u->where('approver_1_id', $user->id);
+                                    $u->where('approver_1_id', $user->id)
+                                      ->orWhere(function ($d) use ($user) {
+                                          $d->whereNull('approver_1_id')
+                                            ->whereHas('department', function ($dept) use ($user) {
+                                                $dept->where('approver_1_id', $user->id);
+                                            });
+                                      });
                                 });
                         })->orWhere(function ($sub) use ($user) {
                             $sub->where('current_stage', 'approval_2')
@@ -64,7 +70,10 @@ class ApprovalController extends Controller
                                       ->orWhere(function ($d) use ($user) {
                                           $d->whereNull('manager_id')
                                             ->whereNull('approver_2_id')
-                                            ->where('department_id', $user->department_id);
+                                            ->whereHas('department', function ($dept) use ($user) {
+                                                $dept->where('approver_2_id', $user->id)
+                                                     ->orWhere('manager_id', $user->id);
+                                            });
                                       });
                                 });
                         });
@@ -76,7 +85,18 @@ class ApprovalController extends Controller
                       ->orWhere('approver_2_id', $user->id)
                       ->orWhere('manager_id', $user->id)
                       ->orWhere(function ($sub) use ($user) {
-                          $sub->whereNull('manager_id')->where('department_id', $user->department_id);
+                          $sub->whereNull('approver_1_id')
+                              ->whereHas('department', function ($dept) use ($user) {
+                                  $dept->where('approver_1_id', $user->id);
+                              });
+                      })
+                      ->orWhere(function ($sub) use ($user) {
+                          $sub->whereNull('manager_id')
+                              ->whereNull('approver_2_id')
+                              ->whereHas('department', function ($dept) use ($user) {
+                                  $dept->where('approver_2_id', $user->id)
+                                       ->orWhere('manager_id', $user->id);
+                              });
                       });
                 })->where('id', '!=', $user->id)->pluck('id');
 
@@ -133,7 +153,7 @@ class ApprovalController extends Controller
             return back()->with('error', 'Anda tidak memiliki hak akses persetujuan.');
         }
 
-        $leaveRequest = LeaveRequest::with(['category', 'user.approver1', 'user.approver2', 'user.manager'])->findOrFail($id);
+        $leaveRequest = LeaveRequest::with(['category', 'user.department', 'user.approver1', 'user.approver2', 'user.manager'])->findOrFail($id);
         $requester = $leaveRequest->user;
         $note = $request->input('note');
         $currentStage = $leaveRequest->current_stage ?? 'hrd';
@@ -142,15 +162,19 @@ class ApprovalController extends Controller
             return back()->with('error', 'Pengajuan ini sudah tidak lagi berstatus pending.');
         }
 
+        $effApprover1 = $requester->getEffectiveApprover1();
+        $effApprover2 = $requester->getEffectiveApprover2();
+
         // TIER 1: Approval 1 (Supervisor / Atasan 1)
         if ($currentStage === 'approval_1') {
-            if (!$user->isAdmin() && $requester->approver_1_id != $user->id) {
+            $isApprover1 = ($effApprover1 && $effApprover1->id == $user->id);
+
+            if (!$user->isAdmin() && !$isApprover1) {
                 return back()->with('error', 'Anda bukan Atasan 1 yang berwenang untuk tahap ini.');
             }
 
             // Determine next stage: If employee has approver 2, go to approval_2; else go to hrd
-            $hasNextApprover = (bool) ($requester->approver_2_id || $requester->manager_id);
-            $nextStage = $hasNextApprover ? 'approval_2' : 'hrd';
+            $nextStage = $effApprover2 ? 'approval_2' : 'hrd';
 
             $leaveRequest->update([
                 'approved_by_1' => $user->id,
@@ -159,18 +183,14 @@ class ApprovalController extends Controller
                 'current_stage' => $nextStage,
             ]);
 
-            $nextName = $hasNextApprover
-                ? ($requester->approver2?->name ?? $requester->manager?->name ?? 'Atasan 2')
-                : 'HRD / PGA Admin';
+            $nextName = $effApprover2 ? $effApprover2->name : 'HRD / PGA Admin';
 
             return back()->with('success', "Persetujuan Tingkat 1 (Approval 1) berhasil diberikan! Permohonan kini diteruskan ke {$nextName}.");
         }
 
         // TIER 2: Approval 2 (Manager / Atasan 2)
         if ($currentStage === 'approval_2') {
-            $isApprover2 = ($requester->approver_2_id == $user->id) ||
-                           ($requester->manager_id == $user->id) ||
-                           (is_null($requester->manager_id) && is_null($requester->approver_2_id) && $requester->department_id == $user->department_id);
+            $isApprover2 = ($effApprover2 && $effApprover2->id == $user->id);
 
             if (!$user->isAdmin() && !$isApprover2) {
                 return back()->with('error', 'Anda bukan Atasan 2 yang berwenang untuk tahap ini.');

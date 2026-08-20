@@ -1,6 +1,6 @@
 {
-  "_vendor-icons-397428b5.js": {
-    "file": "assets/vendor-icons-397428b5.js",
+  "_vendor-icons-9135aaa5.js": {
+    "file": "assets/vendor-icons-9135aaa5.js",
     "imports": [
       "_vendor-react-b773bfa5.js"
     ]
@@ -24,24 +24,24 @@
     "file": "assets/vendor-swal-6ddcfacf.js"
   },
   "resources/css/app.css": {
-    "file": "assets/app-4c269309.css",
+    "file": "assets/app-b17c4f55.css",
     "src": "resources/js/app.css"
   },
   "resources/js/app.css": {
-    "file": "assets/app-4c269309.css",
+    "file": "assets/app-b17c4f55.css",
     "src": "resources/js/app.css"
   },
   "resources/js/app.jsx": {
     "css": [
-      "assets/app-4c269309.css"
+      "assets/app-b17c4f55.css"
     ],
-    "file": "assets/app-ecf690a9.js",
+    "file": "assets/app-de80f542.js",
     "imports": [
       "_vendor-motion-dd313db2.js",
       "_vendor-react-b773bfa5.js",
       "_vendor-inertia-795c8cd0.js",
       "_vendor-swal-6ddcfacf.js",
-      "_vendor-icons-397428b5.js"
+      "_vendor-icons-9135aaa5.js"
     ],
     "isEntry": true,
     "src": "resources/js/app.jsx"

@@ -716,6 +716,142 @@ class HrdController extends Controller
         return redirect()->back()->with('success', trim($message));
     }
 
+    public function departments(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user->isAdmin()) {
+            return redirect()->route('dashboard')->with('error', 'Halaman ini khusus untuk HRD / PGA Admin.');
+        }
+
+        $search = $request->query('search');
+
+        $query = Department::with(['manager', 'approver1', 'approver2'])
+            ->withCount('employees');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        $departments = $query->orderBy('name', 'asc')->get();
+
+        $employees = User::select('id', 'name', 'nik', 'email', 'role', 'department_id')
+            ->orderBy('name', 'asc')
+            ->get();
+
+        $stats = [
+            'total_departments' => $departments->count(),
+            'total_employees' => User::count(),
+            'with_manager' => $departments->whereNotNull('manager_id')->count(),
+            'multi_tier_count' => $departments->where('approval_type', '3_tier')->count(),
+        ];
+
+        return Inertia::render('HRD/Departments', [
+            'departments' => $departments,
+            'employees' => $employees,
+            'stats' => $stats,
+            'filters' => [
+                'search' => $search,
+            ],
+        ]);
+    }
+
+    public function storeDepartment(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user->isAdmin()) {
+            return redirect()->route('dashboard')->with('error', 'Halaman ini khusus untuk HRD / PGA Admin.');
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:departments,name',
+            'code' => 'required|string|max:50|unique:departments,code',
+            'manager_id' => 'nullable|exists:users,id',
+            'approver_1_id' => 'nullable|exists:users,id',
+            'approver_2_id' => 'nullable|exists:users,id',
+            'approval_type' => 'required|in:3_tier,2_tier,1_tier,custom',
+            'description' => 'nullable|string|max:1000',
+        ], [
+            'name.required' => 'Nama departemen wajib diisi.',
+            'name.unique' => 'Nama departemen sudah digunakan.',
+            'code.required' => 'Kode departemen wajib diisi.',
+            'code.unique' => 'Kode departemen sudah digunakan.',
+            'approval_type.required' => 'Tipe alur persetujuan wajib dipilih.',
+        ]);
+
+        $dept = Department::create([
+            'name' => trim($validated['name']),
+            'code' => strtoupper(trim($validated['code'])),
+            'manager_id' => $validated['manager_id'] ?? null,
+            'approver_1_id' => $validated['approver_1_id'] ?? null,
+            'approver_2_id' => $validated['approver_2_id'] ?? null,
+            'approval_type' => $validated['approval_type'] ?? '3_tier',
+            'description' => $validated['description'] ?? null,
+        ]);
+
+        return redirect()->back()->with('success', "Departemen '{$dept->name}' ({$dept->code}) berhasil ditambahkan!");
+    }
+
+    public function updateDepartment(Request $request, $id)
+    {
+        $user = Auth::user();
+        if (!$user->isAdmin()) {
+            return redirect()->route('dashboard')->with('error', 'Halaman ini khusus untuk HRD / PGA Admin.');
+        }
+
+        $dept = Department::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:departments,name,' . $dept->id,
+            'code' => 'required|string|max:50|unique:departments,code,' . $dept->id,
+            'manager_id' => 'nullable|exists:users,id',
+            'approver_1_id' => 'nullable|exists:users,id',
+            'approver_2_id' => 'nullable|exists:users,id',
+            'approval_type' => 'required|in:3_tier,2_tier,1_tier,custom',
+            'description' => 'nullable|string|max:1000',
+        ], [
+            'name.required' => 'Nama departemen wajib diisi.',
+            'name.unique' => 'Nama departemen sudah digunakan.',
+            'code.required' => 'Kode departemen wajib diisi.',
+            'code.unique' => 'Kode departemen sudah digunakan.',
+            'approval_type.required' => 'Tipe alur persetujuan wajib dipilih.',
+        ]);
+
+        $dept->update([
+            'name' => trim($validated['name']),
+            'code' => strtoupper(trim($validated['code'])),
+            'manager_id' => $validated['manager_id'] ?? null,
+            'approver_1_id' => $validated['approver_1_id'] ?? null,
+            'approver_2_id' => $validated['approver_2_id'] ?? null,
+            'approval_type' => $validated['approval_type'] ?? '3_tier',
+            'description' => $validated['description'] ?? null,
+        ]);
+
+        return redirect()->back()->with('success', "Data dan alur persetujuan Departemen '{$dept->name}' berhasil diperbarui!");
+    }
+
+    public function destroyDepartment($id)
+    {
+        $user = Auth::user();
+        if (!$user->isAdmin()) {
+            return redirect()->route('dashboard')->with('error', 'Halaman ini khusus untuk HRD / PGA Admin.');
+        }
+
+        $dept = Department::withCount('employees')->findOrFail($id);
+
+        if ($dept->employees_count > 0) {
+            return redirect()->back()->with('error', "Departemen '{$dept->name}' memiliki {$dept->employees_count} karyawan aktif. Pindahkan karyawan terlebih dahulu sebelum menghapus departemen.");
+        }
+
+        $deptName = $dept->name;
+        $dept->delete();
+
+        return redirect()->back()->with('success', "Departemen '{$deptName}' berhasil dihapus.");
+    }
+
     private function convertAvatarToWebpAndStore($file, string $folder = 'avatars', int $quality = 85): string
     {
         $mime = $file->getMimeType();

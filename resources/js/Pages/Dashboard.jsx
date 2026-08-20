@@ -332,7 +332,7 @@ export default function Dashboard({
                   Ringkasan Karyawan & Cuti Perusahaan
                 </h3>
               </div>
-              <Link href={route('hrd.rekap')} className="text-xs font-bold text-purple-700 hover:underline">
+              <Link href={route('hrd.index')} className="text-xs font-bold text-purple-700 hover:underline">
                 Buka Rekap HRD &rarr;
               </Link>
             </div>
@@ -524,6 +524,22 @@ export default function Dashboard({
               {isAdmin && (
                 <>
                   <Link
+                    href={route('hrd.departments')}
+                    className="w-full p-3 rounded-2xl border border-teal-200 bg-teal-50/40 hover:bg-teal-50 flex items-center justify-between transition-all group"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 rounded-xl bg-teal-100 text-teal-700">
+                        <Building size={16} />
+                      </div>
+                      <div className="text-left">
+                        <h4 className="text-xs font-bold text-teal-950">Setup Departemen</h4>
+                        <p className="text-[10px] text-teal-700">Atur alur approval per divisi</p>
+                      </div>
+                    </div>
+                    <ArrowUpRight size={16} className="text-teal-500" />
+                  </Link>
+
+                  <Link
                     href={route('hrd.employees')}
                     className="w-full p-3 rounded-2xl border border-purple-200 bg-purple-50/40 hover:bg-purple-50 flex items-center justify-between transition-all group"
                   >
@@ -540,7 +556,7 @@ export default function Dashboard({
                   </Link>
 
                   <Link
-                    href={route('hrd.rekap')}
+                    href={route('hrd.index')}
                     className="w-full p-3 rounded-2xl border border-purple-200 bg-purple-50/40 hover:bg-purple-50 flex items-center justify-between transition-all group"
                   >
                     <div className="flex items-center space-x-3">

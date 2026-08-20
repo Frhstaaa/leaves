@@ -7,6 +7,7 @@ import {
   History,
   CheckSquare,
   Users,
+  Building,
   FileSpreadsheet,
   LogOut,
   User,
@@ -131,8 +132,9 @@ export default function AuthenticatedLayout({ children, title }) {
   const isCreateRequest = url.startsWith('/leave-requests/create');
   const isHistoryRequest = (url === '/leave-requests' || url.startsWith('/leave-requests?')) || (url.startsWith('/leave-requests') && !url.startsWith('/leave-requests/create'));
   const isApproval = url.startsWith('/approvals');
+  const isHrdDepartments = url.startsWith('/hrd/departments');
   const isHrdEmployees = url.startsWith('/hrd/employees');
-  const isHrdIndex = (url === '/hrd' || url.startsWith('/hrd?')) || (url.startsWith('/hrd') && !url.startsWith('/hrd/employees'));
+  const isHrdIndex = (url === '/hrd' || url.startsWith('/hrd?')) || (url.startsWith('/hrd') && !url.startsWith('/hrd/employees') && !url.startsWith('/hrd/departments'));
   const isRolesPage = url.startsWith('/superadmin/roles');
 
   const navItems = [
@@ -167,6 +169,14 @@ export default function AuthenticatedLayout({ children, title }) {
       icon: CheckSquare,
       active: isApproval,
       show: isManager || isAdmin,
+    },
+    {
+      name: 'Setup Departemen',
+      shortName: 'Departemen',
+      href: route('hrd.departments'),
+      icon: Building,
+      active: isHrdDepartments,
+      show: isAdmin,
     },
     {
       name: 'Data Karyawan',

@@ -98,6 +98,34 @@ class User extends Authenticatable
         return $this->role === 'employee' || $this->hasRole('employee');
     }
 
+    public function getEffectiveApprover1()
+    {
+        if ($this->approver1) {
+            return $this->approver1;
+        }
+        if ($this->department && $this->department->approver1) {
+            return $this->department->approver1;
+        }
+        return null;
+    }
+
+    public function getEffectiveApprover2()
+    {
+        if ($this->approver2) {
+            return $this->approver2;
+        }
+        if ($this->manager) {
+            return $this->manager;
+        }
+        if ($this->department && $this->department->approver2) {
+            return $this->department->approver2;
+        }
+        if ($this->department && $this->department->manager) {
+            return $this->department->manager;
+        }
+        return null;
+    }
+
     public function isManager(): bool
     {
         return $this->role === 'manager' || $this->hasRole('manager');

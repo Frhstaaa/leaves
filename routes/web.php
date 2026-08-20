@@ -42,6 +42,10 @@ Route::middleware(['auth'])->group(function () {
 
     // HRD / PGA Admin Routes
     Route::get('/hrd', [HrdController::class, 'index'])->name('hrd.index');
+    Route::get('/hrd/departments', [HrdController::class, 'departments'])->name('hrd.departments');
+    Route::post('/hrd/departments', [HrdController::class, 'storeDepartment'])->name('hrd.departments.store');
+    Route::put('/hrd/departments/{id}', [HrdController::class, 'updateDepartment'])->name('hrd.departments.update');
+    Route::delete('/hrd/departments/{id}', [HrdController::class, 'destroyDepartment'])->name('hrd.departments.destroy');
     Route::get('/hrd/employees', [HrdController::class, 'employees'])->name('hrd.employees');
     Route::get('/hrd/employees/template', [HrdController::class, 'downloadTemplate'])->name('hrd.employees.template');
     Route::post('/hrd/employees/import', [HrdController::class, 'importEmployees'])->name('hrd.employees.import');

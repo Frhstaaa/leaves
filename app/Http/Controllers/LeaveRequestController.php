@@ -41,7 +41,7 @@ class LeaveRequestController extends Controller
 
     public function create()
     {
-        $user = Auth::user()->load(['department', 'manager', 'approver1', 'approver2']);
+        $user = Auth::user()->load(['department.manager', 'department.approver1', 'department.approver2', 'manager', 'approver1', 'approver2']);
         $categories = LeaveCategory::all();
 
         $currentYear = date('Y');
@@ -50,29 +50,25 @@ class LeaveRequestController extends Controller
             ['total_quota' => 12, 'used_quota' => 0, 'remaining_quota' => 12]
         );
 
-        // Build Approval Chain Steps based on user configuration
+        $effApprover1 = $user->getEffectiveApprover1();
+        $effApprover2 = $user->getEffectiveApprover2();
+
+        // Build Approval Chain Steps based on user & department configuration
         $approvalChain = [];
-        if ($user->approver1) {
+        if ($effApprover1) {
             $approvalChain[] = [
                 'level' => 1,
                 'role_title' => 'Approval 1 (Supervisor / Atasan 1)',
-                'name' => $user->approver1->name,
-                'department' => $user->approver1->department?->name ?? 'Direct',
+                'name' => $effApprover1->name,
+                'department' => $effApprover1->department?->name ?? 'Departemen',
             ];
         }
-        if ($user->approver2) {
+        if ($effApprover2) {
             $approvalChain[] = [
                 'level' => 2,
                 'role_title' => 'Approval 2 (Manager / Atasan 2)',
-                'name' => $user->approver2->name,
-                'department' => $user->approver2->department?->name ?? 'Departemen',
-            ];
-        } elseif (!$user->approver1 && $user->manager) {
-            $approvalChain[] = [
-                'level' => 2,
-                'role_title' => 'Approval 2 (Manager Atasan)',
-                'name' => $user->manager->name,
-                'department' => $user->manager->department?->name ?? 'Departemen',
+                'name' => $effApprover2->name,
+                'department' => $effApprover2->department?->name ?? 'Departemen',
             ];
         }
         // Final tier is always HRD
@@ -98,7 +94,7 @@ class LeaveRequestController extends Controller
 
     public function store(Request $request)
     {
-        $user = Auth::user()->load(['approver1', 'approver2', 'manager']);
+        $user = Auth::user()->load(['department.manager', 'department.approver1', 'department.approver2', 'approver1', 'approver2', 'manager']);
 
         $validated = $request->validate([
             'submission_type' => 'required|in:PEMBERITAHUAN,PERMOHONAN',
@@ -159,13 +155,13 @@ class LeaveRequestController extends Controller
             }
         }
 
-        // Determine Initial Approval Stage:
-        // Case 1: Has Approver 1 -> starts at 'approval_1'
-        // Case 2: Has Approver 2 (or manager) -> starts at 'approval_2'
-        // Case 3: Has neither -> starts at 'hrd'
-        if ($user->approver_1_id) {
+        // Determine Initial Approval Stage (Checking employee override or department default):
+        $effApprover1 = $user->getEffectiveApprover1();
+        $effApprover2 = $user->getEffectiveApprover2();
+
+        if ($effApprover1) {
             $initialStage = 'approval_1';
-        } elseif ($user->approver_2_id || $user->manager_id) {
+        } elseif ($effApprover2) {
             $initialStage = 'approval_2';
         } else {
             $initialStage = 'hrd';
