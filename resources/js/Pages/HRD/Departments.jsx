@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import {
   Building,
   Plus,
@@ -24,14 +23,14 @@ import {
   CheckCircle2,
   X,
   Sparkles,
-  ArrowLeft,
   UserCheck,
   Sliders,
   Check,
   HelpCircle,
   Briefcase,
   Layers,
-  ArrowRight
+  ArrowRight,
+  AlertCircle
 } from 'lucide-react';
 import { showAlert, showConfirm, showToast } from '@/Utils/swal';
 
@@ -82,17 +81,19 @@ export default function DepartmentsIndex({ departments = [], employees = [], sta
 
   const handleOpenCreate = () => {
     createForm.reset();
+    createForm.clearErrors();
     setIsCreateOpen(true);
   };
 
   const handleOpenEdit = (dept) => {
     setEditingDept(dept);
+    editForm.clearErrors();
     editForm.setData({
-      name: dept.name,
-      code: dept.code,
-      manager_id: dept.manager_id || '',
-      approver_1_id: dept.approver_1_id || '',
-      approver_2_id: dept.approver_2_id || dept.manager_id || '',
+      name: dept.name || '',
+      code: dept.code || '',
+      manager_id: dept.manager_id ? String(dept.manager_id) : '',
+      approver_1_id: dept.approver_1_id ? String(dept.approver_1_id) : '',
+      approver_2_id: dept.approver_2_id ? String(dept.approver_2_id) : (dept.manager_id ? String(dept.manager_id) : ''),
       approval_type: dept.approval_type || '3_tier',
       description: dept.description || '',
     });
@@ -101,13 +102,18 @@ export default function DepartmentsIndex({ departments = [], employees = [], sta
   const handleCreateSubmit = (e) => {
     e.preventDefault();
     createForm.post(route('hrd.departments.store'), {
+      preserveScroll: true,
       onSuccess: () => {
         setIsCreateOpen(false);
         createForm.reset();
         showToast('Departemen baru berhasil ditambahkan!', 'success');
       },
       onError: (errs) => {
-        showAlert({ title: 'Gagal Menambah Departemen', text: Object.values(errs)[0] || 'Periksa kembali data Anda.', icon: 'error' });
+        showAlert({
+          title: 'Gagal Menambah Departemen',
+          text: Object.values(errs)[0] || 'Periksa kembali data yang dimasukkan.',
+          icon: 'error'
+        });
       }
     });
   };
@@ -115,14 +121,20 @@ export default function DepartmentsIndex({ departments = [], employees = [], sta
   const handleEditSubmit = (e) => {
     e.preventDefault();
     if (!editingDept) return;
-    editForm.put(route('hrd.departments.update', editingDept.id), {
+
+    editForm.post(route('hrd.departments.update', editingDept.id), {
+      preserveScroll: true,
       onSuccess: () => {
         setEditingDept(null);
         editForm.reset();
         showToast('Pengaturan departemen & alur approval berhasil disimpan!', 'success');
       },
       onError: (errs) => {
-        showAlert({ title: 'Gagal Memperbarui Departemen', text: Object.values(errs)[0] || 'Periksa kembali data Anda.', icon: 'error' });
+        showAlert({
+          title: 'Gagal Memperbarui Departemen',
+          text: Object.values(errs)[0] || 'Periksa kembali data yang dimasukkan.',
+          icon: 'error'
+        });
       }
     });
   };
@@ -428,19 +440,19 @@ export default function DepartmentsIndex({ departments = [], employees = [], sta
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-              className="relative z-10 w-full max-w-lg p-5 sm:p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 my-6 max-h-[90vh] flex flex-col transform-gpu"
+              className="relative z-10 w-full max-w-lg rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl overflow-hidden my-6 max-h-[90vh] flex flex-col transform-gpu"
             >
-              {/* Header */}
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
+              {/* Modal Header */}
+              <div className="p-5 sm:p-6 pb-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shrink-0">
                     <Building size={20} />
                   </div>
                   <div>
-                    <h3 className="text-base font-black text-slate-900">
+                    <h3 className="text-base font-black text-slate-900 leading-tight">
                       {editingDept ? `Pengaturan Departemen: ${editingDept.name}` : 'Tambah Departemen Baru'}
                     </h3>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">
                       Tentukan nama divisi dan alur persetujuan default bagi karyawannya.
                     </p>
                   </div>
@@ -451,218 +463,234 @@ export default function DepartmentsIndex({ departments = [], employees = [], sta
                     setIsCreateOpen(false);
                     setEditingDept(null);
                   }}
-                  className="p-1.5 rounded-xl bg-slate-100 text-slate-400 hover:text-slate-800"
+                  className="p-1.5 rounded-xl bg-slate-100 text-slate-400 hover:text-slate-800 transition-colors"
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              {/* Form Body */}
-              <form onSubmit={editingDept ? handleEditSubmit : handleCreateSubmit} className="space-y-4 overflow-y-auto flex-1 pr-1">
-                {/* Name & Code */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      Nama Departemen <span className="text-rose-600">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={editingDept ? editForm.data.name : createForm.data.name}
-                      onChange={(e) => {
-                        if (editingDept) editForm.setData('name', e.target.value);
-                        else createForm.setData('name', e.target.value);
-                      }}
-                      placeholder="contoh: Information Technology"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 font-bold text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none"
-                      required
-                    />
+              {/* Modal Form Body */}
+              <form
+                onSubmit={editingDept ? handleEditSubmit : handleCreateSubmit}
+                className="flex flex-col flex-1 overflow-hidden"
+              >
+                <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+                  {/* Name & Code */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Nama Departemen <span className="text-rose-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editingDept ? editForm.data.name : createForm.data.name}
+                        onChange={(e) => {
+                          if (editingDept) editForm.setData('name', e.target.value);
+                          else createForm.setData('name', e.target.value);
+                        }}
+                        placeholder="contoh: Information Technology"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 font-bold text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none"
+                        required
+                      />
+                      {(editingDept ? editForm.errors.name : createForm.errors.name) && (
+                        <p className="text-[11px] text-rose-600 font-bold mt-1">
+                          {editingDept ? editForm.errors.name : createForm.errors.name}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Kode <span className="text-rose-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editingDept ? editForm.data.code : createForm.data.code}
+                        onChange={(e) => {
+                          const val = e.target.value.toUpperCase();
+                          if (editingDept) editForm.setData('code', val);
+                          else createForm.setData('code', val);
+                        }}
+                        placeholder="IT / HRD"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 font-bold text-xs uppercase focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none"
+                        required
+                      />
+                      {(editingDept ? editForm.errors.code : createForm.errors.code) && (
+                        <p className="text-[11px] text-rose-600 font-bold mt-1">
+                          {editingDept ? editForm.errors.code : createForm.errors.code}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
+                  {/* Approval Type Radio Buttons */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                      Pilih Skema Alur Persetujuan (Approval Flow) <span className="text-rose-600">*</span>
+                    </label>
+
+                    <div className="space-y-2">
+                      {/* 3 Tier */}
+                      <div
+                        onClick={() => {
+                          if (editingDept) editForm.setData('approval_type', '3_tier');
+                          else createForm.setData('approval_type', '3_tier');
+                        }}
+                        className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                          (editingDept ? editForm.data.approval_type : createForm.data.approval_type) === '3_tier'
+                            ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20'
+                            : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-extrabold text-xs text-slate-900">3 Tingkat (Supervisor &rarr; Manager &rarr; HRD)</span>
+                          {(editingDept ? editForm.data.approval_type : createForm.data.approval_type) === '3_tier' && (
+                            <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                              <Check size={12} />
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                          Permohonan melewati persetujuan Supervisor (Atasan 1), kemudian Manager (Atasan 2), lalu HRD.
+                        </p>
+                      </div>
+
+                      {/* 2 Tier */}
+                      <div
+                        onClick={() => {
+                          if (editingDept) editForm.setData('approval_type', '2_tier');
+                          else createForm.setData('approval_type', '2_tier');
+                        }}
+                        className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                          (editingDept ? editForm.data.approval_type : createForm.data.approval_type) === '2_tier'
+                            ? 'bg-purple-50 border-purple-500 ring-2 ring-purple-500/20'
+                            : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-extrabold text-xs text-slate-900">2 Tingkat (Manager &rarr; HRD)</span>
+                          {(editingDept ? editForm.data.approval_type : createForm.data.approval_type) === '2_tier' && (
+                            <div className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0">
+                              <Check size={12} />
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                          Permohonan langsung ke Manager (Atasan 2) tanpa melalui Supervisor, lalu persetujuan akhir HRD.
+                        </p>
+                      </div>
+
+                      {/* 1 Tier */}
+                      <div
+                        onClick={() => {
+                          if (editingDept) editForm.setData('approval_type', '1_tier');
+                          else createForm.setData('approval_type', '1_tier');
+                        }}
+                        className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                          (editingDept ? editForm.data.approval_type : createForm.data.approval_type) === '1_tier'
+                            ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-500/20'
+                            : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-extrabold text-xs text-slate-900">1 Tingkat (Langsung HRD)</span>
+                          {(editingDept ? editForm.data.approval_type : createForm.data.approval_type) === '1_tier' && (
+                            <div className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center shrink-0">
+                              <Check size={12} />
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                          Permohonan langsung masuk ke antrean persetujuan HRD / PGA Admin.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Default Approver Selectors */}
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <ShieldCheck size={16} className="text-emerald-700" />
+                      <span className="text-xs font-extrabold text-slate-900">Pilih Atasan / Approver Default Departemen</span>
+                    </div>
+
+                    {/* Approver 1 (Supervisor) */}
+                    {(editingDept ? editForm.data.approval_type : createForm.data.approval_type) === '3_tier' && (
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Atasan 1 (Supervisor Departemen)
+                        </label>
+                        <select
+                          value={editingDept ? editForm.data.approver_1_id : createForm.data.approver_1_id}
+                          onChange={(e) => {
+                            if (editingDept) editForm.setData('approver_1_id', e.target.value);
+                            else createForm.setData('approver_1_id', e.target.value);
+                          }}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                        >
+                          <option value="">-- Pilih Supervisor / Atasan 1 --</option>
+                          {employees.map((emp) => (
+                            <option key={emp.id} value={String(emp.id)}>
+                              {emp.name} ({emp.nik}) - {emp.role.toUpperCase()}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Approver 2 (Manager / Kepala Departemen) */}
+                    {(editingDept ? editForm.data.approval_type : createForm.data.approval_type) !== '1_tier' && (
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Atasan 2 / Manager Departemen
+                        </label>
+                        <select
+                          value={editingDept ? (editForm.data.approver_2_id || editForm.data.manager_id) : (createForm.data.approver_2_id || createForm.data.manager_id)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (editingDept) {
+                              editForm.setData((prev) => ({ ...prev, approver_2_id: val, manager_id: val }));
+                            } else {
+                              createForm.setData((prev) => ({ ...prev, approver_2_id: val, manager_id: val }));
+                            }
+                          }}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                        >
+                          <option value="">-- Pilih Manager Departemen --</option>
+                          {employees.map((emp) => (
+                            <option key={emp.id} value={String(emp.id)}>
+                              {emp.name} ({emp.nik}) - {emp.role.toUpperCase()}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Description */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      Kode <span className="text-rose-600">*</span>
+                      Deskripsi / Catatan Departemen (Opsional)
                     </label>
-                    <input
-                      type="text"
-                      value={editingDept ? editForm.data.code : createForm.data.code}
+                    <textarea
+                      rows={2}
+                      value={editingDept ? editForm.data.description : createForm.data.description}
                       onChange={(e) => {
-                        const val = e.target.value.toUpperCase();
-                        if (editingDept) editForm.setData('code', val);
-                        else createForm.setData('code', val);
+                        if (editingDept) editForm.setData('description', e.target.value);
+                        else createForm.setData('description', e.target.value);
                       }}
-                      placeholder="IT / HRD"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 font-bold text-xs uppercase focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none"
-                      required
+                      placeholder="Deskripsi singkat fungsi departemen..."
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs font-medium text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none"
                     />
                   </div>
                 </div>
 
-                {/* Approval Type Radio Buttons */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                    Pilih Skema Alur Persetujuan (Approval Flow) <span className="text-rose-600">*</span>
-                  </label>
-
-                  <div className="space-y-2">
-                    {/* 3 Tier */}
-                    <div
-                      onClick={() => {
-                        if (editingDept) editForm.setData('approval_type', '3_tier');
-                        else createForm.setData('approval_type', '3_tier');
-                      }}
-                      className={`p-3 rounded-2xl border cursor-pointer transition-all ${
-                        (editingDept ? editForm.data.approval_type : createForm.data.approval_type) === '3_tier'
-                          ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20'
-                          : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-extrabold text-xs text-slate-900">3 Tingkat (Supervisor &rarr; Manager &rarr; HRD)</span>
-                        {(editingDept ? editForm.data.approval_type : createForm.data.approval_type) === '3_tier' && (
-                          <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center">
-                            <Check size={12} />
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Permohonan melewati persetujuan Supervisor (Atasan 1), kemudian Manager (Atasan 2), lalu HRD.
-                      </p>
-                    </div>
-
-                    {/* 2 Tier */}
-                    <div
-                      onClick={() => {
-                        if (editingDept) editForm.setData('approval_type', '2_tier');
-                        else createForm.setData('approval_type', '2_tier');
-                      }}
-                      className={`p-3 rounded-2xl border cursor-pointer transition-all ${
-                        (editingDept ? editForm.data.approval_type : createForm.data.approval_type) === '2_tier'
-                          ? 'bg-purple-50 border-purple-500 ring-2 ring-purple-500/20'
-                          : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-extrabold text-xs text-slate-900">2 Tingkat (Manager &rarr; HRD)</span>
-                        {(editingDept ? editForm.data.approval_type : createForm.data.approval_type) === '2_tier' && (
-                          <div className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center">
-                            <Check size={12} />
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Permohonan langsung ke Manager (Atasan 2) tanpa melalui Supervisor, lalu persetujuan akhir HRD.
-                      </p>
-                    </div>
-
-                    {/* 1 Tier */}
-                    <div
-                      onClick={() => {
-                        if (editingDept) editForm.setData('approval_type', '1_tier');
-                        else createForm.setData('approval_type', '1_tier');
-                      }}
-                      className={`p-3 rounded-2xl border cursor-pointer transition-all ${
-                        (editingDept ? editForm.data.approval_type : createForm.data.approval_type) === '1_tier'
-                          ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-500/20'
-                          : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-extrabold text-xs text-slate-900">1 Tingkat (Langsung HRD)</span>
-                        {(editingDept ? editForm.data.approval_type : createForm.data.approval_type) === '1_tier' && (
-                          <div className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center">
-                            <Check size={12} />
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Permohonan langsung masuk ke antrean persetujuan HRD / PGA Admin.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Default Approver Selectors */}
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <ShieldCheck size={16} className="text-emerald-700" />
-                    <span className="text-xs font-extrabold text-slate-900">Pilih Atasan / Approver Default Departemen</span>
-                  </div>
-
-                  {/* Approver 1 (Supervisor) */}
-                  {(editingDept ? editForm.data.approval_type : createForm.data.approval_type) === '3_tier' && (
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Atasan 1 (Supervisor Departemen)
-                      </label>
-                      <select
-                        value={editingDept ? editForm.data.approver_1_id : createForm.data.approver_1_id}
-                        onChange={(e) => {
-                          if (editingDept) editForm.setData('approver_1_id', e.target.value);
-                          else createForm.setData('approver_1_id', e.target.value);
-                        }}
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 outline-none"
-                      >
-                        <option value="">-- Pilih Supervisor / Atasan 1 --</option>
-                        {employees.map((emp) => (
-                          <option key={emp.id} value={emp.id}>
-                            {emp.name} ({emp.nik}) - {emp.role.toUpperCase()}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {/* Approver 2 (Manager / Kepala Departemen) */}
-                  {(editingDept ? editForm.data.approval_type : createForm.data.approval_type) !== '1_tier' && (
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Atasan 2 / Manager Departemen
-                      </label>
-                      <select
-                        value={editingDept ? (editForm.data.approver_2_id || editForm.data.manager_id) : (createForm.data.approver_2_id || createForm.data.manager_id)}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (editingDept) {
-                            editForm.setData((prev) => ({ ...prev, approver_2_id: val, manager_id: val }));
-                          } else {
-                            createForm.setData((prev) => ({ ...prev, approver_2_id: val, manager_id: val }));
-                          }
-                        }}
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 outline-none"
-                      >
-                        <option value="">-- Pilih Manager Departemen --</option>
-                        {employees.map((emp) => (
-                          <option key={emp.id} value={emp.id}>
-                            {emp.name} ({emp.nik}) - {emp.role.toUpperCase()}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Deskripsi / Catatan Departemen (Opsional)
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={editingDept ? editForm.data.description : createForm.data.description}
-                    onChange={(e) => {
-                      if (editingDept) editForm.setData('description', e.target.value);
-                      else createForm.setData('description', e.target.value);
-                    }}
-                    placeholder="Deskripsi singkat fungsi departemen..."
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs font-medium text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none"
-                  />
-                </div>
-
-                {/* Modal Actions */}
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-end space-x-2">
+                {/* Modal Footer Buttons */}
+                <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-200/80 flex items-center justify-end space-x-2.5 shrink-0">
                   <Button
                     type="button"
                     variant="secondary"
+                    className="rounded-xl px-4"
                     onClick={() => {
                       setIsCreateOpen(false);
                       setEditingDept(null);
@@ -673,9 +701,10 @@ export default function DepartmentsIndex({ departments = [], employees = [], sta
                   <Button
                     type="submit"
                     variant="default"
+                    className="rounded-xl px-5"
                     disabled={editingDept ? editForm.processing : createForm.processing}
                   >
-                    {editingDept ? 'Simpan Pengaturan' : 'Tambah Departemen'}
+                    {editingDept ? (editForm.processing ? 'Menyimpan...' : 'Simpan Pengaturan') : (createForm.processing ? 'Menambahkan...' : 'Tambah Departemen')}
                   </Button>
                 </div>
               </form>

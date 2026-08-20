@@ -769,9 +769,9 @@ class HrdController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:departments,name',
             'code' => 'required|string|max:50|unique:departments,code',
-            'manager_id' => 'nullable|exists:users,id',
-            'approver_1_id' => 'nullable|exists:users,id',
-            'approver_2_id' => 'nullable|exists:users,id',
+            'manager_id' => 'nullable',
+            'approver_1_id' => 'nullable',
+            'approver_2_id' => 'nullable',
             'approval_type' => 'required|in:3_tier,2_tier,1_tier,custom',
             'description' => 'nullable|string|max:1000',
         ], [
@@ -782,13 +782,29 @@ class HrdController extends Controller
             'approval_type.required' => 'Tipe alur persetujuan wajib dipilih.',
         ]);
 
+        $managerId = (!empty($validated['manager_id']) && $validated['manager_id'] !== '0' && $validated['manager_id'] !== '') ? (int) $validated['manager_id'] : null;
+        $approver1Id = (!empty($validated['approver_1_id']) && $validated['approver_1_id'] !== '0' && $validated['approver_1_id'] !== '') ? (int) $validated['approver_1_id'] : null;
+        $approver2Id = (!empty($validated['approver_2_id']) && $validated['approver_2_id'] !== '0' && $validated['approver_2_id'] !== '') ? (int) $validated['approver_2_id'] : null;
+
+        if ($managerId && !$approver2Id) {
+            $approver2Id = $managerId;
+        }
+
+        if ($validated['approval_type'] === '2_tier') {
+            $approver1Id = null;
+        } elseif ($validated['approval_type'] === '1_tier') {
+            $approver1Id = null;
+            $approver2Id = null;
+            $managerId = null;
+        }
+
         $dept = Department::create([
             'name' => trim($validated['name']),
             'code' => strtoupper(trim($validated['code'])),
-            'manager_id' => $validated['manager_id'] ?? null,
-            'approver_1_id' => $validated['approver_1_id'] ?? null,
-            'approver_2_id' => $validated['approver_2_id'] ?? null,
-            'approval_type' => $validated['approval_type'] ?? '3_tier',
+            'manager_id' => $managerId,
+            'approver_1_id' => $approver1Id,
+            'approver_2_id' => $approver2Id,
+            'approval_type' => $validated['approval_type'],
             'description' => $validated['description'] ?? null,
         ]);
 
@@ -807,9 +823,9 @@ class HrdController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:departments,name,' . $dept->id,
             'code' => 'required|string|max:50|unique:departments,code,' . $dept->id,
-            'manager_id' => 'nullable|exists:users,id',
-            'approver_1_id' => 'nullable|exists:users,id',
-            'approver_2_id' => 'nullable|exists:users,id',
+            'manager_id' => 'nullable',
+            'approver_1_id' => 'nullable',
+            'approver_2_id' => 'nullable',
             'approval_type' => 'required|in:3_tier,2_tier,1_tier,custom',
             'description' => 'nullable|string|max:1000',
         ], [
@@ -820,13 +836,29 @@ class HrdController extends Controller
             'approval_type.required' => 'Tipe alur persetujuan wajib dipilih.',
         ]);
 
+        $managerId = (!empty($validated['manager_id']) && $validated['manager_id'] !== '0' && $validated['manager_id'] !== '') ? (int) $validated['manager_id'] : null;
+        $approver1Id = (!empty($validated['approver_1_id']) && $validated['approver_1_id'] !== '0' && $validated['approver_1_id'] !== '') ? (int) $validated['approver_1_id'] : null;
+        $approver2Id = (!empty($validated['approver_2_id']) && $validated['approver_2_id'] !== '0' && $validated['approver_2_id'] !== '') ? (int) $validated['approver_2_id'] : null;
+
+        if ($managerId && !$approver2Id) {
+            $approver2Id = $managerId;
+        }
+
+        if ($validated['approval_type'] === '2_tier') {
+            $approver1Id = null;
+        } elseif ($validated['approval_type'] === '1_tier') {
+            $approver1Id = null;
+            $approver2Id = null;
+            $managerId = null;
+        }
+
         $dept->update([
             'name' => trim($validated['name']),
             'code' => strtoupper(trim($validated['code'])),
-            'manager_id' => $validated['manager_id'] ?? null,
-            'approver_1_id' => $validated['approver_1_id'] ?? null,
-            'approver_2_id' => $validated['approver_2_id'] ?? null,
-            'approval_type' => $validated['approval_type'] ?? '3_tier',
+            'manager_id' => $managerId,
+            'approver_1_id' => $approver1Id,
+            'approver_2_id' => $approver2Id,
+            'approval_type' => $validated['approval_type'],
             'description' => $validated['description'] ?? null,
         ]);
 
