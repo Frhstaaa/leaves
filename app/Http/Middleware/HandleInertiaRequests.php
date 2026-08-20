@@ -55,6 +55,9 @@ class HandleInertiaRequests extends Middleware
                     'department_name' => $user->department ? $user->department->name : 'General',
                     'department' => $user->department,
                     'avatar' => $user->avatar_url,
+                    'pending_approvals_count' => fn () => $user->getPendingApprovalsCount(),
+                    'pending_approvals_list' => fn () => $user->getPendingApprovalsList(5),
+                    'my_recent_requests' => fn () => $user->leaveRequests()->with('category')->latest()->take(3)->get(),
                 ] : null,
             ],
             'flash' => [

@@ -148,6 +148,9 @@ export default function AuthenticatedLayout({ children, title }) {
   const isHrdPayslips = url.startsWith('/hrd/payslips');
   const isHrdIndex = (url === '/hrd' || url.startsWith('/hrd?')) && !url.startsWith('/hrd/employees') && !url.startsWith('/hrd/departments') && !url.startsWith('/hrd/payslips');
   const isRolesPage = url.startsWith('/superadmin/roles');
+  const pendingApprovalsCount = user?.pending_approvals_count || 0;
+  const pendingApprovalsList = user?.pending_approvals_list || [];
+  const myRecentRequests = user?.my_recent_requests || [];
 
   const navItems = [
     {
@@ -189,6 +192,7 @@ export default function AuthenticatedLayout({ children, title }) {
       icon: CheckSquare,
       active: isApproval,
       show: isManager || isAdmin,
+      badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : null,
     },
     {
       name: 'Setup Departemen',
@@ -282,7 +286,14 @@ export default function AuthenticatedLayout({ children, title }) {
                   <Icon size={19} className={item.active ? 'text-white' : 'text-slate-400 group-hover:text-emerald-600'} />
                   <span>{item.name}</span>
                 </div>
-                {item.active && <ChevronRight size={16} className="text-white/80" />}
+                <div className="flex items-center space-x-1.5">
+                  {item.badge && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white shadow-xs animate-pulse">
+                      {item.badge}
+                    </span>
+                  )}
+                  {item.active && <ChevronRight size={16} className="text-white/80" />}
+                </div>
               </Link>
             );
           })}
@@ -312,10 +323,17 @@ export default function AuthenticatedLayout({ children, title }) {
           <div className="flex items-center space-x-4">
             <button
               onClick={() => setNotificationsOpen(true)}
-              className="p-2 rounded-full bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-600 relative transition-colors"
+              className="p-2.5 rounded-full bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-600 relative transition-colors"
+              title="Notifikasi & Tugas Approval"
             >
               <Bell size={18} />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full"></span>
+              {pendingApprovalsCount > 0 ? (
+                <span className="absolute -top-1 -right-1 flex h-5 min-w-5 px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white shadow-sm ring-2 ring-white animate-pulse">
+                  {pendingApprovalsCount > 9 ? '9+' : pendingApprovalsCount}
+                </span>
+              ) : (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full"></span>
+              )}
             </button>
 
             <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-xs text-slate-700 font-medium">
@@ -448,11 +466,16 @@ export default function AuthenticatedLayout({ children, title }) {
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.92 }}
             onClick={() => setMobileMenuOpen(true)}
-            className={`w-14 h-14 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-xl shadow-emerald-600/35 border-4 border-white flex items-center justify-center transition-transform ${
+            className={`w-14 h-14 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-xl shadow-emerald-600/35 border-4 border-white flex items-center justify-center transition-transform relative ${
               isApproval || isHrdEmployees || isHrdIndex || isRolesPage ? 'ring-4 ring-emerald-500/20' : ''
             }`}
           >
             <Grid size={24} className="text-white" />
+            {pendingApprovalsCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-5 min-w-5 px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white shadow-md ring-2 ring-white animate-pulse">
+                {pendingApprovalsCount > 9 ? '9+' : pendingApprovalsCount}
+              </span>
+            )}
           </motion.button>
           <span className={`text-[10px] mt-0.5 font-extrabold ${isApproval || isHrdEmployees || isHrdIndex || isRolesPage ? 'text-emerald-600' : 'text-slate-500'}`}>
             Menu
@@ -545,14 +568,24 @@ export default function AuthenticatedLayout({ children, title }) {
                             : 'bg-slate-50 border-slate-200/80 text-slate-800 hover:bg-slate-100 active:scale-[0.98]'}
                         `}
                       >
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-transform group-active:scale-95 ${
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-transform group-active:scale-95 relative ${
                           item.active ? 'bg-emerald-600 text-white shadow-sm' : 'bg-white text-slate-700 border border-slate-200/60 shadow-sm'
                         }`}>
                           <Icon size={16} />
+                          {item.badge && (
+                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white animate-pulse" />
+                          )}
                         </div>
 
                         <div className="min-w-0 flex-1">
-                          <h4 className="text-xs font-bold text-slate-900 truncate leading-tight">{item.name}</h4>
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-slate-900 truncate leading-tight">{item.name}</h4>
+                            {item.badge && (
+                              <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-rose-500 text-white shadow-xs ml-1 shrink-0 animate-pulse">
+                                {item.badge}
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[10px] text-slate-500 font-semibold block truncate mt-0.5">{item.shortName}</span>
                         </div>
 
@@ -587,7 +620,7 @@ export default function AuthenticatedLayout({ children, title }) {
       {/* NOTIFICATIONS MODAL WITH FRAMER MOTION */}
       <AnimatePresence>
         {notificationsOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -602,12 +635,17 @@ export default function AuthenticatedLayout({ children, title }) {
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               style={{ willChange: 'transform, opacity' }}
-              className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 transform-gpu"
+              className="relative z-10 w-full max-w-md p-5 sm:p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto overflow-x-hidden transform-gpu"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center space-x-2">
-                  <Bell size={20} className="text-emerald-600" />
-                  <h3 className="text-base font-extrabold text-slate-900">Pemberitahuan & Notifikasi</h3>
+                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                    <Bell size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-extrabold text-slate-900">Pemberitahuan & Notifikasi</h3>
+                    <p className="text-[11px] text-slate-500">Shortcut & status aktivitas persetujuan</p>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -618,70 +656,157 @@ export default function AuthenticatedLayout({ children, title }) {
                 </button>
               </div>
 
-              <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                {/* Notification Item 1: Pending Notification */}
-                <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-amber-800 uppercase flex items-center space-x-1">
-                      <Clock size={12} />
-                      <span>Pengajuan Cuti Diteruskan</span>
-                    </span>
-                    <span className="text-[10px] text-amber-700">Baru Saja</span>
-                  </div>
-                  <p className="text-xs font-bold text-slate-900">Pengajuan Cuti Anda Berhasil Dikirim</p>
-                  <p className="text-[11px] text-slate-600 leading-relaxed">
-                    Permohonan telah sampai ke sistem dan sedang menunggu persetujuan (approval) dari Kepala Departemen Anda.
-                  </p>
-                </div>
-
-                {/* Notification Item 2: Status Disetujui */}
-                <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-emerald-800 uppercase flex items-center space-x-1">
-                      <CheckCircle size={12} />
-                      <span>Persetujuan Disetujui</span>
-                    </span>
-                    <span className="text-[10px] text-emerald-700">Kemarin</span>
-                  </div>
-                  <p className="text-xs font-bold text-slate-900">Pengajuan Cuti Telah Disetujui</p>
-                  <p className="text-[11px] text-slate-600 leading-relaxed">
-                    Pengajuan permohonan cuti Anda sebelumnya telah resmi disetujui oleh Manager Departemen.
-                  </p>
-                </div>
-
-                {/* Manager Alert Notification */}
-                {(isManager || isAdmin) && (
-                  <div className="p-3.5 rounded-2xl bg-teal-50 border border-teal-200 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-teal-800 uppercase flex items-center space-x-1">
-                        <AlertCircle size={12} />
-                        <span>Panel Approval Team</span>
+              <div className="space-y-3">
+                {/* SECTION 1: TUGAS APPROVAL PENDING (JIKA ADA) */}
+                {pendingApprovalsCount > 0 && (
+                  <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200/80 flex items-center justify-between">
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <span className="flex h-2 w-2 relative shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
                       </span>
-                      <span className="text-[10px] text-teal-700">Info Tim</span>
+                      <p className="text-xs font-bold text-rose-900 truncate">
+                        {pendingApprovalsCount} Pengajuan Menunggu Tindakan Anda
+                      </p>
                     </div>
-                    <p className="text-xs font-bold text-slate-900">Persetujuan Cuti Anggota Tim</p>
-                    <p className="text-[11px] text-slate-600 leading-relaxed">
-                      Sebagai Manager/HRD, Anda dapat meninjau dan menyetujui pengajuan anggota tim di menu <strong className="text-teal-800">Persetujuan Team</strong>.
+                    <Link
+                      href={route('approvals.index', { status: 'pending' })}
+                      onClick={() => setNotificationsOpen(false)}
+                      className="px-2.5 py-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-[10px] shrink-0 shadow-xs"
+                    >
+                      Buka Semua
+                    </Link>
+                  </div>
+                )}
+
+                {/* LIST ITEM PENGAJUAN PENDING FOR THIS APPROVER */}
+                {pendingApprovalsList.length > 0 ? (
+                  <div className="space-y-2.5">
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      ⚡ Shortcut Pengajuan Masuk (Siap Di-ACC / Ditolak):
                     </p>
+                    {pendingApprovalsList.map((req) => {
+                      const stageLabel = req.current_stage === 'approval_1'
+                        ? 'Approval 1 (Supervisor)'
+                        : req.current_stage === 'approval_2'
+                        ? 'Approval 2 (Manager)'
+                        : 'HRD / PGA Admin';
+
+                      const stageColor = req.current_stage === 'approval_1'
+                        ? 'bg-amber-100 text-amber-900 border-amber-300'
+                        : req.current_stage === 'approval_2'
+                        ? 'bg-purple-100 text-purple-900 border-purple-300'
+                        : 'bg-teal-100 text-teal-900 border-teal-300';
+
+                      return (
+                        <div
+                          key={req.id}
+                          className="p-3.5 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 shadow-sm transition-all space-y-2"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center space-x-2 min-w-0">
+                              <UserAvatar user={req.user} size="w-7 h-7" textSize="text-xs" />
+                              <div className="min-w-0">
+                                <h4 className="text-xs font-black text-slate-900 truncate">{req.user?.name}</h4>
+                                <p className="text-[10px] text-slate-500 truncate">{req.user?.nik} &bull; {req.user?.department?.name || 'General'}</p>
+                              </div>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border shrink-0 ${stageColor}`}>
+                              {stageLabel}
+                            </span>
+                          </div>
+
+                          <div className="p-2 rounded-xl bg-slate-50 border border-slate-100 text-[11px] space-y-0.5">
+                            <div className="flex items-center justify-between font-bold text-slate-800">
+                              <span>{req.category?.name || 'Cuti'}</span>
+                              <span className="text-emerald-700">{req.amount} {req.unit}</span>
+                            </div>
+                            <p className="text-[10px] text-slate-500">
+                              {req.start_date} s/d {req.end_date}
+                            </p>
+                            {req.reason && (
+                              <p className="text-[10px] text-slate-600 italic line-clamp-1 mt-0.5">
+                                "{req.reason}"
+                              </p>
+                            )}
+                          </div>
+
+                          <Link
+                            href={route('approvals.index', { search: req.request_number, status: 'pending' })}
+                            onClick={() => setNotificationsOpen(false)}
+                            className="w-full py-1.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs flex items-center justify-center space-x-1.5 shadow-sm shadow-emerald-600/20 transition-all"
+                          >
+                            <span>⚡ Proses Approval ({req.request_number})</span>
+                            <ChevronRight size={13} />
+                          </Link>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  (isManager || isAdmin) && (
+                    <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 text-center space-y-1">
+                      <CheckCircle size={24} className="text-emerald-600 mx-auto" />
+                      <p className="text-xs font-bold text-emerald-950">Semua Approval Selesai</p>
+                      <p className="text-[11px] text-emerald-700">
+                        Tidak ada pengajuan cuti yang memerlukan persetujuan Anda saat ini.
+                      </p>
+                    </div>
+                  )
+                )}
+
+                {/* SECTION 2: RIWAYAT PENGAJUAN SAYA (UNTUK SEMUA USER) */}
+                {myRecentRequests.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-slate-100">
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      📋 Status Pengajuan Cuti Anda:
+                    </p>
+                    {myRecentRequests.map((myReq) => {
+                      const statusColor = myReq.status === 'approved'
+                        ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                        : myReq.status === 'rejected'
+                        ? 'bg-rose-100 text-rose-900 border-rose-300'
+                        : 'bg-amber-100 text-amber-900 border-amber-300';
+
+                      const statusText = myReq.status === 'approved'
+                        ? 'Disetujui'
+                        : myReq.status === 'rejected'
+                        ? 'Ditolak'
+                        : 'Menunggu Persetujuan';
+
+                      return (
+                        <div key={myReq.id} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-center justify-between">
+                          <div>
+                            <span className="font-bold text-slate-900 block text-[11px]">{myReq.category?.name} ({myReq.amount} {myReq.unit})</span>
+                            <span className="text-[10px] text-slate-500">{myReq.start_date} s/d {myReq.end_date}</span>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${statusColor}`}>
+                            {statusText}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
 
-              <div className="pt-2 flex items-center space-x-2">
+              <div className="pt-2 flex items-center space-x-2 border-t border-slate-100">
                 <Link
                   href={route('leave-requests.index')}
                   onClick={() => setNotificationsOpen(false)}
                   className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs text-center transition-colors"
                 >
-                  Lihat Riwayat Cuti
+                  Riwayat Pengajuan
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => setNotificationsOpen(false)}
-                  className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20"
-                >
-                  Tutup
-                </button>
+                {(isManager || isAdmin) && (
+                  <Link
+                    href={route('approvals.index')}
+                    onClick={() => setNotificationsOpen(false)}
+                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs text-center shadow-md shadow-emerald-600/20 transition-all"
+                  >
+                    Halaman Approval
+                  </Link>
+                )}
               </div>
             </motion.div>
           </div>

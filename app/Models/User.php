@@ -140,4 +140,67 @@ class User extends Authenticatable
     {
         return $this->hasMany(Payslip::class);
     }
+
+    public function getPendingApprovalsQuery()
+    {
+        if ($this->isAdmin()) {
+            return LeaveRequest::where('status', 'pending');
+        }
+
+        if ($this->isManager()) {
+            return LeaveRequest::where('status', 'pending')
+                ->where(function ($q) {
+                    $q->where(function ($sub) {
+                        $sub->where('current_stage', 'approval_1')
+                            ->whereHas('user', function ($u) {
+                                $u->where('approver_1_id', $this->id)
+                                  ->orWhere(function ($d) {
+                                      $d->whereNull('approver_1_id')
+                                        ->whereHas('department', function ($dept) {
+                                            $dept->where('approver_1_id', $this->id);
+                                        });
+                                  });
+                            });
+                    })->orWhere(function ($sub) {
+                        $sub->where('current_stage', 'approval_2')
+                            ->whereHas('user', function ($u) {
+                                $u->where('approver_2_id', $this->id)
+                                  ->orWhere('manager_id', $this->id)
+                                  ->orWhere(function ($d) {
+                                      $d->whereNull('manager_id')
+                                        ->whereNull('approver_2_id')
+                                        ->whereHas('department', function ($dept) {
+                                            $dept->where('approver_2_id', $this->id)
+                                                 ->orWhere('manager_id', $this->id);
+                                        });
+                                  });
+                            });
+                    });
+                });
+        }
+
+        return LeaveRequest::whereRaw('1 = 0');
+    }
+
+    public function getPendingApprovalsCount(): int
+    {
+        if (!$this->isManager() && !$this->isAdmin()) {
+            return 0;
+        }
+
+        return $this->getPendingApprovalsQuery()->count();
+    }
+
+    public function getPendingApprovalsList(int $limit = 5)
+    {
+        if (!$this->isManager() && !$this->isAdmin()) {
+            return collect();
+        }
+
+        return $this->getPendingApprovalsQuery()
+            ->with(['user.department', 'category'])
+            ->orderBy('created_at', 'desc')
+            ->take($limit)
+            ->get();
+    }
 }
