@@ -17,11 +17,8 @@ class DashboardController extends Controller
         $user = Auth::user()->load(['department', 'manager']);
         $currentYear = date('Y');
 
-        // Fetch user quota
-        $quota = LeaveQuota::firstOrCreate(
-            ['user_id' => $user->id, 'year' => $currentYear],
-            ['total_quota' => 12, 'used_quota' => 0, 'remaining_quota' => 12]
-        );
+        // Fetch and synchronize user quota with actual approved leave requests
+        $quota = LeaveQuota::syncForUser($user->id, $currentYear);
 
         // Fetch stats based on role with single efficient query
         $reqStats = LeaveRequest::where('user_id', $user->id)

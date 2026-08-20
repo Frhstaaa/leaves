@@ -29,7 +29,7 @@ class LeaveRequestController extends Controller
         $requests = $query->latest()->paginate(10)->withQueryString();
 
         $currentYear = date('Y');
-        $quota = LeaveQuota::where('user_id', $user->id)->where('year', $currentYear)->first();
+        $quota = LeaveQuota::syncForUser($user->id, $currentYear);
 
         return Inertia::render('LeaveRequests/Index', [
             'requests' => $requests,
@@ -46,10 +46,7 @@ class LeaveRequestController extends Controller
         $categories = LeaveCategory::all();
 
         $currentYear = date('Y');
-        $quota = LeaveQuota::firstOrCreate(
-            ['user_id' => $user->id, 'year' => $currentYear],
-            ['total_quota' => 12, 'used_quota' => 0, 'remaining_quota' => 12]
-        );
+        $quota = LeaveQuota::syncForUser($user->id, $currentYear);
 
         $effApprover1 = $user->getEffectiveApprover1();
         $effApprover2 = $user->getEffectiveApprover2();

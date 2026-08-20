@@ -213,8 +213,8 @@ class DatabaseSeeder extends Seeder
                 ['user_id' => $usr->id, 'year' => $currentYear],
                 [
                     'total_quota' => 12,
-                    'used_quota' => ($usr->id === $employee1->id) ? 2 : 0,
-                    'remaining_quota' => ($usr->id === $employee1->id) ? 10 : 12,
+                    'used_quota' => 0,
+                    'remaining_quota' => 12,
                 ]
             );
         }
