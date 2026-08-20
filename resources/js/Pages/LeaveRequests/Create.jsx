@@ -85,6 +85,24 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
       }
       setAgreedError('');
     }
+    if (currentStep === 2) {
+      if (!data.start_date) {
+        alert('Tanggal Mulai wajib diisi.');
+        return;
+      }
+      if (!data.end_date) {
+        alert('Tanggal Selesai wajib diisi.');
+        return;
+      }
+      if (!data.reason || data.reason.trim().length < 3) {
+        alert('Detail alasan permohonan wajib diisi (minimal 3 karakter).');
+        return;
+      }
+      if (selectedCategory?.requires_attachment && !data.attachment) {
+        alert('Kategori ' + selectedCategory.name + ' wajib melampirkan file dokumen pendukung.');
+        return;
+      }
+    }
     setCurrentStep((prev) => Math.min(prev + 1, 3));
   };
 
@@ -108,7 +126,20 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
       setCurrentStep(1);
       return;
     }
-    post(route('leave-requests.store'));
+    if (!data.reason || data.reason.trim().length < 3) {
+      alert('Detail alasan permohonan wajib diisi (minimal 3 karakter).');
+      setCurrentStep(2);
+      return;
+    }
+    post(route('leave-requests.store'), {
+      onError: (errs) => {
+        if (errs.reason || errs.start_date || errs.end_date || errs.amount || errs.attachment) {
+          setCurrentStep(2);
+        } else if (errs.submission_type || errs.approval_agreed || errs.leave_category_id) {
+          setCurrentStep(1);
+        }
+      }
+    });
   };
 
   const totalQuota = quota?.total_quota || 12;
@@ -122,30 +153,32 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
 
   return (
     <AuthenticatedLayout title="Buat Pengajuan Baru">
-      <div className="w-full space-y-5">
+      <div className="w-full space-y-6">
 
-        {/* Symmetrical Mobile & Desktop Header */}
-        <div className="flex items-center justify-between">
-          <Link
-            href={route('dashboard')}
-            className="w-10 h-10 rounded-2xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-all shadow-sm shrink-0"
-            title="Kembali ke Dashboard"
-          >
-            <ArrowLeft size={18} />
-          </Link>
-
-          <div className="text-center px-2 min-w-0 flex-1">
-            <h2 className="text-base sm:text-xl font-black text-slate-900 tracking-tight truncate">Buat Pengajuan Baru</h2>
-            <p className="text-[11px] text-slate-500 font-medium truncate">Formulir permohonan / pemberitahuan</p>
+        {/* Page Header */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0 flex-1">
+            <Link
+              href={route('dashboard')}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-all shadow-sm shrink-0"
+              title="Kembali ke Dashboard"
+            >
+              <ArrowLeft size={18} />
+            </Link>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base sm:text-2xl font-black text-slate-900 tracking-tight truncate">Buat Pengajuan Baru</h2>
+              <p className="text-[11px] sm:text-sm text-slate-500 font-medium truncate">Formulir permohonan izin, dinas, sakit & cuti karyawan</p>
+            </div>
           </div>
 
           <button
             type="button"
             onClick={handleResetForm}
             title="Reset Form"
-            className="w-10 h-10 rounded-2xl bg-white border border-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-all shadow-sm shrink-0"
+            className="w-9 h-9 sm:w-auto sm:h-auto p-0 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-bold text-xs flex items-center justify-center sm:space-x-2 transition-all shadow-sm shrink-0"
           >
-            <RotateCcw size={16} />
+            <RotateCcw size={15} />
+            <span className="hidden sm:inline">Reset Formulir</span>
           </button>
         </div>
 
@@ -154,13 +187,13 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="p-5 sm:p-8 rounded-3xl bg-white border border-slate-200/80 shadow-lg space-y-6"
+          className="p-4 sm:p-8 rounded-2xl sm:rounded-3xl bg-white border border-slate-200/80 shadow-lg space-y-5 sm:space-y-6 w-full"
         >
 
           {/* Stepper Progress Bar (1 Jenis -> 2 Detail -> 3 Review) */}
-          <div className="relative flex items-center justify-between px-4 sm:px-10 py-2">
+          <div className="relative flex items-center justify-between px-4 sm:px-16 md:px-28 py-2 sm:py-3 max-w-2xl mx-auto">
             {/* Track Container (Center of Step 1 to Center of Step 3) */}
-            <div className="absolute top-[20px] left-8 right-8 h-1 bg-slate-100 -translate-y-1/2 z-0 rounded-full overflow-hidden">
+            <div className="absolute top-[20px] sm:top-[23px] left-8 right-8 sm:left-20 sm:right-20 md:left-32 md:right-32 h-1 bg-slate-100 -translate-y-1/2 z-0 rounded-full overflow-hidden">
               <div
                 className="h-full bg-[#0FA172] transition-all duration-300 rounded-full"
                 style={{ width: currentStep === 1 ? '0%' : currentStep === 2 ? '50%' : '100%' }}
@@ -168,37 +201,37 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
             </div>
 
             {/* Step 1 */}
-            <div className="relative z-10 flex flex-col items-center space-y-1">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all ${
+            <div className="relative z-10 flex flex-col items-center space-y-1 sm:space-y-1.5 cursor-pointer" onClick={() => setCurrentStep(1)}>
+              <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-black text-xs transition-all ${
                 currentStep >= 1 ? 'bg-[#0FA172] text-white shadow-md shadow-emerald-600/30 ring-4 ring-white' : 'bg-slate-200 text-slate-500 ring-4 ring-white'
               }`}>
                 1
               </div>
-              <span className={`text-[11px] font-bold ${currentStep >= 1 ? 'text-emerald-700' : 'text-slate-400'}`}>
+              <span className={`text-[11px] sm:text-xs font-bold ${currentStep >= 1 ? 'text-emerald-700' : 'text-slate-400'}`}>
                 Jenis
               </span>
             </div>
 
             {/* Step 2 */}
-            <div className="relative z-10 flex flex-col items-center space-y-1">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all ${
+            <div className="relative z-10 flex flex-col items-center space-y-1 sm:space-y-1.5 cursor-pointer" onClick={() => { if (data.approval_agreed === 'Ya') setCurrentStep(2); }}>
+              <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-black text-xs transition-all ${
                 currentStep >= 2 ? 'bg-[#0FA172] text-white shadow-md shadow-emerald-600/30 ring-4 ring-white' : 'bg-slate-200 text-slate-500 ring-4 ring-white'
               }`}>
                 2
               </div>
-              <span className={`text-[11px] font-bold ${currentStep >= 2 ? 'text-emerald-700' : 'text-slate-400'}`}>
+              <span className={`text-[11px] sm:text-xs font-bold ${currentStep >= 2 ? 'text-emerald-700' : 'text-slate-400'}`}>
                 Detail
               </span>
             </div>
 
             {/* Step 3 */}
-            <div className="relative z-10 flex flex-col items-center space-y-1">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all ${
+            <div className="relative z-10 flex flex-col items-center space-y-1 sm:space-y-1.5">
+              <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-black text-xs transition-all ${
                 currentStep >= 3 ? 'bg-[#0FA172] text-white shadow-md shadow-emerald-600/30 ring-4 ring-white' : 'bg-slate-200 text-slate-500 ring-4 ring-white'
               }`}>
                 3
               </div>
-              <span className={`text-[11px] font-bold ${currentStep >= 3 ? 'text-emerald-700' : 'text-slate-400'}`}>
+              <span className={`text-[11px] sm:text-xs font-bold ${currentStep >= 3 ? 'text-emerald-700' : 'text-slate-400'}`}>
                 Review
               </span>
             </div>
@@ -210,14 +243,14 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
             {currentStep === 1 && (
               <div className="space-y-5 animate-fade-in">
                 {/* User Identity Info Card */}
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
                   <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Identitas Pemohon (Auto-filled)</span>
-                  <div className="flex items-center justify-between text-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
                     <div>
-                      <p className="font-extrabold text-slate-900 text-sm">{user.name}</p>
-                      <p className="text-slate-500">NIK: <strong className="text-emerald-700">{user.nik || 'EMP-201'}</strong> &bull; Dept: <strong className="text-slate-800">{user.department_name || user.department?.name || 'Information Technology'}</strong></p>
+                      <p className="font-extrabold text-slate-900 text-base">{user.name}</p>
+                      <p className="text-slate-500 mt-0.5">NIK: <strong className="text-emerald-700">{user.nik || 'EMP-201'}</strong> &bull; Dept: <strong className="text-slate-800">{user.department_name || user.department?.name || 'Information Technology'}</strong></p>
                     </div>
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200">
+                    <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 self-start sm:self-auto">
                       Aktif
                     </span>
                   </div>
@@ -228,23 +261,23 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
                   <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider">
                     Sifat Pengajuan <span className="text-rose-600">*</span>
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <button
                       type="button"
                       onClick={() => setData('submission_type', 'PERMOHONAN')}
-                      className={`p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all ${
+                      className={`p-4 rounded-2xl border text-left flex items-center justify-between transition-all ${
                         data.submission_type === 'PERMOHONAN'
                           ? 'bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-950 font-bold'
                           : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                       }`}
                     >
                       <div>
-                        <p className="text-xs font-bold">PERMOHONAN</p>
-                        <p className="text-[10px] text-slate-500 font-normal">Membutuhkan persetujuan atasan terlebih dahulu</p>
+                        <p className="text-xs sm:text-sm font-bold">PERMOHONAN</p>
+                        <p className="text-[11px] text-slate-500 font-normal mt-0.5">Membutuhkan persetujuan atasan terlebih dahulu</p>
                       </div>
                       {data.submission_type === 'PERMOHONAN' && (
-                        <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                          <Check size={12} />
+                        <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 ml-2">
+                          <Check size={14} />
                         </div>
                       )}
                     </button>
@@ -252,19 +285,19 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
                     <button
                       type="button"
                       onClick={() => setData('submission_type', 'PEMBERITAHUAN')}
-                      className={`p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all ${
+                      className={`p-4 rounded-2xl border text-left flex items-center justify-between transition-all ${
                         data.submission_type === 'PEMBERITAHUAN'
                           ? 'bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-950 font-bold'
                           : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                       }`}
                     >
                       <div>
-                        <p className="text-xs font-bold">PEMBERITAHUAN</p>
-                        <p className="text-[10px] text-slate-500 font-normal">Pemberitahuan resmi kondisi khusus/darurat</p>
+                        <p className="text-xs sm:text-sm font-bold">PEMBERITAHUAN</p>
+                        <p className="text-[11px] text-slate-500 font-normal mt-0.5">Pemberitahuan resmi kondisi khusus/darurat</p>
                       </div>
                       {data.submission_type === 'PEMBERITAHUAN' && (
-                        <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                          <Check size={12} />
+                        <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 ml-2">
+                          <Check size={14} />
                         </div>
                       )}
                     </button>
@@ -310,7 +343,7 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
                 </div>
 
                 {/* Question: Agreement Check Approval Division */}
-                <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-3">
+                <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-3">
                   <div className="flex items-start space-x-3">
                     <ShieldCheck size={20} className="text-amber-700 shrink-0 mt-0.5" />
                     <div>
@@ -359,10 +392,10 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
               <div className="space-y-5 animate-fade-in">
                 {/* Quota Summary Box */}
                 {selectedCategory?.name?.toLowerCase().includes('cuti tahunan') && (
-                  <div className="p-4 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-between">
+                  <div className="p-4 sm:p-5 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-between">
                     <div>
                       <span className="text-[10px] font-extrabold uppercase text-teal-700">Sisa Kuota Cuti Tahunan Anda</span>
-                      <p className="text-base font-black text-slate-900">{remainingQuota} Hari <span className="text-xs font-bold text-slate-500">(dari {totalQuota} hari)</span></p>
+                      <p className="text-base sm:text-lg font-black text-slate-900">{remainingQuota} Hari <span className="text-xs font-bold text-slate-500">(dari {totalQuota} hari)</span></p>
                     </div>
                     <div className="w-10 h-10 rounded-full bg-teal-600 text-white font-black flex items-center justify-center text-sm shadow-md shadow-teal-600/20">
                       {remainingQuota}d
@@ -402,7 +435,7 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
                 </div>
 
                 {/* Durasi Cuti Input */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Jumlah Durasi</label>
                     <input
@@ -449,23 +482,23 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
                   <label className="block text-xs font-bold text-slate-700 uppercase">
                     File Lampiran Pendukung {selectedCategory?.requires_attachment ? <span className="text-rose-600">(Wajib *)</span> : '(Opsional)'}
                   </label>
-                  <div className="p-4 rounded-2xl border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-slate-50 text-center cursor-pointer transition-colors relative">
+                  <div className="p-5 rounded-2xl border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-slate-50 text-center cursor-pointer transition-colors relative">
                     <input
                       type="file"
                       accept=".pdf,.png,.jpg,.jpeg,.webp"
                       onChange={handleFileChange}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
-                    <Upload size={24} className="mx-auto text-emerald-600 mb-1" />
+                    <Upload size={26} className="mx-auto text-emerald-600 mb-1.5" />
                     {filePreviewName ? (
                       <div>
                         <p className="text-xs font-bold text-emerald-800">{filePreviewName}</p>
-                        <p className="text-[10px] text-slate-500">{fileSizeText} &bull; Siap diunggah (Otomatis WebP)</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">{fileSizeText} &bull; Siap diunggah (Otomatis WebP)</p>
                       </div>
                     ) : (
                       <div>
                         <p className="text-xs font-bold text-slate-700">Pilih atau Seret File Surat Keterangan / Bukti Lampiran</p>
-                        <p className="text-[10px] text-slate-400">PDF, PNG, JPG, WEBP (Maksimal 10 MB)</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">PDF, PNG, JPG, WEBP (Maksimal 10 MB)</p>
                       </div>
                     )}
                   </div>
@@ -477,45 +510,59 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
             {/* STEP 3: REVIEW & PRATINJAU PENGAJUAN */}
             {currentStep === 3 && (
               <div className="space-y-5 animate-fade-in">
-                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200">
-                  <h4 className="text-xs font-extrabold text-emerald-950 uppercase tracking-wider mb-2">Pratinjau Data Pengajuan Cuti</h4>
+                {Object.keys(errors).length > 0 && (
+                  <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 space-y-1">
+                    <div className="flex items-center space-x-2 font-bold text-xs">
+                      <AlertCircle size={16} className="text-rose-600 shrink-0" />
+                      <span>Terdapat kesalahan pada data pengajuan:</span>
+                    </div>
+                    <ul className="list-disc list-inside text-xs space-y-0.5 pl-2 font-medium">
+                      {Object.values(errors).map((err, idx) => (
+                        <li key={idx}>{err}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50 border border-emerald-200">
+                  <h4 className="text-xs sm:text-sm font-extrabold text-emerald-950 uppercase tracking-wider mb-1">Pratinjau Data Pengajuan Cuti</h4>
                   <p className="text-xs text-emerald-800">Mohon periksa kembali detail permohonan Anda sebelum mengirimkan ke atasan.</p>
                 </div>
 
-                <div className="space-y-2.5 text-xs">
-                  <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex justify-between">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
                     <span className="text-slate-500 font-medium">Sifat Pengajuan</span>
                     <span className="font-extrabold text-emerald-700">{data.submission_type}</span>
                   </div>
 
-                  <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex justify-between">
+                  <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
                     <span className="text-slate-500 font-medium">Persetujuan Atasan</span>
                     <span className="font-bold text-emerald-600">Ya (Menyetujui Alur Approval)</span>
                   </div>
 
-                  <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex justify-between">
+                  <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
                     <span className="text-slate-500 font-medium">Jenis Kategori</span>
                     <span className="font-bold text-slate-900">{selectedCategory?.name}</span>
                   </div>
 
-                  <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex justify-between">
+                  <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
                     <span className="text-slate-500 font-medium">Periode Tanggal</span>
                     <span className="font-bold text-slate-900">{data.start_date} s/d {data.end_date}</span>
                   </div>
 
-                  <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex justify-between">
+                  <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
                     <span className="text-slate-500 font-medium">Total Durasi</span>
                     <span className="font-extrabold text-slate-900">{data.amount} {data.unit}</span>
                   </div>
 
-                  <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex justify-between">
+                  <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
                     <span className="text-slate-500 font-medium">File Lampiran</span>
-                    <span className="font-semibold text-slate-700">{filePreviewName || 'Tidak Ada File'}</span>
+                    <span className="font-semibold text-slate-700 truncate max-w-[150px]">{filePreviewName || 'Tidak Ada File'}</span>
                   </div>
 
-                  <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-1">
+                  <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-1.5 sm:col-span-2">
                     <span className="text-slate-500 font-medium block">Detail Alasan:</span>
-                    <p className="font-semibold text-slate-800 bg-white p-2.5 rounded-lg border border-slate-200">{data.reason}</p>
+                    <p className="font-semibold text-slate-800 bg-white p-3 rounded-lg border border-slate-200 leading-relaxed">{data.reason}</p>
                   </div>
                 </div>
               </div>

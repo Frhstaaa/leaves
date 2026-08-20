@@ -63,3 +63,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/users/{userId}/assign-role', [\App\Http\Controllers\Superadmin\RolePermissionController::class, 'assignUserRole'])->name('users.assign-role');
     });
 });
+
+// Fallback storage route to ensure uploaded files/attachments are accessible even without symlink
+Route::get('/storage/{path}', function ($path) {
+    $filePath = storage_path('app/public/' . $path);
+    if (!file_exists($filePath)) {
+        abort(404, 'File not found on server.');
+    }
+    return response()->file($filePath);
+})->where('path', '.*')->name('storage.local');

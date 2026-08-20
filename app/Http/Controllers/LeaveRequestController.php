@@ -75,7 +75,7 @@ class LeaveRequestController extends Controller
             'amount' => 'required|numeric|min:0.5',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
-            'reason' => 'required|string|min:5|max:1000',
+            'reason' => 'required|string|min:3|max:1000',
             'attachment' => 'nullable|file|mimes:pdf,png,jpg,jpeg|max:10240', // Max 10MB
         ], [
             'submission_type.required' => 'Silakan pilih jenis pengajuan (PEMBERITAHUAN / PERMOHONAN).',
@@ -85,6 +85,7 @@ class LeaveRequestController extends Controller
             'start_date.required' => 'Tanggal permohonan wajib diisi.',
             'end_date.after_or_equal' => 'Tanggal akhir harus sama atau setelah tanggal mulai.',
             'reason.required' => 'Detail alasan cuti / ketidakhadiran wajib diisi.',
+            'reason.min' => 'Detail alasan cuti / ketidakhadiran minimal 3 karakter.',
             'attachment.max' => 'Ukuran file lampiran tidak boleh melebihi 10 MB.',
             'attachment.mimes' => 'Format lampiran harus berupa PDF, PNG, JPG, atau JPEG.',
         ]);
