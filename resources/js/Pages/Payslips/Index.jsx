@@ -13,6 +13,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Receipt,
   Download,
   Eye,
@@ -102,19 +109,22 @@ export default function PayslipsIndex({ payslips = [], selectedYear = new Date()
             </div>
 
             {/* Year Selector */}
-            <div className="flex items-center space-x-2 bg-white/15 p-1.5 rounded-2xl border border-white/30 backdrop-blur-md shrink-0">
-              <Calendar size={18} className="text-emerald-100 ml-2" />
-              <select
-                value={activeYear}
-                onChange={(e) => handleYearChange(e.target.value)}
-                className="bg-transparent text-white font-black text-sm pr-6 py-1 border-0 focus:ring-0 outline-none cursor-pointer"
+            <div className="w-[150px] shrink-0">
+              <Select
+                value={String(activeYear)}
+                onValueChange={(val) => handleYearChange(val)}
               >
-                {availableYears.map((yr) => (
-                  <option key={yr} value={yr} className="text-slate-900 font-bold">
-                    Tahun {yr}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="bg-white/20 border-white/30 text-white font-black text-xs rounded-2xl backdrop-blur-md hover:bg-white/30 focus:bg-white focus:text-slate-900 transition-colors">
+                  <SelectValue placeholder={`Tahun ${activeYear}`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableYears.map((yr) => (
+                    <SelectItem key={yr} value={String(yr)}>
+                      Tahun {yr}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </motion.div>

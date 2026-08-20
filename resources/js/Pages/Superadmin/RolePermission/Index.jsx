@@ -27,11 +27,25 @@ import {
   Settings,
   Filter,
   Grid,
-  List,
-  CheckCheck,
   AlertTriangle,
-  User
+  User,
+  MoreVertical
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { motion, AnimatePresence } from 'framer-motion';
 import { showAlert, showConfirm, showToast } from '@/Utils/swal';
 
@@ -608,20 +622,26 @@ export default function RolePermissionIndex({
               </div>
 
               <div className="flex items-center space-x-2 w-full sm:w-auto">
-                <Sliders size={16} className="text-slate-500" />
-                <span className="text-xs font-bold text-slate-600">Filter Role:</span>
-                <select
-                  value={filterRole}
-                  onChange={(e) => setFilterRole(e.target.value)}
-                  className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 outline-none"
-                >
-                  <option value="all">Semua Role ({employees.length})</option>
-                  {roles.map((r) => (
-                    <option key={r.id} value={r.name}>
-                      Role {r.name.toUpperCase()}
-                    </option>
-                  ))}
-                </select>
+                <Sliders size={16} className="text-slate-500 shrink-0" />
+                <span className="text-xs font-bold text-slate-600 shrink-0">Filter Role:</span>
+                <div className="w-full sm:w-[190px]">
+                  <Select
+                    value={filterRole}
+                    onValueChange={(val) => setFilterRole(val)}
+                  >
+                    <SelectTrigger className="w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-800 rounded-xl h-9">
+                      <SelectValue placeholder="Semua Role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Role ({employees.length})</SelectItem>
+                      {roles.map((r) => (
+                        <SelectItem key={r.id} value={r.name}>
+                          Role {r.name.toUpperCase()}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 

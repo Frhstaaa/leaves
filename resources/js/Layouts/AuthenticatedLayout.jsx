@@ -26,8 +26,17 @@ import {
   AlertCircle,
   Menu,
   Grid,
-  Receipt
+  Receipt,
+  ChevronDown
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { showConfirm, showToast } from '@/Utils/swal';
@@ -316,14 +325,39 @@ export default function AuthenticatedLayout({ children, title }) {
 
             <div className="h-4 w-[1px] bg-slate-200"></div>
 
-            {/* Profile Avatar Trigger */}
-            <button
-              onClick={() => setActionMenuOpen(true)}
-              className="flex items-center space-x-2 text-xs font-bold text-slate-800 hover:text-emerald-600 transition-colors"
-            >
-              <UserAvatar user={user} size="w-7 h-7" textSize="text-xs" />
-              <span>{user.name}</span>
-            </button>
+            {/* Profile Avatar Trigger with Shadcn DropdownMenu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center space-x-2.5 px-2.5 py-1.5 rounded-2xl hover:bg-slate-100 text-xs font-bold text-slate-800 hover:text-emerald-700 transition-colors outline-none cursor-pointer"
+                >
+                  <UserAvatar user={user} size="w-8 h-8" textSize="text-xs" />
+                  <div className="text-left hidden sm:block">
+                    <span className="block font-bold text-slate-900 leading-tight truncate max-w-[120px]">{user.name}</span>
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase">{user.role}</span>
+                  </div>
+                  <ChevronDown size={14} className="text-slate-400" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Akun Saya ({user.nik || 'EMP'})</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setMyProfileOpen(true)}>
+                  <User className="mr-2 h-4 w-4 text-emerald-600" />
+                  <span>Lihat Profil Lengkap</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setActionMenuOpen(true)}>
+                  <Camera className="mr-2 h-4 w-4 text-blue-600" />
+                  <span>Ganti Foto & Opsi Akun</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-rose-600 focus:bg-rose-50 focus:text-rose-700">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Keluar (Logout)</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 

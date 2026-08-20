@@ -27,13 +27,25 @@ import {
   Building,
   AlertCircle,
   FileText,
-  Archive,
-  Sparkles,
-  X,
-  FileCheck,
   Check,
-  Send
+  Send,
+  MoreVertical
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { showAlert, showConfirm, showToast } from '@/Utils/swal';
 
 const containerVariants = {
@@ -329,17 +341,21 @@ export default function HrdPayslips({
               <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
                 Bulan Periode
               </label>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+              <Select
+                value={String(selectedMonth)}
+                onValueChange={(val) => setSelectedMonth(parseInt(val))}
               >
-                {MONTHS.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900 rounded-xl">
+                  <SelectValue placeholder="Pilih Bulan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MONTHS.map((m) => (
+                    <SelectItem key={m.value} value={String(m.value)}>
+                      {m.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Year Selector */}
@@ -347,17 +363,21 @@ export default function HrdPayslips({
               <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
                 Tahun Periode
               </label>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+              <Select
+                value={String(selectedYear)}
+                onValueChange={(val) => setSelectedYear(parseInt(val))}
               >
-                {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map((yr) => (
-                  <option key={yr} value={yr}>
-                    Tahun {yr}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900 rounded-xl">
+                  <SelectValue placeholder="Pilih Tahun" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map((yr) => (
+                    <SelectItem key={yr} value={String(yr)}>
+                      Tahun {yr}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Department Filter */}
@@ -365,18 +385,22 @@ export default function HrdPayslips({
               <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
                 Departemen
               </label>
-              <select
-                value={selectedDept}
-                onChange={(e) => setSelectedDept(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+              <Select
+                value={selectedDept ? String(selectedDept) : 'all'}
+                onValueChange={(val) => setSelectedDept(val === 'all' ? '' : val)}
               >
-                <option value="">Semua Departemen</option>
-                {departments.map((dept) => (
-                  <option key={dept.id} value={dept.id}>
-                    {dept.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full bg-slate-50 border-slate-200 text-xs font-semibold text-slate-900 rounded-xl">
+                  <SelectValue placeholder="Semua Departemen" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Departemen</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={String(dept.id)}>
+                      {dept.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Search */}
@@ -498,31 +522,45 @@ export default function HrdPayslips({
                           </td>
 
                           <td className="py-3.5 px-4 text-right">
-                            <div className="flex items-center justify-end space-x-1.5">
-                              <button
+                            <div className="flex items-center justify-end space-x-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => setPreviewPayslip(p)}
-                                title="Lihat PDF"
-                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 transition-colors border border-slate-200"
+                                className="h-8 px-2.5 rounded-xl text-xs font-bold space-x-1 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50"
                               >
-                                <Eye size={15} />
-                              </button>
+                                <Eye size={14} />
+                                <span className="hidden sm:inline">Lihat</span>
+                              </Button>
 
-                              <a
-                                href={route('payslips.download', p.id)}
-                                download
-                                title="Download PDF"
-                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-700 transition-colors border border-slate-200"
-                              >
-                                <Download size={15} />
-                              </a>
-
-                              <button
-                                onClick={() => handleDelete(p)}
-                                title="Hapus Slip Gaji"
-                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 transition-colors border border-slate-200"
-                              >
-                                <Trash2 size={15} />
-                              </button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-slate-500 hover:text-slate-900">
+                                    <MoreVertical size={15} />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuLabel>Aksi Slip Gaji</DropdownMenuLabel>
+                                  <DropdownMenuItem onClick={() => setPreviewPayslip(p)}>
+                                    <Eye className="mr-2 h-4 w-4 text-emerald-600" />
+                                    <span>Lihat Pratinjau PDF</span>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem asChild>
+                                    <a href={route('payslips.download', p.id)} download className="flex items-center w-full">
+                                      <Download className="mr-2 h-4 w-4 text-blue-600" />
+                                      <span>Unduh File PDF</span>
+                                    </a>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleDelete(p)}
+                                    className="text-rose-600 focus:bg-rose-50 focus:text-rose-700"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>Hapus Slip Gaji</span>
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </td>
                         </tr>
@@ -607,34 +645,42 @@ export default function HrdPayslips({
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                         Bulan Penggajian <span className="text-rose-600">*</span>
                       </label>
-                      <select
-                        value={bulkForm.data.month}
-                        onChange={(e) => bulkForm.setData('month', parseInt(e.target.value))}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 font-bold text-xs focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      <Select
+                        value={String(bulkForm.data.month)}
+                        onValueChange={(val) => bulkForm.setData('month', parseInt(val))}
                       >
-                        {MONTHS.map((m) => (
-                          <option key={m.value} value={m.value}>
-                            {m.name}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger className="w-full bg-slate-50 border-slate-300 text-slate-900 font-bold text-xs rounded-xl">
+                          <SelectValue placeholder="Pilih Bulan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MONTHS.map((m) => (
+                            <SelectItem key={m.value} value={String(m.value)}>
+                              {m.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                         Tahun Penggajian <span className="text-rose-600">*</span>
                       </label>
-                      <select
-                        value={bulkForm.data.year}
-                        onChange={(e) => bulkForm.setData('year', parseInt(e.target.value))}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 font-bold text-xs focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      <Select
+                        value={String(bulkForm.data.year)}
+                        onValueChange={(val) => bulkForm.setData('year', parseInt(val))}
                       >
-                        {[currentYear - 1, currentYear, currentYear + 1].map((yr) => (
-                          <option key={yr} value={yr}>
-                            Tahun {yr}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger className="w-full bg-slate-50 border-slate-300 text-slate-900 font-bold text-xs rounded-xl">
+                          <SelectValue placeholder="Pilih Tahun" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[currentYear - 1, currentYear, currentYear + 1].map((yr) => (
+                            <SelectItem key={yr} value={String(yr)}>
+                              Tahun {yr}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
@@ -787,19 +833,21 @@ export default function HrdPayslips({
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                       Pilih Karyawan <span className="text-rose-600">*</span>
                     </label>
-                    <select
-                      value={singleForm.data.user_id}
-                      onChange={(e) => singleForm.setData('user_id', e.target.value)}
-                      required
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 font-bold text-xs focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    <Select
+                      value={singleForm.data.user_id ? String(singleForm.data.user_id) : ''}
+                      onValueChange={(val) => singleForm.setData('user_id', val)}
                     >
-                      <option value="">-- Pilih Karyawan --</option>
-                      {employees.map((emp) => (
-                        <option key={emp.id} value={String(emp.id)}>
-                          {emp.name} ({emp.nik}) - {emp.department?.name || 'General'}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="w-full bg-slate-50 border-slate-300 text-slate-900 font-bold text-xs rounded-xl">
+                        <SelectValue placeholder="-- Pilih Karyawan --" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {employees.map((emp) => (
+                          <SelectItem key={emp.id} value={String(emp.id)}>
+                            {emp.name} ({emp.nik}) - {emp.department?.name || 'General'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Period */}
@@ -808,34 +856,42 @@ export default function HrdPayslips({
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                         Bulan <span className="text-rose-600">*</span>
                       </label>
-                      <select
-                        value={singleForm.data.month}
-                        onChange={(e) => singleForm.setData('month', parseInt(e.target.value))}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 font-bold text-xs focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      <Select
+                        value={String(singleForm.data.month)}
+                        onValueChange={(val) => singleForm.setData('month', parseInt(val))}
                       >
-                        {MONTHS.map((m) => (
-                          <option key={m.value} value={m.value}>
-                            {m.name}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger className="w-full bg-slate-50 border-slate-300 text-slate-900 font-bold text-xs rounded-xl">
+                          <SelectValue placeholder="Pilih Bulan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MONTHS.map((m) => (
+                            <SelectItem key={m.value} value={String(m.value)}>
+                              {m.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                         Tahun <span className="text-rose-600">*</span>
                       </label>
-                      <select
-                        value={singleForm.data.year}
-                        onChange={(e) => singleForm.setData('year', parseInt(e.target.value))}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 font-bold text-xs focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      <Select
+                        value={String(singleForm.data.year)}
+                        onValueChange={(val) => singleForm.setData('year', parseInt(val))}
                       >
-                        {[currentYear - 1, currentYear, currentYear + 1].map((yr) => (
-                          <option key={yr} value={yr}>
-                            Tahun {yr}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger className="w-full bg-slate-50 border-slate-300 text-slate-900 font-bold text-xs rounded-xl">
+                          <SelectValue placeholder="Pilih Tahun" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[currentYear - 1, currentYear, currentYear + 1].map((yr) => (
+                            <SelectItem key={yr} value={String(yr)}>
+                              Tahun {yr}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 

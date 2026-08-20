@@ -16,8 +16,26 @@ import {
   History,
   X,
   ChevronRight,
-  Eye
+  Eye,
+  MoreVertical,
+  Copy
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 import { showConfirm, showToast } from '@/Utils/swal';
 
@@ -100,23 +118,28 @@ export default function LeaveRequestsIndex({ user: propUser, requests, filters, 
               />
             </div>
 
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none"
-            >
-              <option value="">Semua Status</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Disetujui</option>
-              <option value="rejected">Ditolak</option>
-            </select>
+            <div className="w-full sm:w-[170px] shrink-0">
+              <Select value={status || 'all'} onValueChange={(val) => setStatus(val === 'all' ? '' : val)}>
+                <SelectTrigger className="w-full bg-slate-50 border-slate-200 font-bold text-xs rounded-xl">
+                  <SelectValue placeholder="Semua Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Status</SelectItem>
+                  <SelectItem value="pending">⏳ Pending</SelectItem>
+                  <SelectItem value="approved">✅ Disetujui</SelectItem>
+                  <SelectItem value="rejected">❌ Ditolak</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <button
+            <Button
               type="submit"
-              className="px-5 py-2.5 rounded-xl bg-[#0FA172] hover:bg-[#1CB67C] text-white font-extrabold text-xs transition-all shadow-md shadow-emerald-600/20 active:scale-95 shrink-0"
+              variant="default"
+              className="px-5 py-2.5 rounded-xl font-black text-xs shrink-0 space-x-1.5"
             >
-              Filter Data
-            </button>
+              <Filter size={14} />
+              <span>Filter Data</span>
+            </Button>
           </form>
         </div>
 
@@ -180,26 +203,51 @@ export default function LeaveRequestsIndex({ user: propUser, requests, filters, 
                       <span>{new Date(req.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                      <button
-                        type="button"
+                    <div className="flex items-center space-x-1.5">
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={() => setSelectedRequest(req)}
-                        className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center space-x-1 transition-colors"
+                        className="rounded-xl space-x-1 font-bold text-xs"
                       >
                         <Eye size={14} />
                         <span>Lihat Detail</span>
-                      </button>
+                      </Button>
 
-                      {req.status === 'pending' && (
-                        <button
-                          type="button"
-                          onClick={() => handleCancel(req.id)}
-                          className="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center space-x-1 border border-rose-200 transition-colors"
-                        >
-                          <Trash2 size={14} />
-                          <span>Batal</span>
-                        </button>
-                      )}
+                      {/* Dropdown Menu for Extra Actions */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-slate-500 hover:text-slate-900">
+                            <MoreVertical size={15} />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuLabel>Aksi Pengajuan</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => setSelectedRequest(req)}>
+                            <Eye className="mr-2 h-4 w-4 text-emerald-600" />
+                            <span>Buka Detail</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            navigator.clipboard.writeText(req.request_number);
+                            showToast(`Nomor ${req.request_number} berhasil disalin!`);
+                          }}>
+                            <Copy className="mr-2 h-4 w-4 text-blue-600" />
+                            <span>Salin No. Request</span>
+                          </DropdownMenuItem>
+                          {req.status === 'pending' && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleCancel(req.id)}
+                                className="text-rose-600 focus:bg-rose-50 focus:text-rose-700"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Batalkan Pengajuan</span>
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </motion.div>

@@ -20,11 +20,28 @@ import {
   AlertTriangle,
   RotateCcw,
   KeyRound,
-  FileSpreadsheet,
   Download,
-  UploadCloud
+  UploadCloud,
+  MoreVertical,
+  Sliders
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { showAlert, showToast, showConfirm } from '@/Utils/swal';
 
 export default function HrdEmployees({ employees = [], departments = [], managers = [], stats = {}, filters = {} }) {
@@ -325,30 +342,38 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Filter Departemen</label>
-              <select
-                value={selectedDept}
-                onChange={(e) => setSelectedDept(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs font-medium focus:bg-white focus:border-emerald-500 outline-none transition-all"
+              <Select
+                value={selectedDept ? String(selectedDept) : 'all'}
+                onValueChange={(val) => setSelectedDept(val === 'all' ? '' : val)}
               >
-                <option value="">Semua Departemen</option>
-                {departments.map((dept) => (
-                  <option key={dept.id} value={dept.id}>{dept.name}</option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full bg-slate-50 border-slate-200 text-slate-800 text-xs font-semibold rounded-xl">
+                  <SelectValue placeholder="Semua Departemen" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Departemen</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={String(dept.id)}>{dept.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Filter Role</label>
-              <select
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs font-medium focus:bg-white focus:border-emerald-500 outline-none transition-all"
+              <Select
+                value={selectedRole || 'all'}
+                onValueChange={(val) => setSelectedRole(val === 'all' ? '' : val)}
               >
-                <option value="">Semua Role</option>
-                <option value="employee">Karyawan (Staf)</option>
-                <option value="manager">Manager / Supervisor</option>
-                <option value="admin">HRD / Admin</option>
-              </select>
+                <SelectTrigger className="w-full bg-slate-50 border-slate-200 text-slate-800 text-xs font-semibold rounded-xl">
+                  <SelectValue placeholder="Semua Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Role</SelectItem>
+                  <SelectItem value="employee">Karyawan (Staf)</SelectItem>
+                  <SelectItem value="manager">Manager / Supervisor</SelectItem>
+                  <SelectItem value="admin">HRD / Admin</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex items-end space-x-2">
@@ -581,30 +606,43 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                           </td>
 
                           <td className="py-3.5 px-4 text-right">
-                            <div className="flex items-center justify-end space-x-1.5">
-                              <button
+                            <div className="flex items-center justify-end space-x-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => handleOpenEditModal(emp)}
-                                title="Edit Data Karyawan"
-                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 transition-colors border border-slate-200"
+                                className="h-8 px-2.5 rounded-xl text-xs font-bold space-x-1 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50"
                               >
-                                <Edit3 size={15} />
-                              </button>
+                                <Edit3 size={14} />
+                                <span className="hidden sm:inline">Edit</span>
+                              </Button>
 
-                              <button
-                                onClick={() => handleOpenQuotaModal(emp)}
-                                title="Edit Kuota Cuti"
-                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-700 transition-colors border border-slate-200"
-                              >
-                                <Calendar size={15} />
-                              </button>
-
-                              <button
-                                onClick={() => setDeletingEmployee(emp)}
-                                title="Hapus Karyawan"
-                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 transition-colors border border-slate-200"
-                              >
-                                <Trash2 size={15} />
-                              </button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-slate-500 hover:text-slate-900">
+                                    <MoreVertical size={15} />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuLabel>Aksi Karyawan</DropdownMenuLabel>
+                                  <DropdownMenuItem onClick={() => handleOpenEditModal(emp)}>
+                                    <Edit3 className="mr-2 h-4 w-4 text-emerald-600" />
+                                    <span>Edit Profil & Approval</span>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleOpenQuotaModal(emp)}>
+                                    <Calendar className="mr-2 h-4 w-4 text-blue-600" />
+                                    <span>Atur Kuota Cuti</span>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => setDeletingEmployee(emp)}
+                                    className="text-rose-600 focus:bg-rose-50 focus:text-rose-700"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>Hapus Karyawan</span>
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </td>
                         </tr>

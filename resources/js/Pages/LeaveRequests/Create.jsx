@@ -21,10 +21,16 @@ import {
   RotateCcw,
   Send,
   HelpCircle,
-  Check,
   Search,
   X
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { motion, AnimatePresence } from 'framer-motion';
 import { showAlert, showConfirm, showToast } from '@/Utils/swal';
 
@@ -498,14 +504,18 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Satuan</label>
-                    <select
+                    <Select
                       value={data.unit}
-                      onChange={(e) => setData('unit', e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 font-bold text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none"
+                      onValueChange={(val) => setData('unit', val)}
                     >
-                      <option value="hari">Hari</option>
-                      <option value="jam">Jam</option>
-                    </select>
+                      <SelectTrigger className="w-full h-11 px-4 py-2.5 rounded-xl bg-slate-50 border-slate-300 text-slate-900 font-bold text-xs">
+                        <SelectValue placeholder="Pilih Satuan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hari">Hari</SelectItem>
+                        <SelectItem value="jam">Jam</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 

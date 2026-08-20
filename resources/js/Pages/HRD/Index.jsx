@@ -16,10 +16,17 @@ import {
   Eye,
   X,
   Paperclip,
-  Check,
   Tag,
   AlertCircle
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 export default function HrdIndex({ requests = { data: [] }, departments = [], categories = [], stats = {}, filters = {} }) {
   const [searchQuery, setSearchQuery] = useState(filters.search || '');
@@ -132,31 +139,39 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
             {/* Department Filter */}
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Filter Departemen</label>
-              <select
-                value={selectedDept}
-                onChange={(e) => setSelectedDept(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs font-medium focus:bg-white focus:border-emerald-500 outline-none transition-all"
+              <Select
+                value={selectedDept ? String(selectedDept) : 'all'}
+                onValueChange={(val) => setSelectedDept(val === 'all' ? '' : val)}
               >
-                <option value="">Semua Departemen</option>
-                {departments.map((dept) => (
-                  <option key={dept.id} value={dept.id}>{dept.name}</option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full bg-slate-50 border-slate-200 text-slate-800 text-xs font-semibold rounded-xl">
+                  <SelectValue placeholder="Semua Departemen" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Departemen</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={String(dept.id)}>{dept.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Status Filter */}
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Filter Status</label>
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs font-medium focus:bg-white focus:border-emerald-500 outline-none transition-all"
+              <Select
+                value={selectedStatus || 'all'}
+                onValueChange={(val) => setSelectedStatus(val === 'all' ? '' : val)}
               >
-                <option value="">Semua Status</option>
-                <option value="pending">Pending Approval</option>
-                <option value="approved">Disetujui (Approved)</option>
-                <option value="rejected">Ditolak (Rejected)</option>
-              </select>
+                <SelectTrigger className="w-full bg-slate-50 border-slate-200 text-slate-800 text-xs font-semibold rounded-xl">
+                  <SelectValue placeholder="Semua Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Status</SelectItem>
+                  <SelectItem value="pending">⏳ Pending Approval</SelectItem>
+                  <SelectItem value="approved">✅ Disetujui (Approved)</SelectItem>
+                  <SelectItem value="rejected">❌ Ditolak (Rejected)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Action Buttons */}

@@ -16,6 +16,15 @@ import {
   X
 } from 'lucide-react';
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+
 export default function ApprovalsIndex({ requests, departments = [], filters = {}, isHrdAdmin = false }) {
   const [activeModal, setActiveModal] = useState(null); // 'approve', 'reject', or null
   const [selectedReq, setSelectedReq] = useState(null);
@@ -99,23 +108,30 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
           {/* HRD / Admin Filter & Search */}
           {isHrdAdmin && (
             <form onSubmit={handleSearchSubmit} className="flex flex-wrap items-center gap-2">
-              <select
-                value={selectedDept}
-                onChange={(e) => {
-                  setSelectedDept(e.target.value);
-                  router.get(route('approvals.index'), {
-                    status: filters.status || 'pending',
-                    department_id: e.target.value,
-                    search: searchQuery,
-                  }, { preserveState: true });
-                }}
-                className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 shadow-sm"
-              >
-                <option value="">Semua Departemen</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
+              <div className="w-[180px]">
+                <Select
+                  value={selectedDept ? String(selectedDept) : 'all'}
+                  onValueChange={(val) => {
+                    const newDept = val === 'all' ? '' : val;
+                    setSelectedDept(newDept);
+                    router.get(route('approvals.index'), {
+                      status: filters.status || 'pending',
+                      department_id: newDept,
+                      search: searchQuery,
+                    }, { preserveState: true });
+                  }}
+                >
+                  <SelectTrigger className="bg-white border-slate-200 text-xs font-semibold h-9 rounded-xl">
+                    <SelectValue placeholder="Semua Departemen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Departemen</SelectItem>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               <input
                 type="text"
@@ -124,12 +140,14 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
                 placeholder="Cari NIK / Nama..."
                 className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-800 shadow-sm outline-none focus:border-emerald-500"
               />
-              <button
+              <Button
                 type="submit"
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all"
+                variant="default"
+                size="sm"
+                className="rounded-xl font-bold text-xs"
               >
                 Cari
-              </button>
+              </Button>
             </form>
           )}
         </div>
