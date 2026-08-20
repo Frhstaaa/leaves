@@ -16,7 +16,7 @@ export default function PwaInstallModal() {
 
   useEffect(() => {
     // Check if already running in standalone mode (installed PWA)
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true || document.referrer.includes('android-app://');
     if (isStandalone) {
       setIsInstalled(true);
       return;
@@ -31,15 +31,10 @@ export default function PwaInstallModal() {
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
-
-      // Check if dismissed recently (within 24 hours)
-      const dismissedUntil = localStorage.getItem('pwa_prompt_dismissed_until');
-      if (!dismissedUntil || Date.now() > parseInt(dismissedUntil, 10)) {
-        // Show after a slight delay for pleasant user onboarding
-        const timer = setTimeout(() => {
-          setIsOpen(true);
-        }, 2500);
-        return () => clearTimeout(timer);
+      // Auto open modal immediately when install prompt is ready
+      const dismissed = sessionStorage.getItem('pwa_prompt_dismissed_session');
+      if (!dismissed) {
+        setIsOpen(true);
       }
     };
 
@@ -51,15 +46,13 @@ export default function PwaInstallModal() {
     };
     window.addEventListener('open-pwa-install-modal', handleManualOpen);
 
-    // If iOS and not dismissed recently, show iOS install guide
-    if (isIosDevice && !isStandalone) {
-      const dismissedUntil = localStorage.getItem('pwa_prompt_dismissed_until');
-      if (!dismissedUntil || Date.now() > parseInt(dismissedUntil, 10)) {
-        const timer = setTimeout(() => {
-          setIsOpen(true);
-        }, 3500);
-        return () => clearTimeout(timer);
-      }
+    // Show popup after 1 second if not installed and not dismissed in current session
+    const dismissed = sessionStorage.getItem('pwa_prompt_dismissed_session');
+    if (!dismissed) {
+      const timer = setTimeout(() => {
+        setIsOpen(true);
+      }, 1000);
+      return () => clearTimeout(timer);
     }
 
     return () => {
@@ -77,13 +70,15 @@ export default function PwaInstallModal() {
         setIsOpen(false);
       }
       setDeferredPrompt(null);
+    } else {
+      // If no native prompt is captured yet, give immediate visual guidance
+      setIsOpen(true);
     }
   };
 
   const handleDismiss = () => {
     setIsOpen(false);
-    // Dismiss for 24 hours
-    localStorage.setItem('pwa_prompt_dismissed_until', (Date.now() + 24 * 60 * 60 * 1000).toString());
+    sessionStorage.setItem('pwa_prompt_dismissed_session', 'true');
   };
 
   if (isInstalled) return null;

@@ -147,6 +147,18 @@ export default function Login() {
             </button>
           </form>
         </div>
+
+        {/* Direct PWA Install Trigger */}
+        <div className="text-center mt-4">
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-pwa-install-modal'))}
+            className="inline-flex items-center space-x-2 px-4 py-2 rounded-2xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-extrabold text-xs shadow-xs transition-all active:scale-95"
+          >
+            <Smartphone size={15} className="text-emerald-600" />
+            <span>📲 Pasang Aplikasi di HP / PC (PWA)</span>
+          </button>
+        </div>
       </div>
 
       {/* PWA Floating Install Modal */}

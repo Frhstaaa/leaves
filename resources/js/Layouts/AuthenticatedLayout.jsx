@@ -360,6 +360,23 @@ export default function AuthenticatedLayout({ children, title }) {
           })}
         </nav>
 
+        {/* Desktop Sidebar PWA Banner */}
+        <div className="p-3 mx-3 mb-2 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50/80 border border-emerald-200 text-xs space-y-1.5 shadow-2xs">
+          <div className="flex items-center space-x-1.5 text-emerald-950 font-black">
+            <Smartphone size={15} className="text-emerald-700" />
+            <span>Aplikasi Form SGIN</span>
+          </div>
+          <p className="text-[10px] text-slate-500 leading-tight">Pasang di HP / Laptop untuk akses 1-ketukan.</p>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-pwa-install-modal'))}
+            className="w-full py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] shadow-xs transition-all active:scale-95 flex items-center justify-center space-x-1"
+          >
+            <Download size={13} />
+            <span>Install Aplikasi (PWA)</span>
+          </button>
+        </div>
+
         {/* Footer Logout */}
         <div className="p-4 border-t border-slate-200">
           <button
@@ -375,13 +392,13 @@ export default function AuthenticatedLayout({ children, title }) {
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Mobile Bar */}
-        <header className="md:hidden flex items-center justify-between px-4 py-2.5 bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-          <div className="flex items-center space-x-2.5 min-w-0">
+        <header className="md:hidden flex items-center justify-between px-3.5 py-2.5 bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+          <div className="flex items-center space-x-2 min-w-0 flex-1 pr-2">
             {appLogo ? (
               <img
                 src={appLogo}
                 alt={appName}
-                className="w-8 h-8 rounded-xl object-cover shadow-md shadow-emerald-600/20 border border-emerald-500/20 shrink-0"
+                className="w-8 h-8 rounded-xl object-contain bg-white p-0.5 shadow-sm shadow-emerald-600/20 border border-emerald-500/20 shrink-0"
               />
             ) : (
               <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center font-black text-white text-xs shadow-md shadow-emerald-600/20 shrink-0">
@@ -394,13 +411,24 @@ export default function AuthenticatedLayout({ children, title }) {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 shrink-0">
+          <div className="flex items-center space-x-1.5 shrink-0">
+            {/* Direct PWA Install Trigger Button */}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-pwa-install-modal'))}
+              className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] flex items-center space-x-1 shadow-xs transition-all active:scale-95 shrink-0"
+              title="Install Aplikasi ke HP"
+            >
+              <Smartphone size={13} />
+              <span>Install</span>
+            </button>
+
             <button
               onClick={() => setNotificationsOpen(true)}
               className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 relative transition-colors"
               title="Notifikasi & Tugas Approval"
             >
-              <Bell size={18} />
+              <Bell size={17} />
               {pendingApprovalsCount > 0 ? (
                 <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-rose-500 text-[9px] font-black text-white shadow-sm ring-2 ring-white animate-pulse">
                   {pendingApprovalsCount > 9 ? '9+' : pendingApprovalsCount}
@@ -429,7 +457,18 @@ export default function AuthenticatedLayout({ children, title }) {
             <p className="text-xs text-slate-500">Sistem Permohonan Tidak Hadir Bekerja & Cuti Real-time</p>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
+            {/* Desktop Direct PWA Install Button */}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-pwa-install-modal'))}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs flex items-center space-x-1.5 shadow-md shadow-emerald-600/20 transition-all active:scale-95"
+              title="Pasang Aplikasi di Desktop / HP"
+            >
+              <Smartphone size={15} />
+              <span>Install App</span>
+            </button>
+
             <button
               onClick={() => setNotificationsOpen(true)}
               className="p-2.5 rounded-full bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-600 relative transition-colors"
