@@ -565,7 +565,7 @@ export default function AuthenticatedLayout({ children, title }) {
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-        className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-2xl border-t border-slate-200/80 shadow-[0_-4px_25px_rgba(0,0,0,0.06)] px-3 pt-2 pb-2.5 flex items-center justify-around"
+        className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-2xl border-t border-slate-200/80 shadow-[0_-4px_25px_rgba(0,0,0,0.06)] px-3 pt-2 pb-2.5 flex items-center justify-around"
       >
         {/* 1. Home / Dashboard (PALING KIRI) */}
         <Link
