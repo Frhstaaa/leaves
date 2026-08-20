@@ -55,12 +55,138 @@ class RolePermissionController extends Controller
             'total_employees' => $employees->count(),
         ];
 
+        $permissionCatalog = self::getPermissionCatalog();
+
+        $rolePresets = [
+            'employee' => [
+                'name' => 'Karyawan Biasa',
+                'description' => 'Akses standar untuk mengajukan dan melihat riwayat cuti',
+                'permissions' => ['view-dashboard', 'create-leave-request', 'view-leave-history'],
+            ],
+            'manager' => [
+                'name' => 'Atasan / Manager',
+                'description' => 'Akses karyawan ditambah wewenang persetujuan cuti bawahan',
+                'permissions' => ['view-dashboard', 'create-leave-request', 'view-leave-history', 'manage-approvals'],
+            ],
+            'admin' => [
+                'name' => 'HRD / PGA Admin',
+                'description' => 'Akses manajerial HRD, data karyawan, rekapitulasi, dan ekspor laporan',
+                'permissions' => [
+                    'view-dashboard', 'create-leave-request', 'view-leave-history',
+                    'manage-approvals', 'manage-employees', 'view-hrd-rekap', 'export-hrd-reports'
+                ],
+            ],
+            'superadmin' => [
+                'name' => 'Superadmin (Full Access)',
+                'description' => 'Akses penuh ke seluruh modul, pengaturan role, dan konfigurasi sistem',
+                'permissions' => $permissions->pluck('name')->toArray(),
+            ],
+        ];
+
         return Inertia::render('Superadmin/RolePermission/Index', [
             'roles' => $roles,
             'permissions' => $permissions,
             'employees' => $employees,
             'stats' => $stats,
+            'permission_catalog' => $permissionCatalog,
+            'role_presets' => $rolePresets,
         ]);
+    }
+
+    public static function getPermissionCatalog(): array
+    {
+        return [
+            'general' => [
+                'category_name' => 'Umum & Dashboard',
+                'category_desc' => 'Akses ringkasan statistik & banner pengajuan cuti',
+                'icon' => 'LayoutDashboard',
+                'color' => 'emerald',
+                'badge_color' => 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                'permissions' => [
+                    [
+                        'name' => 'view-dashboard',
+                        'label' => 'Lihat Dashboard',
+                        'description' => 'Melihat ringkasan statistik, kuota cuti tersisa, dan shortcut pengajuan',
+                    ],
+                ],
+            ],
+            'leave' => [
+                'category_name' => 'Pengajuan & Riwayat Cuti',
+                'category_desc' => 'Aktivitas pengajuan formulir cuti, sakit, dinas, dan riwayat permohonan',
+                'icon' => 'FileText',
+                'color' => 'teal',
+                'badge_color' => 'bg-teal-100 text-teal-800 border-teal-200',
+                'permissions' => [
+                    [
+                        'name' => 'create-leave-request',
+                        'label' => 'Buat Pengajuan Baru',
+                        'description' => 'Mengisi dan mengirimkan formulir izin, dinas, sakit & cuti karyawan',
+                    ],
+                    [
+                        'name' => 'view-leave-history',
+                        'label' => 'Lihat Riwayat Cuti Pribadi',
+                        'description' => 'Melihat status approval, detail alasan, dan timeline permohonan sendiri',
+                    ],
+                ],
+            ],
+            'approval' => [
+                'category_name' => 'Persetujuan & Approval Team',
+                'category_desc' => 'Kewenangan menyetujui / menolak pengajuan cuti bawahan atau tim kerja',
+                'icon' => 'CheckSquare',
+                'color' => 'blue',
+                'badge_color' => 'bg-blue-100 text-blue-800 border-blue-200',
+                'permissions' => [
+                    [
+                        'name' => 'manage-approvals',
+                        'label' => 'Persetujuan Cuti (Approval)',
+                        'description' => 'Menyetujui (Approve) atau Menolak (Reject) permohonan cuti bawahan bertingkat',
+                    ],
+                ],
+            ],
+            'hrd' => [
+                'category_name' => 'HRD & Manajemen Karyawan',
+                'category_desc' => 'Pengelolaan data master karyawan, rekapitulasi, dan ekspor laporan',
+                'icon' => 'Users',
+                'color' => 'purple',
+                'badge_color' => 'bg-purple-100 text-purple-800 border-purple-200',
+                'permissions' => [
+                    [
+                        'name' => 'manage-employees',
+                        'label' => 'Kelola Data Karyawan',
+                        'description' => 'Menambah, mengedit NIK/departemen/atasan 1 & 2, import Excel, dan kelola kuota',
+                    ],
+                    [
+                        'name' => 'view-hrd-rekap',
+                        'label' => 'Rekapitulasi HRD & Kalender',
+                        'description' => 'Melihat laporan cuti seluruh departemen dan kalender cuti perusahaan',
+                    ],
+                    [
+                        'name' => 'export-hrd-reports',
+                        'label' => 'Export Laporan (Excel/PDF)',
+                        'description' => 'Mengunduh rekap cuti & absensi karyawan dalam format Excel / cetak',
+                    ],
+                ],
+            ],
+            'superadmin' => [
+                'category_name' => 'Superadmin & Konfigurasi',
+                'category_desc' => 'Kontrol hak akses tingkat tinggi, Spatie role permissions, dan konfigurasi',
+                'icon' => 'ShieldCheck',
+                'color' => 'amber',
+                'badge_color' => 'bg-amber-100 text-amber-800 border-amber-200',
+                'permissions' => [
+                    [
+                        'name' => 'manage-roles',
+                        'label' => 'Kelola Role & Permissions',
+                        'description' => 'Membuat role custom, mengatur matriks permission, dan assignment ke karyawan',
+                    ],
+                    [
+                        'name' => 'manage-system-settings',
+                        'label' => 'Pengaturan Sistem & Master Data',
+                        'description' => 'Mengatur setting global aplikasi, master kategori cuti, dan konfigurasi kuota',
+                    ],
+                ],
+            ],
+        ];
     }
 
     public function storeRole(Request $request)
