@@ -35,7 +35,7 @@
     "file": "assets/vendor-swal-6ddcfacf.js"
   },
   "resources/css/app.css": {
-    "file": "assets/app-aaad9961.css",
+    "file": "assets/app-9c70b54d.css",
     "src": "resources/js/app.css"
   },
   "resources/js/Pages/Approvals/Index.jsx": {
@@ -84,7 +84,7 @@
     "src": "resources/js/Pages/HRD/Departments.jsx"
   },
   "resources/js/Pages/HRD/Employees.jsx": {
-    "file": "assets/Employees-cdd4abd1.js",
+    "file": "assets/Employees-a062942e.js",
     "imports": [
       "_vendor-core-077682fe.js",
       "_AuthenticatedLayout-034575a0.js",
@@ -168,12 +168,12 @@
     "src": "resources/js/Pages/Superadmin/RolePermission/Index.jsx"
   },
   "resources/js/app.css": {
-    "file": "assets/app-aaad9961.css",
+    "file": "assets/app-9c70b54d.css",
     "src": "resources/js/app.css"
   },
   "resources/js/app.jsx": {
     "css": [
-      "assets/app-aaad9961.css"
+      "assets/app-9c70b54d.css"
     ],
     "dynamicImports": [
       "resources/js/Pages/Approvals/Index.jsx",
@@ -188,7 +188,7 @@
       "resources/js/Pages/Payslips/Index.jsx",
       "resources/js/Pages/Superadmin/RolePermission/Index.jsx"
     ],
-    "file": "assets/app-f5d06601.js",
+    "file": "assets/app-dc984c5b.js",
     "imports": [
       "_vendor-core-077682fe.js"
     ],

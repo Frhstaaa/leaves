@@ -663,31 +663,31 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
         {/* MODAL 1: TAMBAH KARYAWAN BARU */}
         {isAddOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in">
+          <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-3 sm:p-4 flex min-h-full items-center justify-center animate-fade-in">
             <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setIsAddOpen(false)} />
-            <div className="relative z-10 w-full max-w-lg p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="relative z-10 w-full max-w-lg p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overflow-x-hidden">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center space-x-2">
-                  <UserPlus size={20} className="text-emerald-600" />
-                  <h3 className="text-base font-extrabold text-slate-900">Tambah Karyawan Baru</h3>
+                  <UserPlus size={20} className="text-emerald-600 shrink-0" />
+                  <h3 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">Tambah Karyawan Baru</h3>
                 </div>
-                <button onClick={() => setIsAddOpen(false)} className="p-1 rounded-lg text-slate-400 hover:text-slate-700">
+                <button onClick={() => setIsAddOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 shrink-0">
                   <X size={18} />
                 </button>
               </div>
 
-              <form onSubmit={handleAddSubmit} className="space-y-4 text-xs">
+              <form onSubmit={handleAddSubmit} className="space-y-3.5 text-xs">
                 {/* Avatar File Upload */}
-                <div className="flex items-center space-x-4 p-3 rounded-2xl bg-slate-50 border border-slate-200">
-                  <div className="w-14 h-14 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xl overflow-hidden shrink-0">
+                <div className="flex items-center space-x-3 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                  <div className="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-lg overflow-hidden shrink-0">
                     {addAvatarPreview ? (
                       <img src={addAvatarPreview} alt="Preview" className="w-full h-full object-cover" />
                     ) : (
-                      addForm.data.name ? addForm.data.name.charAt(0) : 'U'
+                      addForm.data.name ? addForm.data.name.charAt(0).toUpperCase() : 'U'
                     )}
                   </div>
-                  <div className="flex-1">
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Foto Profil (Opsional)</label>
+                  <div className="min-w-0 flex-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Foto Profil (Opsional &bull; Auto WebP)</label>
                     <input
                       type="file"
                       accept="image/*"
@@ -698,28 +698,26 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                           setAddAvatarPreview(URL.createObjectURL(file));
                         }
                       }}
-                      className="text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer"
+                      className="w-full text-[11px] text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-[11px] file:font-bold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer"
                     />
                   </div>
                 </div>
 
                 {/* NIK & Nama Lengkap */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-[11px] font-bold text-slate-600 mb-1">No Induk Karyawan (NIK) *</label>
-                    <div className="relative flex items-center">
-                      <input
-                        type="text"
-                        required
-                        value={addForm.data.nik}
-                        onChange={(e) => addForm.setData('nik', e.target.value)}
-                        placeholder="Contoh: EMP-2026-001"
-                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
-                      />
-                    </div>
+                    <input
+                      type="text"
+                      required
+                      value={addForm.data.nik}
+                      onChange={(e) => addForm.setData('nik', e.target.value)}
+                      placeholder="Contoh: EMP-2026-001"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                    />
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-[11px] font-bold text-slate-600 mb-1">Nama Lengkap *</label>
                     <input
                       type="text"
@@ -727,14 +725,14 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       value={addForm.data.name}
                       onChange={(e) => addForm.setData('name', e.target.value)}
                       placeholder="Nama lengkap karyawan..."
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
                     />
                   </div>
                 </div>
 
                 {/* Email & Password */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-[11px] font-bold text-slate-600 mb-1">Email Terdaftar *</label>
                     <input
                       type="email"
@@ -742,11 +740,11 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       value={addForm.data.email}
                       onChange={(e) => addForm.setData('email', e.target.value)}
                       placeholder="email@perusahaan.com"
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-medium focus:bg-white focus:border-emerald-500 outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-medium focus:bg-white focus:border-emerald-500 outline-none text-xs"
                     />
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-[11px] font-bold text-slate-600 mb-1">Password Awal *</label>
                     <input
                       type="text"
@@ -754,19 +752,19 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       value={addForm.data.password}
                       onChange={(e) => addForm.setData('password', e.target.value)}
                       placeholder="Minimal 6 karakter"
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-mono font-bold focus:bg-white focus:border-emerald-500 outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-mono font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
                     />
                   </div>
                 </div>
 
                 {/* Role & Departemen */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-[11px] font-bold text-slate-600 mb-1">Role Sistem *</label>
                     <select
                       value={addForm.data.role}
                       onChange={(e) => addForm.setData('role', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
                     >
                       <option value="employee">Karyawan (Staf)</option>
                       <option value="manager">Manager / Supervisor</option>
@@ -775,12 +773,12 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                     </select>
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-[11px] font-bold text-slate-600 mb-1">Departemen / Divisi</label>
                     <select
                       value={addForm.data.department_id}
                       onChange={(e) => addForm.setData('department_id', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
                     >
                       <option value="">Pilih Departemen</option>
                       {departments.map((dept) => (
@@ -791,12 +789,12 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                 </div>
 
                 {/* Approval Flow Configuration */}
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-                  <div className="flex items-center justify-between">
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                       Pengaturan Alur Approval
                     </label>
-                    <div className="inline-flex rounded-xl bg-slate-200/80 p-0.5 text-[10px] font-bold">
+                    <div className="inline-flex rounded-xl bg-slate-200/80 p-0.5 text-[10px] font-bold self-start sm:self-auto shrink-0">
                       <button
                         type="button"
                         onClick={() => {
@@ -864,7 +862,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                                 <span className="font-bold text-emerald-900">HRD / PGA Admin</span>
                               </div>
                             </div>
-                            <p className="text-[10px] text-emerald-700/90 italic pt-0.5">
+                            <p className="text-[10px] text-emerald-700/90 italic pt-0.5 leading-relaxed">
                               💡 Karyawan ini otomatis mengikuti aturan approval departemen. Ketika atasan departemen diubah di menu Setup Departemen, persetujuan cuti karyawan ini otomatis menyesuaikan.
                             </p>
                           </>
@@ -873,12 +871,12 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      <div>
+                      <div className="min-w-0">
                         <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 1 (Supervisor / Lead)</label>
                         <select
                           value={addForm.data.approver_1_id}
                           onChange={(e) => addForm.setData('approver_1_id', e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none"
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none text-xs"
                         >
                           <option value="">Tidak ada (Langsung Approval 2 / HRD)</option>
                           {managers.map((m) => (
@@ -887,12 +885,12 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                         </select>
                       </div>
 
-                      <div>
+                      <div className="min-w-0">
                         <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 2 (Manager / Dept Head)</label>
                         <select
                           value={addForm.data.approver_2_id}
                           onChange={(e) => addForm.setData('approver_2_id', e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none"
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none text-xs"
                         >
                           <option value="">Tidak ada (Langsung HRD)</option>
                           {managers.map((m) => (
@@ -904,7 +902,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   )}
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <label className="block text-[11px] font-bold text-slate-600 mb-1">Jatah Kuota Cuti (Hari / Thn)</label>
                   <input
                     type="number"
@@ -912,7 +910,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                     max="100"
                     value={addForm.data.total_quota}
                     onChange={(e) => addForm.setData('total_quota', e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
                   />
                 </div>
 
@@ -920,14 +918,14 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   <button
                     type="button"
                     onClick={() => setIsAddOpen(false)}
-                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 font-semibold hover:bg-slate-200"
+                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 font-semibold hover:bg-slate-200 transition-colors"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
                     disabled={addForm.processing}
-                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-md shadow-emerald-600/20"
+                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-md shadow-emerald-600/20 disabled:opacity-50 transition-all"
                   >
                     {addForm.processing ? 'Menyimpan...' : 'Simpan Karyawan'}
                   </button>
@@ -939,31 +937,31 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
         {/* MODAL 2: EDIT DATA KARYAWAN */}
         {editingEmployee && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in">
+          <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-3 sm:p-4 flex min-h-full items-center justify-center animate-fade-in">
             <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setEditingEmployee(null)} />
-            <div className="relative z-10 w-full max-w-lg p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="relative z-10 w-full max-w-lg p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overflow-x-hidden">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center space-x-2">
-                  <Edit3 size={20} className="text-emerald-600" />
-                  <h3 className="text-base font-extrabold text-slate-900">Edit Data Karyawan</h3>
+                  <Edit3 size={20} className="text-emerald-600 shrink-0" />
+                  <h3 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">Edit Data Karyawan</h3>
                 </div>
-                <button onClick={() => setEditingEmployee(null)} className="p-1 rounded-lg text-slate-400 hover:text-slate-700">
+                <button onClick={() => setEditingEmployee(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 shrink-0">
                   <X size={18} />
                 </button>
               </div>
 
-              <form onSubmit={handleEditSubmit} className="space-y-4 text-xs">
+              <form onSubmit={handleEditSubmit} className="space-y-3.5 text-xs">
                 {/* Avatar Preview & File Input */}
-                <div className="flex items-center space-x-4 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                <div className="flex items-center space-x-3 p-3 rounded-2xl bg-slate-50 border border-slate-200">
                   <div className="shrink-0">
                     {editAvatarPreview ? (
-                      <img src={editAvatarPreview} alt="Preview" className="w-14 h-14 rounded-full object-cover ring-2 ring-emerald-500" />
+                      <img src={editAvatarPreview} alt="Preview" className="w-12 h-12 rounded-full object-cover ring-2 ring-emerald-500" />
                     ) : (
-                      <UserAvatar user={editingEmployee} size="w-14 h-14" textSize="text-xl" />
+                      <UserAvatar user={editingEmployee} size="w-12 h-12" textSize="text-base" />
                     )}
                   </div>
-                  <div className="flex-1">
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Ganti Foto Profil</label>
+                  <div className="min-w-0 flex-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Ganti Foto Profil (Auto WebP)</label>
                     <input
                       type="file"
                       accept="image/*"
@@ -974,66 +972,66 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                           setEditAvatarPreview(URL.createObjectURL(file));
                         }
                       }}
-                      className="text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer"
+                      className="w-full text-[11px] text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-[11px] file:font-bold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-[11px] font-bold text-slate-600 mb-1">NIK Karyawan *</label>
                     <input
                       type="text"
                       required
                       value={editForm.data.nik}
                       onChange={(e) => editForm.setData('nik', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
                     />
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-[11px] font-bold text-slate-600 mb-1">Nama Lengkap *</label>
                     <input
                       type="text"
                       required
                       value={editForm.data.name}
                       onChange={(e) => editForm.setData('name', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-[11px] font-bold text-slate-600 mb-1">Email Terdaftar *</label>
                     <input
                       type="email"
                       required
                       value={editForm.data.email}
                       onChange={(e) => editForm.setData('email', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-medium focus:bg-white focus:border-emerald-500 outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-medium focus:bg-white focus:border-emerald-500 outline-none text-xs"
                     />
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-[11px] font-bold text-slate-600 mb-1">Ubah Password (Opsional)</label>
                     <input
                       type="password"
                       value={editForm.data.password}
                       onChange={(e) => editForm.setData('password', e.target.value)}
                       placeholder="Kosongkan jika tidak diubah"
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-mono focus:bg-white focus:border-emerald-500 outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-mono focus:bg-white focus:border-emerald-500 outline-none text-xs"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-[11px] font-bold text-slate-600 mb-1">Role Sistem *</label>
                     <select
                       value={editForm.data.role}
                       onChange={(e) => editForm.setData('role', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
                     >
                       <option value="employee">Karyawan (Staf)</option>
                       <option value="manager">Manager / Supervisor</option>
@@ -1042,12 +1040,12 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                     </select>
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-[11px] font-bold text-slate-600 mb-1">Departemen / Divisi</label>
                     <select
                       value={editForm.data.department_id}
                       onChange={(e) => editForm.setData('department_id', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
                     >
                       <option value="">Pilih Departemen</option>
                       {departments.map((dept) => (
@@ -1058,12 +1056,12 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                 </div>
 
                 {/* Approval Flow Configuration */}
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-                  <div className="flex items-center justify-between">
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                       Pengaturan Alur Approval
                     </label>
-                    <div className="inline-flex rounded-xl bg-slate-200/80 p-0.5 text-[10px] font-bold">
+                    <div className="inline-flex rounded-xl bg-slate-200/80 p-0.5 text-[10px] font-bold self-start sm:self-auto shrink-0">
                       <button
                         type="button"
                         onClick={() => {
@@ -1131,7 +1129,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                                 <span className="font-bold text-emerald-900">HRD / PGA Admin</span>
                               </div>
                             </div>
-                            <p className="text-[10px] text-emerald-700/90 italic pt-0.5">
+                            <p className="text-[10px] text-emerald-700/90 italic pt-0.5 leading-relaxed">
                               💡 Karyawan ini otomatis mengikuti aturan approval departemen. Ketika atasan departemen diubah di menu Setup Departemen, persetujuan cuti karyawan ini otomatis menyesuaikan.
                             </p>
                           </>
@@ -1140,12 +1138,12 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      <div>
+                      <div className="min-w-0">
                         <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 1 (Supervisor / Lead)</label>
                         <select
                           value={editForm.data.approver_1_id}
                           onChange={(e) => editForm.setData('approver_1_id', e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none"
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none text-xs"
                         >
                           <option value="">Tidak ada (Langsung Approval 2 / HRD)</option>
                           {managers.filter(m => m.id !== editingEmployee?.id).map((m) => (
@@ -1154,12 +1152,12 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                         </select>
                       </div>
 
-                      <div>
+                      <div className="min-w-0">
                         <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 2 (Manager / Dept Head)</label>
                         <select
                           value={editForm.data.approver_2_id}
                           onChange={(e) => editForm.setData('approver_2_id', e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none"
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none text-xs"
                         >
                           <option value="">Tidak ada (Langsung HRD)</option>
                           {managers.filter(m => m.id !== editingEmployee?.id).map((m) => (
@@ -1171,7 +1169,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   )}
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <label className="block text-[11px] font-bold text-slate-600 mb-1">Total Jatah Kuota Cuti</label>
                   <input
                     type="number"
@@ -1179,7 +1177,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                     max="100"
                     value={editForm.data.total_quota}
                     onChange={(e) => editForm.setData('total_quota', e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
                   />
                 </div>
 
@@ -1187,14 +1185,14 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   <button
                     type="button"
                     onClick={() => setEditingEmployee(null)}
-                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 font-semibold hover:bg-slate-200"
+                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 font-semibold hover:bg-slate-200 transition-colors"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
                     disabled={editForm.processing}
-                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-md shadow-emerald-600/20"
+                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-md shadow-emerald-600/20 disabled:opacity-50 transition-all"
                   >
                     {editForm.processing ? 'Memperbarui...' : 'Simpan Perubahan'}
                   </button>
@@ -1206,24 +1204,24 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
         {/* MODAL 3: EDIT KUOTA CUTI TAHUNAN */}
         {quotaEmployee && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in">
+          <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-3 sm:p-4 flex min-h-full items-center justify-center animate-fade-in">
             <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setQuotaEmployee(null)} />
-            <div className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4">
+            <div className="relative z-10 w-full max-w-md p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overflow-x-hidden">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 className="text-base font-extrabold text-slate-900">Update Kuota Cuti Tahunan</h3>
-                <button onClick={() => setQuotaEmployee(null)} className="p-1 rounded-lg text-slate-400 hover:text-slate-700">
+                <h3 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">Update Kuota Cuti Tahunan</h3>
+                <button onClick={() => setQuotaEmployee(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 shrink-0">
                   <X size={18} />
                 </button>
               </div>
 
               <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-slate-700 space-y-1">
-                <p className="font-extrabold text-slate-900">{quotaEmployee.name} ({quotaEmployee.nik})</p>
-                <p className="text-slate-600">Departemen: {quotaEmployee.department?.name || 'General'}</p>
+                <p className="font-extrabold text-slate-900 truncate">{quotaEmployee.name} ({quotaEmployee.nik})</p>
+                <p className="text-slate-600 truncate">Departemen: {quotaEmployee.department?.name || 'General'}</p>
                 <p className="text-emerald-800 font-bold mt-1">Sisa Kuota Saat Ini: {quotaEmployee.current_quota?.remaining_quota ?? 12} Hari</p>
               </div>
 
               <form onSubmit={handleQuotaSubmit} className="space-y-4">
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                     Total Jatah Kuota Cuti (Hari / Tahun {new Date().getFullYear()})
                   </label>
@@ -1233,7 +1231,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                     max="100"
                     value={quotaForm.data.total_quota}
                     onChange={(e) => quotaForm.setData('total_quota', e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-black text-base focus:bg-white focus:border-emerald-500 outline-none"
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-black text-sm sm:text-base focus:bg-white focus:border-emerald-500 outline-none"
                     required
                   />
                   <p className="text-[11px] text-slate-500 mt-1">Sisa kuota akan otomatis dihitung berdasarkan jumlah cuti yang sudah terpakai.</p>
@@ -1243,13 +1241,13 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   <button
                     type="button"
                     onClick={() => setQuotaEmployee(null)}
-                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold hover:bg-slate-200"
+                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold hover:bg-slate-200 transition-colors"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20"
+                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 transition-all"
                   >
                     Simpan Kuota
                   </button>
@@ -1261,14 +1259,14 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
         {/* MODAL 4: KONFIRMASI HAPUS KARYAWAN */}
         {deletingEmployee && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in">
+          <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-3 sm:p-4 flex min-h-full items-center justify-center animate-fade-in">
             <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setDeletingEmployee(null)} />
-            <div className="relative z-10 w-full max-w-sm p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 text-center">
+            <div className="relative z-10 w-full max-w-sm p-5 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 text-center my-auto">
               <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
                 <AlertTriangle size={24} />
               </div>
               <div>
-                <h3 className="text-base font-extrabold text-slate-900">Hapus Data Karyawan?</h3>
+                <h3 className="text-sm sm:text-base font-extrabold text-slate-900">Hapus Data Karyawan?</h3>
                 <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
                   Apakah Anda yakin ingin menghapus karyawan <strong className="text-slate-900">{deletingEmployee.name}</strong> ({deletingEmployee.nik})? Data yang dihapus tidak dapat dikembalikan.
                 </p>
@@ -1277,14 +1275,14 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                 <button
                   type="button"
                   onClick={() => setDeletingEmployee(null)}
-                  className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs"
+                  className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
                 >
                   Batal
                 </button>
                 <button
                   type="button"
                   onClick={handleDeleteSubmit}
-                  className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-md shadow-rose-600/20"
+                  className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-md shadow-rose-600/20 transition-all"
                 >
                   Ya, Hapus
                 </button>
@@ -1295,50 +1293,50 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
         {/* MODAL 5: IMPORT EXCEL / CSV KARYAWAN */}
         {isImportOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in">
+          <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-3 sm:p-4 flex min-h-full items-center justify-center animate-fade-in">
             <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setIsImportOpen(false)} />
-            <div className="relative z-10 w-full max-w-lg p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+            <div className="relative z-10 w-full max-w-lg p-4 sm:p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-5 my-auto max-h-[90vh] overflow-y-auto overflow-x-hidden">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3 sm:pb-4">
+                <div className="flex items-center space-x-3 min-w-0">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shrink-0">
                     <FileSpreadsheet size={20} />
                   </div>
-                  <div>
-                    <h3 className="text-base font-extrabold text-slate-900">Import Data Karyawan</h3>
-                    <p className="text-xs text-slate-500">Migrasi massal data staf dari template Excel / CSV</p>
+                  <div className="min-w-0">
+                    <h3 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">Import Data Karyawan</h3>
+                    <p className="text-[11px] sm:text-xs text-slate-500 truncate">Migrasi massal data staf dari template Excel / CSV</p>
                   </div>
                 </div>
-                <button onClick={() => setIsImportOpen(false)} className="text-slate-400 hover:text-slate-700">
-                  <X size={20} />
+                <button onClick={() => setIsImportOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 shrink-0">
+                  <X size={18} />
                 </button>
               </div>
 
               {/* Step 1: Download Template */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-slate-900 uppercase tracking-wider">Langkah 1: Format Template</span>
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <span className="text-[11px] sm:text-xs font-black text-slate-900 uppercase tracking-wider">Langkah 1: Format Template</span>
                   <a
                     href={route('hrd.employees.template')}
                     download
-                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all"
+                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center space-x-1.5 shadow-sm transition-all self-start sm:self-auto"
                   >
                     <Download size={14} />
                     <span>Download Template CSV</span>
                   </a>
                 </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
+                <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed">
                   Download template resmi di atas. Kolom: <strong>NIK, Nama Karyawan, Email, Password, Role, Kode/Nama Departemen, NIK Atasan 1 (Supervisor), NIK Atasan 2 (Manager), Kuota Cuti</strong>.
                 </p>
               </div>
 
               {/* Step 2: Upload File */}
-              <form onSubmit={handleImportSubmit} className="space-y-5">
-                <div>
-                  <label className="block text-xs font-black text-slate-900 uppercase tracking-wider mb-2">
+              <form onSubmit={handleImportSubmit} className="space-y-4 sm:space-y-5">
+                <div className="min-w-0">
+                  <label className="block text-[11px] sm:text-xs font-black text-slate-900 uppercase tracking-wider mb-1.5">
                     Langkah 2: Upload File CSV / Excel
                   </label>
-                  <div className="p-6 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-300 hover:border-emerald-500 text-center transition-all">
-                    <UploadCloud size={36} className="mx-auto text-emerald-600 mb-2" />
+                  <div className="p-4 sm:p-6 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-300 hover:border-emerald-500 text-center transition-all">
+                    <UploadCloud size={32} className="mx-auto text-emerald-600 mb-1.5" />
                     <input
                       type="file"
                       accept=".csv, .txt, .xlsx"
@@ -1349,11 +1347,11 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                     />
                     <label
                       htmlFor="employee-import-input"
-                      className="cursor-pointer text-xs font-bold text-emerald-600 hover:underline block"
+                      className="cursor-pointer text-xs font-bold text-emerald-600 hover:underline block truncate px-2"
                     >
                       {importForm.data.file ? importForm.data.file.name : 'Klik di sini untuk memilih file CSV / Excel'}
                     </label>
-                    <span className="text-[11px] text-slate-400 block mt-1">Format: .csv, .xlsx (maks 5MB)</span>
+                    <span className="text-[10px] sm:text-[11px] text-slate-400 block mt-1">Format: .csv, .xlsx (maks 5MB)</span>
                   </div>
                   {importForm.errors.file && (
                     <p className="mt-1 text-xs text-rose-600 font-bold">{importForm.errors.file}</p>
@@ -1364,14 +1362,14 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   <button
                     type="button"
                     onClick={() => setIsImportOpen(false)}
-                    className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs"
+                    className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
                     disabled={importForm.processing || !importForm.data.file}
-                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 disabled:opacity-50"
+                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 disabled:opacity-50 transition-all"
                   >
                     Proses Import Data
                   </button>
