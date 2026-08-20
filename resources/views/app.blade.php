@@ -38,7 +38,50 @@
     @inertiaHead
 </head>
 <body class="h-full bg-[#F5FAF7] font-sans antialiased text-slate-900 selection:bg-emerald-600 selection:text-white">
-    @inertia
+    <div id="app" data-page="{{ json_encode($page) }}">
+        <div class="min-h-screen bg-[#F5FAF7] p-4 sm:p-8 flex flex-col justify-between" style="font-family: 'Plus Jakarta Sans', sans-serif;">
+            <div class="max-w-6xl mx-auto w-full space-y-6">
+                <!-- Header skeleton -->
+                <div class="flex items-center justify-between py-3 border-b border-slate-200">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center font-black text-white text-sm shadow-md shadow-emerald-600/20">SG</div>
+                        <div class="space-y-1.5">
+                            <div class="h-4 w-32 bg-slate-200 rounded-md animate-pulse"></div>
+                            <div class="h-3 w-20 bg-slate-200/60 rounded-md animate-pulse"></div>
+                        </div>
+                    </div>
+                    <div class="w-9 h-9 rounded-2xl bg-slate-200 animate-pulse"></div>
+                </div>
+                <!-- 3 Metric Cards Skeleton -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="h-28 rounded-3xl bg-white border border-slate-200/80 p-5 space-y-3 shadow-xs">
+                        <div class="h-4 w-24 bg-slate-200 rounded animate-pulse"></div>
+                        <div class="h-8 w-16 bg-slate-200/70 rounded-lg animate-pulse"></div>
+                    </div>
+                    <div class="h-28 rounded-3xl bg-white border border-slate-200/80 p-5 space-y-3 shadow-xs">
+                        <div class="h-4 w-24 bg-slate-200 rounded animate-pulse"></div>
+                        <div class="h-8 w-16 bg-slate-200/70 rounded-lg animate-pulse"></div>
+                    </div>
+                    <div class="h-28 rounded-3xl bg-white border border-slate-200/80 p-5 space-y-3 shadow-xs">
+                        <div class="h-4 w-24 bg-slate-200 rounded animate-pulse"></div>
+                        <div class="h-8 w-16 bg-slate-200/70 rounded-lg animate-pulse"></div>
+                    </div>
+                </div>
+                <!-- Content Table Skeleton -->
+                <div class="h-72 rounded-3xl bg-white border border-slate-200/80 p-6 space-y-4 shadow-xs">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div class="h-5 w-40 bg-slate-200 rounded animate-pulse"></div>
+                        <div class="h-7 w-24 bg-slate-200/60 rounded-xl animate-pulse"></div>
+                    </div>
+                    <div class="space-y-3 pt-2">
+                        <div class="h-12 rounded-2xl bg-slate-100/80 animate-pulse"></div>
+                        <div class="h-12 rounded-2xl bg-slate-100/80 animate-pulse"></div>
+                        <div class="h-12 rounded-2xl bg-slate-100/80 animate-pulse"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     @if($jsFile)
         <script type="module" src="{{ asset($jsFile) }}"></script>

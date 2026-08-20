@@ -40,6 +40,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { showConfirm, showToast } from '@/Utils/swal';
+import { DashboardSkeleton, TableSkeleton, CardListSkeleton } from '@/components/PageSkeleton';
 
 export function UserAvatar({ user, size = 'w-8 h-8', textSize = 'text-xs' }) {
   const [hasError, setHasError] = useState(false);
@@ -79,9 +80,44 @@ export default function AuthenticatedLayout({ children, title }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  // Skeleton Loading & Navigation State (Debounced for zero-flicker speed)
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [showSkeleton, setShowSkeleton] = useState(false);
+
   const isSuperadmin = user.is_superadmin || user.role === 'superadmin';
   const isAdmin = user.is_admin || user.role === 'admin' || isSuperadmin;
   const isManager = user.is_manager || user.role === 'manager';
+
+  // Navigation transition listener with 120ms debounce for smooth skeleton loading
+  useEffect(() => {
+    let timer = null;
+
+    const unbindStart = router.on('start', () => {
+      setIsNavigating(true);
+      timer = setTimeout(() => {
+        setShowSkeleton(true);
+      }, 120);
+    });
+
+    const unbindFinish = router.on('finish', () => {
+      if (timer) clearTimeout(timer);
+      setIsNavigating(false);
+      setShowSkeleton(false);
+    });
+
+    const unbindError = router.on('error', () => {
+      if (timer) clearTimeout(timer);
+      setIsNavigating(false);
+      setShowSkeleton(false);
+    });
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      unbindStart();
+      unbindFinish();
+      unbindError();
+    };
+  }, []);
 
   // Flash message toast notification listener
   useEffect(() => {
@@ -440,15 +476,45 @@ export default function AuthenticatedLayout({ children, title }) {
           )}
         </AnimatePresence>
 
-        {/* Body Content */}
-        <motion.main
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 w-full pb-28 md:pb-8"
-        >
-          {children}
-        </motion.main>
+        {/* Top Shimmer Progress Bar for Seamless Page Transitions */}
+        {isNavigating && (
+          <div className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 z-[9999] shadow-xs">
+            <div className="h-full w-full bg-white/40 skeleton-shimmer" />
+          </div>
+        )}
+
+        {/* Body Content with Skeleton Fallback */}
+        <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 w-full pb-28 md:pb-8">
+          <AnimatePresence mode="wait">
+            {showSkeleton ? (
+              <motion.div
+                key="skeleton-view"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                {isDashboard ? (
+                  <DashboardSkeleton />
+                ) : isApproval || isHrdDepartments ? (
+                  <CardListSkeleton count={4} />
+                ) : (
+                  <TableSkeleton rows={5} />
+                )}
+              </motion.div>
+            ) : (
+              <motion.div
+                key={url}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+              >
+                {children}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
       </div>
 
       {/* MOBILE BOTTOM BAR ATTACHED DESIGN (MENU FLOATING IN CENTER, HOME ON FAR LEFT) */}
