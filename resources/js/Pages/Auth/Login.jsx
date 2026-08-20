@@ -19,7 +19,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden font-sans">
+    <main className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden font-sans">
       <div className="w-full max-w-md z-10">
         {/* Header Logo & Title */}
         <div className="text-center mb-8">
@@ -132,6 +132,6 @@ export default function Login() {
           </form>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

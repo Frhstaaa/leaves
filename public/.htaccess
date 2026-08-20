@@ -26,6 +26,7 @@
     AddOutputFilterByType DEFLATE text/html
     AddOutputFilterByType DEFLATE text/xml
     AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE text/javascript
     AddOutputFilterByType DEFLATE application/xml
     AddOutputFilterByType DEFLATE application/xhtml+xml
     AddOutputFilterByType DEFLATE application/rss+xml
@@ -35,26 +36,32 @@
     AddOutputFilterByType DEFLATE image/svg+xml
 </IfModule>
 
-# Enable Browser Caching for Static Assets (Images, Fonts, CSS, JS)
+# Enable Long-lived Browser Caching for Static Assets
 <IfModule mod_expires.c>
     ExpiresActive On
+    ExpiresDefault "access plus 1 month"
     ExpiresByType image/jpg "access plus 1 year"
     ExpiresByType image/jpeg "access plus 1 year"
     ExpiresByType image/gif "access plus 1 year"
     ExpiresByType image/png "access plus 1 year"
     ExpiresByType image/webp "access plus 1 year"
     ExpiresByType image/svg+xml "access plus 1 year"
-    ExpiresByType text/css "access plus 1 month"
-    ExpiresByType application/javascript "access plus 1 month"
-    ExpiresByType application/x-javascript "access plus 1 month"
+    ExpiresByType image/x-icon "access plus 1 year"
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType text/javascript "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType application/x-javascript "access plus 1 year"
     ExpiresByType font/woff2 "access plus 1 year"
     ExpiresByType font/woff "access plus 1 year"
+    ExpiresByType font/ttf "access plus 1 year"
+    ExpiresByType application/font-woff2 "access plus 1 year"
+    ExpiresByType application/font-woff "access plus 1 year"
 </IfModule>
 
-# Enable Keep-Alive for Faster HTTP Connections
+# Enable Keep-Alive & Immutable Cache-Control Headers
 <IfModule mod_headers.c>
     Header set Connection keep-alive
-    <FilesMatch "\.(css|js|woff2|png|jpg|jpeg|svg|webp)$">
+    <FilesMatch "\.(css|js|mjs|woff2|woff|ttf|eot|png|jpg|jpeg|gif|svg|webp|ico)$">
         Header set Cache-Control "public, max-age=31536000, immutable"
     </FilesMatch>
 </IfModule>

@@ -51,7 +51,7 @@
     "src": "resources/js/Pages/Approvals/Index.jsx"
   },
   "resources/js/Pages/Auth/Login.jsx": {
-    "file": "assets/Login-f3dba205.js",
+    "file": "assets/Login-2def0053.js",
     "imports": [
       "_vendor-core-077682fe.js"
     ],
@@ -188,7 +188,7 @@
       "resources/js/Pages/Payslips/Index.jsx",
       "resources/js/Pages/Superadmin/RolePermission/Index.jsx"
     ],
-    "file": "assets/app-02dd9c63.js",
+    "file": "assets/app-df78e849.js",
     "imports": [
       "_vendor-core-077682fe.js"
     ],
