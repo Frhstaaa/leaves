@@ -18,6 +18,8 @@ import {
   Eye
 } from 'lucide-react';
 
+import { showConfirm, showToast } from '@/Utils/swal';
+
 export default function LeaveRequestsIndex({ user: propUser, requests, filters, quota }) {
   const { auth } = usePage().props;
   const currentUser = propUser || auth?.user || {};
@@ -31,9 +33,19 @@ export default function LeaveRequestsIndex({ user: propUser, requests, filters, 
     router.get(route('leave-requests.index'), { search, status }, { preserveState: true });
   };
 
-  const handleCancel = (id) => {
-    if (confirm('Apakah Anda yakin ingin membatalkan pengajuan cuti ini?')) {
-      router.delete(route('leave-requests.destroy', id));
+  const handleCancel = async (id) => {
+    const confirmed = await showConfirm({
+      title: 'Batalkan Pengajuan Cuti?',
+      text: 'Pengajuan cuti yang masih berstatus pending akan dibatalkan dan dihapus.',
+      icon: 'warning',
+      confirmText: 'Ya, Batalkan',
+      cancelText: 'Kembali',
+    });
+
+    if (confirmed) {
+      router.delete(route('leave-requests.destroy', id), {
+        onSuccess: () => showToast('Pengajuan cuti berhasil dibatalkan.'),
+      });
     }
   };
 

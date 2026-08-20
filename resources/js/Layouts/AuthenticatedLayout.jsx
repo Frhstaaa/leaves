@@ -28,6 +28,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { showConfirm, showToast } from '@/Utils/swal';
+
 export function UserAvatar({ user, size = 'w-8 h-8', textSize = 'text-xs' }) {
   const [hasError, setHasError] = useState(false);
 
@@ -68,12 +70,21 @@ export default function AuthenticatedLayout({ children, title }) {
 
   const isSuperadmin = user.is_superadmin || user.role === 'superadmin';
   const isAdmin = user.is_admin || user.role === 'admin' || isSuperadmin;
-  const isManager = user.is_manager || user.role === 'manager' || isAdmin;
-  const isEmployee = user.role === 'employee';
+  const isManager = user.is_manager || user.role === 'manager';
 
-  // Listen to global open profile & notification events
+  // Flash message toast notification listener
   useEffect(() => {
-    const handleOpenProfile = () => setActionMenuOpen(true);
+    if (flash?.success) {
+      showToast(flash.success, 'success');
+    }
+    if (flash?.error) {
+      showToast(flash.error, 'error');
+    }
+  }, [flash]);
+
+  // Global event listener for custom events
+  useEffect(() => {
+    const handleOpenProfile = () => setMyProfileOpen(true);
     const handleOpenNotifications = () => setNotificationsOpen(true);
 
     window.addEventListener('open-profile-menu', handleOpenProfile);
@@ -85,9 +96,18 @@ export default function AuthenticatedLayout({ children, title }) {
     };
   }, []);
 
-  const handleLogout = (e) => {
+  const handleLogout = async (e) => {
     e.preventDefault();
-    router.post(route('logout'));
+    const confirmed = await showConfirm({
+      title: 'Keluar dari Sistem?',
+      text: 'Anda akan keluar dari sesi login akun Form SGIN ini.',
+      icon: 'question',
+      confirmText: 'Ya, Keluar',
+      cancelText: 'Batal',
+    });
+    if (confirmed) {
+      router.post(route('logout'));
+    }
   };
 
   const handleAvatarUpload = (e) => {

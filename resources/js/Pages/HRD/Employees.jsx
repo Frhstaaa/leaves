@@ -25,6 +25,7 @@ import {
   UploadCloud
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { showAlert, showToast, showConfirm } from '@/Utils/swal';
 
 export default function HrdEmployees({ employees = [], departments = [], managers = [], stats = {}, filters = {} }) {
   // Filter States
@@ -51,7 +52,11 @@ export default function HrdEmployees({ employees = [], departments = [], manager
   const handleImportSubmit = (e) => {
     e.preventDefault();
     if (!importForm.data.file) {
-      alert('Silakan pilih file CSV terlebih dahulu.');
+      showAlert({
+        title: 'File Belum Dipilih',
+        text: 'Silakan pilih file CSV atau Excel terlebih dahulu sebelum melanjutkan.',
+        icon: 'warning'
+      });
       return;
     }
     importForm.post(route('hrd.employees.import'), {
@@ -59,6 +64,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
       onSuccess: () => {
         setIsImportOpen(false);
         importForm.reset();
+        showToast('Proses import data karyawan berhasil dijalankan.');
       },
     });
   };

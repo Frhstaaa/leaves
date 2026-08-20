@@ -26,8 +26,16 @@ import {
   X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { showAlert, showConfirm, showToast } from '@/Utils/swal';
 
 export default function CreateLeaveRequest({ user, categories, quota }) {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [filePreviewName, setFilePreviewName] = useState('');
+  const [fileSizeText, setFileSizeText] = useState('');
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
+  const [agreedError, setAgreedError] = useState('');
+
   const { data, setData, post, processing, errors, reset } = useForm({
     submission_type: 'PERMOHONAN',
     approval_agreed: 'Ya',
@@ -40,21 +48,16 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
     attachment: null,
   });
 
-  const [currentStep, setCurrentStep] = useState(1);
-  const [selectedCategory, setSelectedCategory] = useState(categories[0] || null);
-  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
-  const [categorySearch, setCategorySearch] = useState('');
+  const selectedCategory = categories.find((c) => c.id === parseInt(data.leave_category_id)) || categories[0];
 
-  const [filePreviewName, setFilePreviewName] = useState('');
-  const [fileSizeText, setFileSizeText] = useState('');
-  const [agreedError, setAgreedError] = useState('');
-
-  const handleSelectCategory = (cat) => {
-    setData('leave_category_id', cat.id);
-    setSelectedCategory(cat);
-    setData('unit', cat.unit_type || 'hari');
-    setCategoryModalOpen(false);
-  };
+  useEffect(() => {
+    if (selectedCategory) {
+      setData((prev) => ({
+        ...prev,
+        unit: selectedCategory.unit_type || 'hari',
+      }));
+    }
+  }, [data.leave_category_id]);
 
   useEffect(() => {
     if (data.start_date && data.end_date && data.unit === 'hari') {
@@ -63,7 +66,7 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
       if (end >= start) {
         const diffTime = Math.abs(end - start);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-        setData('amount', diffDays);
+        setData((prev) => ({ ...prev, amount: diffDays }));
       }
     }
   }, [data.start_date, data.end_date, data.unit]);
@@ -87,19 +90,23 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
     }
     if (currentStep === 2) {
       if (!data.start_date) {
-        alert('Tanggal Mulai wajib diisi.');
+        showAlert({ title: 'Tanggal Belum Diisi', text: 'Tanggal Mulai permohonan wajib diisi.', icon: 'warning' });
         return;
       }
       if (!data.end_date) {
-        alert('Tanggal Selesai wajib diisi.');
+        showAlert({ title: 'Tanggal Belum Diisi', text: 'Tanggal Selesai permohonan wajib diisi.', icon: 'warning' });
         return;
       }
       if (!data.reason || data.reason.trim().length < 3) {
-        alert('Detail alasan permohonan wajib diisi (minimal 3 karakter).');
+        showAlert({ title: 'Alasan Belum Lengkap', text: 'Detail alasan permohonan wajib diisi (minimal 3 karakter).', icon: 'warning' });
         return;
       }
       if (selectedCategory?.requires_attachment && !data.attachment) {
-        alert('Kategori ' + selectedCategory.name + ' wajib melampirkan file dokumen pendukung.');
+        showAlert({
+          title: 'Lampiran Diperlukan',
+          text: `Kategori ${selectedCategory.name} wajib melampirkan file dokumen pendukung (Surat Dokter/dll).`,
+          icon: 'warning'
+        });
         return;
       }
     }
@@ -110,12 +117,20 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
-  const handleResetForm = () => {
-    if (confirm('Apakah Anda yakin ingin mengosongkan formulir ini?')) {
+  const handleResetForm = async () => {
+    const confirmed = await showConfirm({
+      title: 'Kosongkan Formulir?',
+      text: 'Semua data yang telah Anda isi pada formulir ini akan direset.',
+      icon: 'question',
+      confirmText: 'Ya, Kosongkan',
+      cancelText: 'Batal',
+    });
+    if (confirmed) {
       reset();
       setFilePreviewName('');
       setFileSizeText('');
       setCurrentStep(1);
+      showToast('Formulir berhasil dikosongkan.');
     }
   };
 
@@ -127,7 +142,7 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
       return;
     }
     if (!data.reason || data.reason.trim().length < 3) {
-      alert('Detail alasan permohonan wajib diisi (minimal 3 karakter).');
+      showAlert({ title: 'Alasan Belum Lengkap', text: 'Detail alasan permohonan wajib diisi (minimal 3 karakter).', icon: 'warning' });
       setCurrentStep(2);
       return;
     }
