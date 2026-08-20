@@ -135,4 +135,9 @@ class User extends Authenticatable
     {
         return $this->role === 'admin' || $this->hasRole('admin') || $this->isSuperadmin();
     }
+
+    public function payslips()
+    {
+        return $this->hasMany(Payslip::class);
+    }
 }

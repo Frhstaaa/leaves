@@ -25,7 +25,8 @@ import {
   FileText,
   AlertCircle,
   Menu,
-  Grid
+  Grid,
+  Receipt
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -132,9 +133,11 @@ export default function AuthenticatedLayout({ children, title }) {
   const isCreateRequest = url.startsWith('/leave-requests/create');
   const isHistoryRequest = (url === '/leave-requests' || url.startsWith('/leave-requests?')) || (url.startsWith('/leave-requests') && !url.startsWith('/leave-requests/create'));
   const isApproval = url.startsWith('/approvals');
+  const isPayslipsPage = (url === '/payslips' || url.startsWith('/payslips?')) && !url.startsWith('/hrd/payslips');
   const isHrdDepartments = url.startsWith('/hrd/departments');
   const isHrdEmployees = url.startsWith('/hrd/employees');
-  const isHrdIndex = (url === '/hrd' || url.startsWith('/hrd?')) || (url.startsWith('/hrd') && !url.startsWith('/hrd/employees') && !url.startsWith('/hrd/departments'));
+  const isHrdPayslips = url.startsWith('/hrd/payslips');
+  const isHrdIndex = (url === '/hrd' || url.startsWith('/hrd?')) && !url.startsWith('/hrd/employees') && !url.startsWith('/hrd/departments') && !url.startsWith('/hrd/payslips');
   const isRolesPage = url.startsWith('/superadmin/roles');
 
   const navItems = [
@@ -163,6 +166,14 @@ export default function AuthenticatedLayout({ children, title }) {
       show: true,
     },
     {
+      name: 'Slip Gaji Saya',
+      shortName: 'Slip Gaji',
+      href: route('payslips.index'),
+      icon: Receipt,
+      active: isPayslipsPage,
+      show: true,
+    },
+    {
       name: 'Persetujuan Team',
       shortName: 'Approval',
       href: route('approvals.index'),
@@ -184,6 +195,14 @@ export default function AuthenticatedLayout({ children, title }) {
       href: route('hrd.employees'),
       icon: Users,
       active: isHrdEmployees,
+      show: isAdmin,
+    },
+    {
+      name: 'Distribusi Slip Gaji',
+      shortName: 'Slip Gaji',
+      href: route('hrd.payslips'),
+      icon: Receipt,
+      active: isHrdPayslips,
       show: isAdmin,
     },
     {

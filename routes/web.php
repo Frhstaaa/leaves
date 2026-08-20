@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HrdController;
 use App\Http\Controllers\LeaveRequestController;
+use App\Http\Controllers\PayslipController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -57,6 +58,17 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/hrd/export', [HrdController::class, 'export'])->name('hrd.export');
     // Profile Avatar Route
     Route::post('/profile/avatar', [\App\Http\Controllers\ProfileController::class, 'updateAvatar'])->name('profile.avatar');
+
+    // Employee Payslips Portal
+    Route::get('/payslips', [PayslipController::class, 'index'])->name('payslips.index');
+    Route::get('/payslips/{id}/download', [PayslipController::class, 'download'])->name('payslips.download');
+    Route::get('/payslips/{id}/preview', [PayslipController::class, 'preview'])->name('payslips.preview');
+
+    // HRD Payslip Management & Bulk Upload
+    Route::get('/hrd/payslips', [PayslipController::class, 'manage'])->name('hrd.payslips');
+    Route::post('/hrd/payslips/bulk-upload', [PayslipController::class, 'bulkUpload'])->name('hrd.payslips.bulk-upload');
+    Route::post('/hrd/payslips/single-upload', [PayslipController::class, 'singleUpload'])->name('hrd.payslips.single-upload');
+    Route::delete('/hrd/payslips/{id}', [PayslipController::class, 'destroy'])->name('hrd.payslips.destroy');
 
     // Superadmin Role & Permission Management Routes
     Route::middleware(['superadmin'])->prefix('superadmin')->name('superadmin.')->group(function () {
