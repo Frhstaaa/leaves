@@ -316,21 +316,8 @@ export default function AuthenticatedLayout({ children, title }) {
           </div>
         </div>
 
-        {/* User Card Trigger for Action Menu */}
-        <button
-          onClick={() => setActionMenuOpen(true)}
-          className="p-3.5 mx-3 my-4 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200 flex items-center space-x-3 text-left transition-all group"
-        >
-          <UserAvatar user={user} size="w-10 h-10" textSize="text-base" />
-          <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-bold text-slate-900 truncate">{user.name}</h3>
-            <p className="text-xs text-slate-500 truncate">{user.nik || 'NIK: -'}</p>
-            <span className="text-[10px] text-emerald-600 font-bold block mt-0.5 group-hover:underline">Opsi Profil & Upload Foto &bull;</span>
-          </div>
-        </button>
-
         {/* Desktop Navigation Menu */}
-        <nav className="flex-1 px-3 py-2 space-y-1.5 overflow-y-auto">
+        <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
           {navItems.filter(item => item.show).map((item) => {
             const Icon = item.icon;
             return (
@@ -360,23 +347,6 @@ export default function AuthenticatedLayout({ children, title }) {
             );
           })}
         </nav>
-
-        {/* Desktop Sidebar PWA Banner */}
-        <div className="p-3 mx-3 mb-2 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50/80 border border-emerald-200 text-xs space-y-1.5 shadow-2xs">
-          <div className="flex items-center space-x-1.5 text-emerald-950 font-black">
-            <Smartphone size={15} className="text-emerald-700" />
-            <span>Aplikasi Form SGIN</span>
-          </div>
-          <p className="text-[10px] text-slate-500 leading-tight">Pasang di HP / Laptop untuk akses 1-ketukan.</p>
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('open-pwa-install-modal'))}
-            className="w-full py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] shadow-xs transition-all active:scale-95 flex items-center justify-center space-x-1"
-          >
-            <Download size={13} />
-            <span>Install Aplikasi (PWA)</span>
-          </button>
-        </div>
 
         {/* Footer Logout */}
         <div className="p-4 border-t border-slate-200">
