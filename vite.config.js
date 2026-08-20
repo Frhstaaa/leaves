@@ -17,10 +17,13 @@ export default defineConfig({
         rollupOptions: {
             output: {
                 manualChunks: {
-                    'vendor-react': ['react', 'react-dom'],
-                    'vendor-inertia': ['@inertiajs/react'],
-                    'vendor-motion': ['framer-motion'],
-                    'vendor-icons': ['lucide-react'],
+                    'vendor-core': [
+                        'react',
+                        'react-dom',
+                        '@inertiajs/react',
+                        'framer-motion',
+                        'lucide-react'
+                    ],
                     'vendor-swal': ['sweetalert2'],
                 },
             },
