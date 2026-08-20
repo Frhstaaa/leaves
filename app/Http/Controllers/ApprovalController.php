@@ -268,9 +268,12 @@ class ApprovalController extends Controller
         // Authorization check
         if (!$user->isAdmin()) {
             $isAuth = false;
-            if ($currentStage === 'approval_1' && $requester->approver_1_id == $user->id) {
+            $effApprover1 = $requester->getEffectiveApprover1();
+            $effApprover2 = $requester->getEffectiveApprover2();
+
+            if ($currentStage === 'approval_1' && $effApprover1 && $effApprover1->id == $user->id) {
                 $isAuth = true;
-            } elseif ($currentStage === 'approval_2' && ($requester->approver_2_id == $user->id || $requester->manager_id == $user->id || (is_null($requester->manager_id) && $requester->department_id == $user->department_id))) {
+            } elseif ($currentStage === 'approval_2' && $effApprover2 && $effApprover2->id == $user->id) {
                 $isAuth = true;
             }
 
