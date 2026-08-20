@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { motion, AnimatePresence } from 'framer-motion';
 import { showAlert, showConfirm, showToast } from '@/Utils/swal';
+import { convertImageFileToWebp } from '@/Utils/imageCompressor';
 
 export default function CreateLeaveRequest({ user, categories, quota }) {
   const [currentStep, setCurrentStep] = useState(1);
@@ -78,12 +79,19 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
     }
   }, [data.start_date, data.end_date, data.unit]);
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setData('attachment', file);
-      setFilePreviewName(file.name);
-      setFileSizeText((file.size / (1024 * 1024)).toFixed(2) + ' MB');
+  const handleFileChange = async (e) => {
+    const originalFile = e.target.files[0];
+    if (originalFile) {
+      if (originalFile.type.startsWith('image/')) {
+        const webpFile = await convertImageFileToWebp(originalFile);
+        setData('attachment', webpFile);
+        setFilePreviewName(webpFile.name);
+        setFileSizeText((webpFile.size / (1024 * 1024)).toFixed(2) + ' MB (WebP)');
+      } else {
+        setData('attachment', originalFile);
+        setFilePreviewName(originalFile.name);
+        setFileSizeText((originalFile.size / (1024 * 1024)).toFixed(2) + ' MB');
+      }
     }
   };
 

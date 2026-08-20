@@ -6,6 +6,7 @@ use App\Models\LeaveCategory;
 use App\Models\LeaveQuota;
 use App\Models\LeaveRequest;
 use App\Models\User;
+use App\Services\MediaOptimizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -149,7 +150,9 @@ class LeaveRequestController extends Controller
 
             $mime = $file->getMimeType();
             if (str_contains($mime, 'image')) {
-                $attachmentPath = $this->convertToWebpAndStore($file, 'attachments');
+                $attachmentPath = MediaOptimizer::convertImageToWebp($file, 'attachments', 80, 1920, 1920);
+            } elseif (str_contains($mime, 'pdf')) {
+                $attachmentPath = MediaOptimizer::optimizePdfAndStore($file, 'attachments');
             } else {
                 $attachmentPath = $file->store('attachments', 'public');
             }
@@ -217,36 +220,5 @@ class LeaveRequestController extends Controller
         $leaveRequest->delete();
 
         return redirect()->route('leave-requests.index')->with('success', 'Pengajuan cuti berhasil dibatalkan dan dihapus.');
-    }
-
-    private function convertToWebpAndStore($file, string $folder = 'attachments', int $quality = 80): string
-    {
-        $mime = $file->getMimeType();
-        $realPath = $file->getRealPath();
-
-        $image = match ($mime) {
-            'image/jpeg', 'image/jpg' => @imagecreatefromjpeg($realPath),
-            'image/png' => @imagecreatefrompng($realPath),
-            'image/webp' => @imagecreatefromwebp($realPath),
-            'image/gif' => @imagecreatefromgif($realPath),
-            default => null,
-        };
-
-        $filename = $folder . '/' . uniqid('attach_') . '_' . time() . '.webp';
-
-        if ($image && function_exists('imagewebp')) {
-            imagealphablending($image, true);
-            imagesavealpha($image, true);
-
-            ob_start();
-            imagewebp($image, null, $quality);
-            $webpContent = ob_get_clean();
-            imagedestroy($image);
-
-            \Illuminate\Support\Facades\Storage::disk('public')->put($filename, $webpContent);
-            return $filename;
-        }
-
-        return $file->store($folder, 'public');
     }
 }

@@ -7,6 +7,7 @@ use App\Models\LeaveCategory;
 use App\Models\LeaveQuota;
 use App\Models\LeaveRequest;
 use App\Models\User;
+use App\Services\MediaOptimizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -185,7 +186,7 @@ class HrdController extends Controller
 
         $avatarPath = null;
         if ($request->hasFile('avatar')) {
-            $avatarPath = $this->convertAvatarToWebpAndStore($request->file('avatar'));
+            $avatarPath = MediaOptimizer::convertImageToWebp($request->file('avatar'), 'avatars', 85, 400, 400);
         }
 
         $approver1 = $validated['approver_1_id'] ?? null;
@@ -277,7 +278,7 @@ class HrdController extends Controller
             if ($employee->avatar && Storage::disk('public')->exists($employee->avatar)) {
                 Storage::disk('public')->delete($employee->avatar);
             }
-            $updateData['avatar'] = $this->convertAvatarToWebpAndStore($request->file('avatar'));
+            $updateData['avatar'] = MediaOptimizer::convertImageToWebp($request->file('avatar'), 'avatars', 85, 400, 400);
         }
 
         $employee->update($updateData);

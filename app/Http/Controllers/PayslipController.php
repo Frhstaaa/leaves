@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Department;
 use App\Models\Payslip;
 use App\Models\User;
+use App\Services\MediaOptimizer;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -283,10 +284,9 @@ class PayslipController extends Controller
 
                     if ($matchedUser) {
                         $storedFileName = 'payslip_' . $matchedUser->nik . '_' . $year . '_' . $month . '_' . time() . '.pdf';
-                        $relativeStoredPath = "{$targetDir}/{$storedFileName}";
+                        $relativeStoredPath = MediaOptimizer::optimizePdfAndStore($extractedFile->getRealPath(), $targetDir, $storedFileName);
                         $fullStoredPath = storage_path('app/public/' . $relativeStoredPath);
-
-                        File::copy($extractedFile->getRealPath(), $fullStoredPath);
+                        $finalSize = file_exists($fullStoredPath) ? filesize($fullStoredPath) : $extractedFile->getSize();
 
                         Payslip::updateOrCreate(
                             [
@@ -298,7 +298,7 @@ class PayslipController extends Controller
                                 'period_label' => $periodLabel,
                                 'file_path' => $relativeStoredPath,
                                 'original_filename' => $origName,
-                                'file_size' => $extractedFile->getSize(),
+                                'file_size' => $finalSize,
                                 'status' => 'published',
                                 'uploaded_by' => $user->id,
                                 'viewed_at' => null,
@@ -482,7 +482,7 @@ class PayslipController extends Controller
         $cleanNik = preg_replace('/[^a-zA-Z0-9]/', '_', $employee->nik ?: 'EMP_' . $employee->id);
         $fileName = "payslip_{$cleanNik}_{$year}_" . str_pad($month, 2, '0', STR_PAD_LEFT) . '_' . time() . '.pdf';
         
-        return $file->storeAs($targetDir, $fileName, 'public');
+        return MediaOptimizer::optimizePdfAndStore($file, $targetDir, $fileName);
     }
 
     /**
