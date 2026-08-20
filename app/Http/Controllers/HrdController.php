@@ -92,7 +92,7 @@ class HrdController extends Controller
         $deptId = $request->query('department_id');
         $role = $request->query('role');
 
-        $query = User::with(['department', 'manager.department', 'currentQuota']);
+        $query = User::with(['department', 'manager.department', 'approver1.department', 'approver2.department', 'currentQuota']);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -153,6 +153,8 @@ class HrdController extends Controller
             'password' => 'required|string|min:6',
             'role' => 'required|in:employee,manager,admin,superadmin',
             'department_id' => 'nullable|exists:departments,id',
+            'approver_1_id' => 'nullable|exists:users,id',
+            'approver_2_id' => 'nullable|exists:users,id',
             'manager_id' => 'nullable|exists:users,id',
             'total_quota' => 'required|integer|min:0|max:100',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
@@ -167,14 +169,20 @@ class HrdController extends Controller
             $avatarPath = $this->convertAvatarToWebpAndStore($request->file('avatar'));
         }
 
+        $approver1 = $validated['approver_1_id'] ?? null;
+        $approver2 = $validated['approver_2_id'] ?? $validated['manager_id'] ?? null;
+        $managerId = $approver2 ?? $approver1;
+
         $newEmployee = User::create([
             'name' => $validated['name'],
             'nik' => $validated['nik'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => $validated['role'],
-            'department_id' => $validated['department_id'],
-            'manager_id' => $validated['manager_id'],
+            'department_id' => $validated['department_id'] ?? null,
+            'approver_1_id' => $approver1,
+            'approver_2_id' => $approver2,
+            'manager_id' => $managerId,
             'avatar' => $avatarPath,
         ]);
 
@@ -213,6 +221,8 @@ class HrdController extends Controller
             'password' => 'nullable|string|min:6',
             'role' => 'required|in:employee,manager,admin,superadmin',
             'department_id' => 'nullable|exists:departments,id',
+            'approver_1_id' => 'nullable|exists:users,id',
+            'approver_2_id' => 'nullable|exists:users,id',
             'manager_id' => 'nullable|exists:users,id',
             'total_quota' => 'required|integer|min:0|max:100',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
@@ -221,18 +231,23 @@ class HrdController extends Controller
             'email.unique' => 'Email sudah terdaftar dalam sistem.',
         ]);
 
-        // Prevent self-assignment as manager
-        if ($validated['manager_id'] == $employee->id) {
-            $validated['manager_id'] = null;
-        }
+        $approver1 = $validated['approver_1_id'] ?? null;
+        $approver2 = $validated['approver_2_id'] ?? $validated['manager_id'] ?? null;
+
+        // Prevent self-assignment as approvers
+        if ($approver1 == $employee->id) $approver1 = null;
+        if ($approver2 == $employee->id) $approver2 = null;
+        $managerId = $approver2 ?? $approver1;
 
         $updateData = [
             'name' => $validated['name'],
             'nik' => $validated['nik'],
             'email' => $validated['email'],
             'role' => $validated['role'],
-            'department_id' => $validated['department_id'],
-            'manager_id' => $validated['manager_id'],
+            'department_id' => $validated['department_id'] ?? null,
+            'approver_1_id' => $approver1,
+            'approver_2_id' => $approver2,
+            'manager_id' => $managerId,
         ];
 
         if (!empty($validated['password'])) {
@@ -278,25 +293,30 @@ class HrdController extends Controller
             return back()->with('error', 'Akses khusus HRD.');
         }
 
-        if ($userId == $user->id) {
+        $employee = User::findOrFail($userId);
+
+        if ($employee->id === $user->id) {
             return back()->with('error', 'Anda tidak dapat menghapus akun Anda sendiri.');
         }
 
-        $employee = User::findOrFail($userId);
-        $empName = $employee->name;
-
-        // Reset subordinates' manager_id to null
+        // Unlink references before deleting
+        User::where('approver_1_id', $employee->id)->update(['approver_1_id' => null]);
+        User::where('approver_2_id', $employee->id)->update(['approver_2_id' => null]);
         User::where('manager_id', $employee->id)->update(['manager_id' => null]);
+        Department::where('manager_id', $employee->id)->update(['manager_id' => null]);
 
+        // Delete related quotas
+        LeaveQuota::where('user_id', $employee->id)->delete();
+
+        // Delete avatar if exists
         if ($employee->avatar && Storage::disk('public')->exists($employee->avatar)) {
             Storage::disk('public')->delete($employee->avatar);
         }
 
-        // Delete associated quotas & user record
-        LeaveQuota::where('user_id', $employee->id)->delete();
+        $employeeName = $employee->name;
         $employee->delete();
 
-        return redirect()->back()->with('success', "Data karyawan {$empName} berhasil dihapus.");
+        return redirect()->back()->with('success', "Karyawan {$employeeName} berhasil dihapus dari sistem.");
     }
 
     public function updateQuota(Request $request, $userId)
@@ -310,9 +330,11 @@ class HrdController extends Controller
             'total_quota' => 'required|integer|min:0|max:100',
         ]);
 
+        $employee = User::findOrFail($userId);
         $currentYear = date('Y');
+
         $quota = LeaveQuota::firstOrCreate(
-            ['user_id' => $userId, 'year' => $currentYear],
+            ['user_id' => $employee->id, 'year' => $currentYear],
             ['total_quota' => 12, 'used_quota' => 0, 'remaining_quota' => 12]
         );
 
@@ -324,82 +346,79 @@ class HrdController extends Controller
             'remaining_quota' => $newRemaining,
         ]);
 
-        return back()->with('success', 'Kuota cuti berhasil diperbarui.');
+        return redirect()->back()->with('success', "Kuota cuti {$employee->name} tahun {$currentYear} berhasil diubah menjadi {$newTotal} hari (Sisa: {$newRemaining} hari).");
     }
 
     public function export(Request $request)
     {
         $user = Auth::user();
         if (!$user->isAdmin() && !$user->isManager()) {
-            return back()->with('error', 'Akses khusus HRD/Manager.');
+            return back()->with('error', 'Akses ditolak.');
         }
 
-        $query = LeaveRequest::with(['user.department', 'user.manager', 'category', 'approver'])
-            ->orderBy('created_at', 'desc');
-
-        if ($user->isManager() && !$user->isAdmin()) {
-            $subordinateIds = User::where(function ($q) use ($user) {
-                $q->where('manager_id', $user->id)
-                  ->orWhere(function ($sub) use ($user) {
-                      $sub->whereNull('manager_id')->where('department_id', $user->department_id);
-                  });
-            })->where('id', '!=', $user->id)->pluck('id');
-
-            $query->whereIn('user_id', $subordinateIds);
-        }
-
-        $requests = $query->get();
-
-        $fileName = 'Rekapitulasi_Pengajuan_Cuti_' . date('Ymd_His') . '.csv';
+        $fileName = 'rekap_cuti_sgin_' . date('Ymd_His') . '.csv';
 
         $headers = [
-            "Content-type" => "text/csv; charset=UTF-8",
-            "Content-Disposition" => "attachment; filename=$fileName",
-            "Pragma" => "no-cache",
-            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
-            "Expires" => "0",
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
         ];
+
+        $query = LeaveRequest::with(['user.department', 'user.manager', 'category', 'approver']);
+
+        if ($request->has('department_id') && $request->department_id) {
+            $query->whereHas('user', function ($q) use ($request) {
+                $q->where('department_id', $request->department_id);
+            });
+        }
+
+        if ($request->has('status') && in_array($request->status, ['pending', 'approved', 'rejected'])) {
+            $query->where('status', $request->status);
+        }
+
+        $requests = $query->orderBy('created_at', 'desc')->get();
 
         $callback = function () use ($requests) {
             $file = fopen('php://output', 'w');
-            // UTF-8 BOM for Excel compatibility
-            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
-
             fputcsv($file, [
                 'No Request',
-                'NIK',
+                'NIK Karyawan',
                 'Nama Karyawan',
                 'Departemen',
-                'Atasan Direct',
                 'Kategori',
-                'Mulai',
-                'Selesai',
+                'Jenis Pengajuan',
+                'Tgl Mulai',
+                'Tgl Selesai',
                 'Jumlah',
                 'Satuan',
-                'Alasan',
                 'Status',
-                'Disetujui Oleh',
-                'Catatan Approval',
-                'Tanggal Approval',
+                'Tahapan',
+                'Approver Akhir',
+                'Tgl Approve',
+                'Alasan',
+                'Catatan Approver',
             ]);
 
-            foreach ($requests as $req) {
+            foreach ($requests as $r) {
                 fputcsv($file, [
-                    $req->request_number,
-                    $req->user->nik ?? '-',
-                    $req->user->name,
-                    $req->user->department->name ?? '-',
-                    $req->user->manager->name ?? '-',
-                    $req->category->name ?? '-',
-                    $req->start_date ? $req->start_date->format('Y-m-d') : '-',
-                    $req->end_date ? $req->end_date->format('Y-m-d') : '-',
-                    $req->amount,
-                    $req->unit,
-                    $req->reason,
-                    strtoupper($req->status),
-                    $req->approver->name ?? '-',
-                    $req->approval_note ?? '-',
-                    $req->approved_at ? $req->approved_at->format('Y-m-d H:i') : '-',
+                    $r->request_number,
+                    $r->user->nik ?? '-',
+                    $r->user->name,
+                    $r->user->department->name ?? 'General',
+                    $r->category->name ?? '-',
+                    $r->submission_type,
+                    $r->start_date,
+                    $r->end_date,
+                    $r->amount,
+                    $r->unit,
+                    strtoupper($r->status),
+                    strtoupper($r->current_stage ?? 'HRD'),
+                    $r->approver->name ?? '-',
+                    $r->approved_at ? $r->approved_at->format('Y-m-d H:i:s') : '-',
+                    $r->reason,
+                    $r->approval_note ?? '-',
                 ]);
             }
 
@@ -411,64 +430,82 @@ class HrdController extends Controller
 
     public function downloadTemplate()
     {
-        $fileName = 'Template_Import_Karyawan_SGIN.csv';
+        $fileName = 'template_import_karyawan_sgin.csv';
 
         $headers = [
-            "Content-type" => "text/csv; charset=UTF-8",
-            "Content-Disposition" => "attachment; filename=$fileName",
-            "Pragma" => "no-cache",
-            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
-            "Expires" => "0",
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
         ];
 
         $callback = function () {
             $file = fopen('php://output', 'w');
+            // Write UTF-8 BOM for Excel compatibility
             fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
-            // Header row
+            // CSV Header with 3-tier approval columns
             fputcsv($file, [
                 'NIK',
                 'Nama Karyawan',
                 'Email',
                 'Password',
-                'Role (employee/manager/admin)',
-                'Kode atau Nama Departemen',
-                'NIK atau Email Atasan',
-                'Kuota Cuti Tahunan',
+                'Role (employee/manager/admin/superadmin)',
+                'Kode/Nama Departemen',
+                'NIK/Email Atasan 1 (Supervisor/Lead)',
+                'NIK/Email Atasan 2 (Manager/Dept Head)',
+                'Jatah Kuota Cuti',
             ]);
 
-            // Sample row 1 (Manager)
+            // Sample 1: Manager (1 Level Approval -> Direct HRD)
             fputcsv($file, [
                 'MGR-101',
-                'Hendra Setiawan',
-                'hendra@sgin.com',
+                'Ahmad Dahlan, S.T.',
+                'ahmad.dahlan@sgin.com',
                 'password123',
                 'manager',
                 'Information Technology',
                 '',
+                '',
                 '12',
             ]);
 
-            // Sample row 2 (Employee with direct manager)
+            // Sample 2: Supervisor (2 Level Approval -> Manager -> HRD)
             fputcsv($file, [
-                'EMP-201',
+                'SPV-201',
                 'Budi Santoso',
-                'budi@sgin.com',
+                'budi.santoso@sgin.com',
                 'password123',
                 'employee',
                 'Information Technology',
+                '',
                 'MGR-101',
                 '12',
             ]);
 
-            // Sample row 3 (HRD Admin)
+            // Sample 3: Staf (3 Level Approval -> Supervisor -> Manager -> HRD)
+            fputcsv($file, [
+                'EMP-301',
+                'Rian Pratama',
+                'rian.pratama@sgin.com',
+                'password123',
+                'employee',
+                'Information Technology',
+                'SPV-201',
+                'MGR-101',
+                '12',
+            ]);
+
+            // Sample 4: HRD Admin
             fputcsv($file, [
                 'ADM-001',
-                'Siti Rahmawati',
-                'admin@sgin.com',
+                'Citra Lestari, S.Psi',
+                'citra.lestari@sgin.com',
                 'password123',
                 'admin',
-                'HR & GA',
+                'Human Resources & PGA',
+                '',
                 '',
                 '12',
             ]);
@@ -526,7 +563,6 @@ class HrdController extends Controller
 
         $currentYear = date('Y');
         $departments = Department::all();
-        $allUsers = User::all();
 
         while (($row = fgetcsv($handle, 2000, $delimiter)) !== false) {
             $rowNumber++;
@@ -547,8 +583,9 @@ class HrdController extends Controller
             $password = trim($row[3] ?? '');
             $roleInput = strtolower(trim($row[4] ?? 'employee'));
             $deptInput = trim($row[5] ?? '');
-            $managerInput = trim($row[6] ?? '');
-            $quotaInput = (int) trim($row[7] ?? 12);
+            $approver1Input = trim($row[6] ?? '');
+            $approver2Input = trim($row[7] ?? '');
+            $quotaInput = isset($row[8]) ? (int) trim($row[8]) : (isset($row[7]) && is_numeric(trim($row[7])) ? (int) trim($row[7]) : 12);
 
             if (empty($name) || empty($email)) {
                 $skippedCount++;
@@ -574,19 +611,29 @@ class HrdController extends Controller
                 $departmentId = $matchedDept ? $matchedDept->id : null;
             }
 
-            // Find Manager
-            $managerId = null;
-            if (!empty($managerInput)) {
-                $matchedManager = User::where(function ($q) use ($managerInput) {
-                    $q->where('nik', $managerInput)
-                      ->orWhere('email', $managerInput)
-                      ->orWhere('name', $managerInput);
+            // Find Approver 1
+            $approver1Id = null;
+            if (!empty($approver1Input)) {
+                $m1 = User::where(function ($q) use ($approver1Input) {
+                    $q->where('nik', $approver1Input)
+                      ->orWhere('email', $approver1Input)
+                      ->orWhere('name', $approver1Input);
                 })->first();
-
-                if ($matchedManager) {
-                    $managerId = $matchedManager->id;
-                }
+                if ($m1) $approver1Id = $m1->id;
             }
+
+            // Find Approver 2
+            $approver2Id = null;
+            if (!empty($approver2Input) && !is_numeric($approver2Input)) {
+                $m2 = User::where(function ($q) use ($approver2Input) {
+                    $q->where('nik', $approver2Input)
+                      ->orWhere('email', $approver2Input)
+                      ->orWhere('name', $approver2Input);
+                })->first();
+                if ($m2) $approver2Id = $m2->id;
+            }
+
+            $managerId = $approver2Id ?? $approver1Id;
 
             // Default password
             if (empty($password)) {
@@ -605,6 +652,8 @@ class HrdController extends Controller
                     'role' => $role,
                 ];
                 if ($departmentId) $updatePayload['department_id'] = $departmentId;
+                if ($approver1Id && $approver1Id != $existingUser->id) $updatePayload['approver_1_id'] = $approver1Id;
+                if ($approver2Id && $approver2Id != $existingUser->id) $updatePayload['approver_2_id'] = $approver2Id;
                 if ($managerId && $managerId != $existingUser->id) $updatePayload['manager_id'] = $managerId;
                 if (!empty($password) && $password !== 'password123') {
                     $updatePayload['password'] = Hash::make($password);
@@ -636,6 +685,8 @@ class HrdController extends Controller
                     'password' => Hash::make($password),
                     'role' => $role,
                     'department_id' => $departmentId,
+                    'approver_1_id' => $approver1Id,
+                    'approver_2_id' => $approver2Id,
                     'manager_id' => $managerId,
                 ]);
 

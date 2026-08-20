@@ -21,6 +21,8 @@ class User extends Authenticatable
         'role',
         'department_id',
         'manager_id',
+        'approver_1_id',
+        'approver_2_id',
         'avatar',
     ];
 
@@ -54,6 +56,16 @@ class User extends Authenticatable
     public function manager()
     {
         return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    public function approver1()
+    {
+        return $this->belongsTo(User::class, 'approver_1_id');
+    }
+
+    public function approver2()
+    {
+        return $this->belongsTo(User::class, 'approver_2_id');
     }
 
     public function subordinates()

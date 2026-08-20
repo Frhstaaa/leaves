@@ -23,6 +23,16 @@ class LeaveRequest extends Model
         'attachment_path',
         'attachment_name',
         'status',
+        'current_stage',
+        'approved_by_1',
+        'approval_1_note',
+        'approved_1_at',
+        'approved_by_2',
+        'approval_2_note',
+        'approved_2_at',
+        'approved_by_hrd',
+        'approval_hrd_note',
+        'approved_hrd_at',
         'approved_by',
         'approval_note',
         'approved_at',
@@ -31,6 +41,9 @@ class LeaveRequest extends Model
     protected $casts = [
         'start_date' => 'date:Y-m-d',
         'end_date' => 'date:Y-m-d',
+        'approved_1_at' => 'datetime',
+        'approved_2_at' => 'datetime',
+        'approved_hrd_at' => 'datetime',
         'approved_at' => 'datetime',
         'amount' => 'decimal:2',
     ];
@@ -48,5 +61,20 @@ class LeaveRequest extends Model
     public function approver()
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function approver1()
+    {
+        return $this->belongsTo(User::class, 'approved_by_1');
+    }
+
+    public function approver2()
+    {
+        return $this->belongsTo(User::class, 'approved_by_2');
+    }
+
+    public function approverHrd()
+    {
+        return $this->belongsTo(User::class, 'approved_by_hrd');
     }
 }

@@ -18,31 +18,30 @@ class LeaveRequestController extends Controller
         $user = Auth::user();
         $status = $request->query('status');
 
-        $query = LeaveRequest::with(['category', 'approver'])
+        $query = LeaveRequest::with(['category', 'approver', 'approver1', 'approver2', 'approverHrd'])
             ->where('user_id', $user->id);
 
         if ($status && in_array($status, ['pending', 'approved', 'rejected'])) {
             $query->where('status', $status);
         }
 
-        $requests = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
+        $requests = $query->latest()->paginate(10)->withQueryString();
 
         $currentYear = date('Y');
         $quota = LeaveQuota::where('user_id', $user->id)->where('year', $currentYear)->first();
 
         return Inertia::render('LeaveRequests/Index', [
-            'user' => $user,
             'requests' => $requests,
-            'quota' => $quota,
             'filters' => [
                 'status' => $status,
             ],
+            'quota' => $quota,
         ]);
     }
 
     public function create()
     {
-        $user = Auth::user()->load(['department', 'manager']);
+        $user = Auth::user()->load(['department', 'manager', 'approver1', 'approver2']);
         $categories = LeaveCategory::all();
 
         $currentYear = date('Y');
@@ -51,18 +50,38 @@ class LeaveRequestController extends Controller
             ['total_quota' => 12, 'used_quota' => 0, 'remaining_quota' => 12]
         );
 
-        $approverName = 'HRD / Admin Head';
-        if ($user->manager) {
-            $approverName = $user->manager->name . ' (' . ($user->manager->department ? $user->manager->department->name : 'Atasan Direct') . ')';
-        } elseif ($user->department_id) {
-            $deptManager = User::where('department_id', $user->department_id)
-                ->whereIn('role', ['manager', 'admin', 'superadmin'])
-                ->where('id', '!=', $user->id)
-                ->first();
-            if ($deptManager) {
-                $approverName = $deptManager->name . ' (Manager ' . ($user->department ? $user->department->name : 'Departemen') . ')';
-            }
+        // Build Approval Chain Steps based on user configuration
+        $approvalChain = [];
+        if ($user->approver1) {
+            $approvalChain[] = [
+                'level' => 1,
+                'role_title' => 'Approval 1 (Supervisor / Atasan 1)',
+                'name' => $user->approver1->name,
+                'department' => $user->approver1->department?->name ?? 'Direct',
+            ];
         }
+        if ($user->approver2) {
+            $approvalChain[] = [
+                'level' => 2,
+                'role_title' => 'Approval 2 (Manager / Atasan 2)',
+                'name' => $user->approver2->name,
+                'department' => $user->approver2->department?->name ?? 'Departemen',
+            ];
+        } elseif (!$user->approver1 && $user->manager) {
+            $approvalChain[] = [
+                'level' => 2,
+                'role_title' => 'Approval 2 (Manager Atasan)',
+                'name' => $user->manager->name,
+                'department' => $user->manager->department?->name ?? 'Departemen',
+            ];
+        }
+        // Final tier is always HRD
+        $approvalChain[] = [
+            'level' => 3,
+            'role_title' => 'Approval HRD / PGA Admin',
+            'name' => 'HRD / PGA Admin',
+            'department' => 'Human Resources & PGA',
+        ];
 
         return Inertia::render('LeaveRequests/Create', [
             'user' => [
@@ -70,7 +89,7 @@ class LeaveRequestController extends Controller
                 'email' => $user->email,
                 'nik' => $user->nik ?? 'EMP-' . str_pad($user->id, 3, '0', STR_PAD_LEFT),
                 'department_name' => $user->department ? $user->department->name : 'General',
-                'manager_name' => $approverName,
+                'approval_chain' => $approvalChain,
             ],
             'categories' => $categories,
             'quota' => $quota,
@@ -79,7 +98,7 @@ class LeaveRequestController extends Controller
 
     public function store(Request $request)
     {
-        $user = Auth::user();
+        $user = Auth::user()->load(['approver1', 'approver2', 'manager']);
 
         $validated = $request->validate([
             'submission_type' => 'required|in:PEMBERITAHUAN,PERMOHONAN',
@@ -140,6 +159,18 @@ class LeaveRequestController extends Controller
             }
         }
 
+        // Determine Initial Approval Stage:
+        // Case 1: Has Approver 1 -> starts at 'approval_1'
+        // Case 2: Has Approver 2 (or manager) -> starts at 'approval_2'
+        // Case 3: Has neither -> starts at 'hrd'
+        if ($user->approver_1_id) {
+            $initialStage = 'approval_1';
+        } elseif ($user->approver_2_id || $user->manager_id) {
+            $initialStage = 'approval_2';
+        } else {
+            $initialStage = 'hrd';
+        }
+
         // Generate Request Number
         $latestCount = LeaveRequest::whereYear('created_at', date('Y'))->whereMonth('created_at', date('m'))->count() + 1;
         $requestNumber = ($validated['submission_type'] === 'PEMBERITAHUAN' ? 'NOTIF-' : 'CUTI-') . date('Ym') . '-' . str_pad($latestCount, 4, '0', STR_PAD_LEFT);
@@ -158,17 +189,21 @@ class LeaveRequestController extends Controller
             'attachment_path' => $attachmentPath,
             'attachment_name' => $attachmentName,
             'status' => 'pending',
+            'current_stage' => $initialStage,
         ]);
 
-        return redirect()->route('leave-requests.index')->with('success', 'Pengajuan cuti berhasil dikirim! Status saat ini: Pending (menunggu persetujuan atasan).');
+        return redirect()->route('leave-requests.index')->with('success', 'Pengajuan cuti berhasil dikirim! Status saat ini: Menunggu Persetujuan (' . strtoupper(str_replace('_', ' ', $initialStage)) . ').');
     }
 
     public function show($id)
     {
         $user = Auth::user();
-        $requestItem = LeaveRequest::with(['user.department', 'category', 'approver'])
+        $requestItem = LeaveRequest::with(['user.department', 'category', 'approver', 'approver1', 'approver2', 'approverHrd'])
             ->where(function ($q) use ($user) {
                 $q->where('user_id', $user->id)
+                    ->orWhere('approved_by_1', $user->id)
+                    ->orWhere('approved_by_2', $user->id)
+                    ->orWhere('approved_by_hrd', $user->id)
                     ->orWhere('approved_by', $user->id)
                     ->orWhereRaw('? = "admin"', [$user->role])
                     ->orWhereRaw('? = "manager"', [$user->role]);

@@ -143,13 +143,26 @@ export default function LeaveRequestsIndex({ user: propUser, requests, filters, 
                       </p>
                     </div>
 
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase shrink-0 ${
-                      req.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                      req.status === 'rejected' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
-                      'bg-amber-100 text-amber-800 border border-amber-200'
-                    }`}>
-                      {req.status === 'approved' ? 'Disetujui' : req.status === 'rejected' ? 'Ditolak' : 'Pending'}
-                    </span>
+                    <div className="flex items-center space-x-1.5 shrink-0">
+                      {req.status === 'pending' && (
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border ${
+                          req.current_stage === 'approval_1' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                          req.current_stage === 'approval_2' ? 'bg-purple-100 text-purple-800 border-purple-200' :
+                          'bg-amber-100 text-amber-800 border-amber-200'
+                        }`}>
+                          {req.current_stage === 'approval_1' ? 'Menunggu Atasan 1' :
+                           req.current_stage === 'approval_2' ? 'Menunggu Atasan 2' :
+                           'Menunggu HRD'}
+                        </span>
+                      )}
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase ${
+                        req.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                        req.status === 'rejected' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                        'bg-amber-100 text-amber-800 border border-amber-200'
+                      }`}>
+                        {req.status === 'approved' ? 'Disetujui' : req.status === 'rejected' ? 'Ditolak' : 'Pending'}
+                      </span>
+                    </div>
                   </div>
 
                   <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-2xl border border-slate-100 font-medium line-clamp-2">
@@ -237,15 +250,89 @@ export default function LeaveRequestsIndex({ user: propUser, requests, filters, 
                   'bg-amber-50/80 border-amber-200 text-amber-950'
                 }`}>
                   <div>
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider block opacity-70">Status Pengajuan</span>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider block opacity-70">Status & Tahapan Saat Ini</span>
                     <p className="text-sm font-black mt-0.5">
-                      {selectedRequest.status === 'approved' ? '✅ Disetujui' :
-                       selectedRequest.status === 'rejected' ? '❌ Ditolak' : '⏳ Pending (Menunggu Persetujuan Manager)'}
+                      {selectedRequest.status === 'approved' ? '✅ Disetujui (Approved)' :
+                       selectedRequest.status === 'rejected' ? '❌ Ditolak (Rejected)' :
+                       `⏳ Pending (${
+                          selectedRequest.current_stage === 'approval_1' ? 'Menunggu Approval 1 - Supervisor' :
+                          selectedRequest.current_stage === 'approval_2' ? 'Menunggu Approval 2 - Manager' :
+                          'Menunggu Approval Akhir HRD'
+                       })`}
                     </p>
                   </div>
                   <span className="font-mono text-xs font-black px-3 py-1 rounded-full bg-white/80 border shadow-sm">
                     {selectedRequest.request_number}
                   </span>
+                </div>
+
+                {/* Multi-Tier Approval Progress Stepper */}
+                <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-2.5">
+                  <span className="text-[10px] font-extrabold uppercase text-slate-500 tracking-wider block">
+                    Progress Persetujuan Bertingkat (Approval Timeline)
+                  </span>
+
+                  <div className="space-y-2">
+                    {/* Tier 1 */}
+                    <div className="flex items-start space-x-2.5">
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5 ${
+                        selectedRequest.approved_by_1 ? 'bg-emerald-600 text-white' :
+                        selectedRequest.current_stage === 'approval_1' && selectedRequest.status === 'pending' ? 'bg-amber-500 text-white' :
+                        'bg-slate-200 text-slate-500'
+                      }`}>
+                        {selectedRequest.approved_by_1 ? '✓' : '1'}
+                      </div>
+                      <div className="text-[11px] min-w-0 flex-1">
+                        <p className="font-bold text-slate-900">
+                          Tingkat 1: Atasan 1 (Supervisor / Lead)
+                          {selectedRequest.approver1 && <span className="text-emerald-700 font-extrabold ml-1">&bull; {selectedRequest.approver1.name} (Disetujui)</span>}
+                        </p>
+                        {selectedRequest.approval_1_note && (
+                          <p className="text-slate-600 italic mt-0.5">&ldquo;{selectedRequest.approval_1_note}&rdquo;</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Tier 2 */}
+                    <div className="flex items-start space-x-2.5">
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5 ${
+                        selectedRequest.approved_by_2 ? 'bg-emerald-600 text-white' :
+                        selectedRequest.current_stage === 'approval_2' && selectedRequest.status === 'pending' ? 'bg-amber-500 text-white' :
+                        'bg-slate-200 text-slate-500'
+                      }`}>
+                        {selectedRequest.approved_by_2 ? '✓' : '2'}
+                      </div>
+                      <div className="text-[11px] min-w-0 flex-1">
+                        <p className="font-bold text-slate-900">
+                          Tingkat 2: Atasan 2 (Manager / Dept Head)
+                          {selectedRequest.approver2 && <span className="text-emerald-700 font-extrabold ml-1">&bull; {selectedRequest.approver2.name} (Disetujui)</span>}
+                        </p>
+                        {selectedRequest.approval_2_note && (
+                          <p className="text-slate-600 italic mt-0.5">&ldquo;{selectedRequest.approval_2_note}&rdquo;</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Tier 3: HRD */}
+                    <div className="flex items-start space-x-2.5">
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5 ${
+                        selectedRequest.approved_by_hrd || (selectedRequest.status === 'approved' && !selectedRequest.approved_by_1 && !selectedRequest.approved_by_2) ? 'bg-emerald-600 text-white' :
+                        selectedRequest.current_stage === 'hrd' && selectedRequest.status === 'pending' ? 'bg-amber-500 text-white' :
+                        'bg-slate-200 text-slate-500'
+                      }`}>
+                        {selectedRequest.status === 'approved' ? '✓' : '3'}
+                      </div>
+                      <div className="text-[11px] min-w-0 flex-1">
+                        <p className="font-bold text-slate-900">
+                          Tingkat 3: HRD / PGA Admin (Final)
+                          {selectedRequest.status === 'approved' && <span className="text-emerald-700 font-extrabold ml-1">&bull; Disetujui Final</span>}
+                        </p>
+                        {selectedRequest.approval_note && (
+                          <p className="text-slate-600 italic mt-0.5">&ldquo;{selectedRequest.approval_note}&rdquo;</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Data Cards Grid */}

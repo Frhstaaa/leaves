@@ -47,17 +47,35 @@ class DashboardController extends Controller
         $hrdMetrics = [];
 
         if ($user->isManager() && !$user->isAdmin()) {
-            // Subordinates' pending requests
+            $managerPendingCount = LeaveRequest::where('status', 'pending')
+                ->where(function ($q) use ($user) {
+                    $q->where(function ($sub) use ($user) {
+                        $sub->where('current_stage', 'approval_1')
+                            ->whereHas('user', function ($u) use ($user) {
+                                $u->where('approver_1_id', $user->id);
+                            });
+                    })->orWhere(function ($sub) use ($user) {
+                        $sub->where('current_stage', 'approval_2')
+                            ->whereHas('user', function ($u) use ($user) {
+                                $u->where('approver_2_id', $user->id)
+                                  ->orWhere('manager_id', $user->id)
+                                  ->orWhere(function ($d) use ($user) {
+                                      $d->whereNull('manager_id')
+                                        ->whereNull('approver_2_id')
+                                        ->where('department_id', $user->department_id);
+                                  });
+                            });
+                    });
+                })->count();
+
             $subordinateIds = User::where(function ($q) use ($user) {
-                $q->where('manager_id', $user->id)
+                $q->where('approver_1_id', $user->id)
+                  ->orWhere('approver_2_id', $user->id)
+                  ->orWhere('manager_id', $user->id)
                   ->orWhere(function ($sub) use ($user) {
                       $sub->whereNull('manager_id')->where('department_id', $user->department_id);
                   });
             })->where('id', '!=', $user->id)->pluck('id');
-
-            $managerPendingCount = LeaveRequest::whereIn('user_id', $subordinateIds)
-                ->where('status', 'pending')
-                ->count();
 
             $teamRequests = LeaveRequest::with(['user.department', 'category'])
                 ->whereIn('user_id', $subordinateIds)

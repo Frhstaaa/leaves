@@ -186,50 +186,81 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
             <div>
               {/* Mobile Card View (< md) */}
               <div className="block md:hidden space-y-3">
-                {requests.data.map((req) => (
-                  <div key={req.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs font-bold text-teal-700">{req.request_number}</span>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        req.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                        req.status === 'rejected' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
-                        'bg-amber-100 text-amber-800 border border-amber-200'
-                      }`}>
-                        {req.status === 'approved' ? 'Disetujui' : req.status === 'rejected' ? 'Ditolak' : 'Pending'}
-                      </span>
-                    </div>
+                {requests.data.map((req) => {
+                  const stageBadge = req.current_stage === 'approval_1'
+                    ? { label: 'Tingkat 1 (Supervisor)', cls: 'bg-blue-100 text-blue-800 border-blue-200' }
+                    : req.current_stage === 'approval_2'
+                    ? { label: 'Tingkat 2 (Manager)', cls: 'bg-purple-100 text-purple-800 border-purple-200' }
+                    : { label: 'HRD / PGA Admin', cls: 'bg-amber-100 text-amber-800 border-amber-200' };
 
-                    <div className="space-y-1">
-                      <p className="font-extrabold text-sm text-slate-900">{req.user?.name}</p>
-                      <p className="text-[11px] text-slate-500">{req.user?.nik} &bull; {req.user?.department?.name || 'General'} {req.user?.manager ? `• Atasan: ${req.user.manager.name}` : ''}</p>
-                      <p className="text-xs font-bold text-teal-700 pt-1">{req.category?.name} {req.submission_type ? `(${req.submission_type})` : ''}</p>
-                      <p className="text-xs text-slate-700">{req.start_date} s/d {req.end_date} &bull; <strong className="text-slate-900">{req.amount} {req.unit}</strong></p>
-                    </div>
+                  return (
+                    <div key={req.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs font-bold text-teal-700">{req.request_number}</span>
+                        <div className="flex items-center space-x-1.5">
+                          {req.status === 'pending' && (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black border ${stageBadge.cls}`}>
+                              {stageBadge.label}
+                            </span>
+                          )}
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            req.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                            req.status === 'rejected' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                            'bg-amber-100 text-amber-800 border border-amber-200'
+                          }`}>
+                            {req.status === 'approved' ? 'Disetujui' : req.status === 'rejected' ? 'Ditolak' : 'Pending'}
+                          </span>
+                        </div>
+                      </div>
 
-                    <div className="pt-2 border-t border-slate-200 flex items-center justify-end space-x-2">
-                      {req.status === 'pending' ? (
-                        <>
-                          <button
-                            onClick={() => handleOpenApproveModal(req)}
-                            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center space-x-1 shadow-sm"
-                          >
-                            <CheckCircle size={14} />
-                            <span>Setujui</span>
-                          </button>
-                          <button
-                            onClick={() => handleOpenRejectModal(req)}
-                            className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold flex items-center space-x-1 hover:bg-rose-100"
-                          >
-                            <XCircle size={14} />
-                            <span>Tolak</span>
-                          </button>
-                        </>
-                      ) : (
-                        <span className="text-xs text-slate-400 italic">Selesai Ditinjau</span>
+                      <div className="space-y-1">
+                        <p className="font-extrabold text-sm text-slate-900">{req.user?.name}</p>
+                        <p className="text-[11px] text-slate-500">{req.user?.nik} &bull; {req.user?.department?.name || 'General'}</p>
+                        <p className="text-xs font-bold text-teal-700 pt-1">{req.category?.name} {req.submission_type ? `(${req.submission_type})` : ''}</p>
+                        <p className="text-xs text-slate-700">{req.start_date} s/d {req.end_date} &bull; <strong className="text-slate-900">{req.amount} {req.unit}</strong></p>
+                      </div>
+
+                      {/* Previous Multi-Tier Approval Logs */}
+                      {(req.approved_by_1 || req.approved_by_2) && (
+                        <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-[11px] space-y-1 text-slate-600">
+                          {req.approver1 && (
+                            <p className="text-blue-800 font-semibold">
+                              &bull; <strong>Tingkat 1 Disetujui:</strong> {req.approver1.name} {req.approval_1_note ? `("${req.approval_1_note}")` : ''}
+                            </p>
+                          )}
+                          {req.approver2 && (
+                            <p className="text-purple-800 font-semibold">
+                              &bull; <strong>Tingkat 2 Disetujui:</strong> {req.approver2.name} {req.approval_2_note ? `("${req.approval_2_note}")` : ''}
+                            </p>
+                          )}
+                        </div>
                       )}
+
+                      <div className="pt-2 border-t border-slate-200 flex items-center justify-end space-x-2">
+                        {req.status === 'pending' ? (
+                          <>
+                            <button
+                              onClick={() => handleOpenApproveModal(req)}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center space-x-1 shadow-sm"
+                            >
+                              <CheckCircle size={14} />
+                              <span>Setujui</span>
+                            </button>
+                            <button
+                              onClick={() => handleOpenRejectModal(req)}
+                              className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold flex items-center space-x-1 hover:bg-rose-100"
+                            >
+                              <XCircle size={14} />
+                              <span>Tolak</span>
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-xs text-slate-400 italic">Selesai Ditinjau</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Desktop Table View (>= md) */}
@@ -240,78 +271,110 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
                       <th className="pb-3.5">No Request & Pemohon</th>
                       <th className="pb-3.5">Kategori & Alasan</th>
                       <th className="pb-3.5">Periode Cuti</th>
-                      <th className="pb-3.5">Jumlah</th>
-                      <th className="pb-3.5">Lampiran</th>
-                      <th className="pb-3.5">Status</th>
+                      <th className="pb-3.5">Tahapan & Status</th>
+                      <th className="pb-3.5">Riwayat Persetujuan</th>
                       <th className="pb-3.5 text-right">Keputusan Approval</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {requests.data.map((req) => (
-                      <tr key={req.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="py-4">
-                          <span className="font-mono text-xs font-bold text-teal-700 block">{req.request_number}</span>
-                          <span className="font-bold text-slate-900 text-sm block mt-0.5">{req.user?.name}</span>
-                          <span className="text-[11px] text-slate-500 block">{req.user?.nik} &bull; {req.user?.department?.name || 'General'} {req.user?.manager ? `• Atasan: ${req.user.manager.name}` : ''}</span>
-                        </td>
-                        <td className="py-4 max-w-xs">
-                          <span className="font-bold text-slate-900 block">{req.category?.name}</span>
-                          <p className="text-xs text-slate-600 truncate mt-0.5">{req.reason}</p>
-                        </td>
-                        <td className="py-4 text-xs font-medium text-slate-600">
-                          {req.start_date} s/d {req.end_date}
-                        </td>
-                        <td className="py-4 font-bold text-slate-900">
-                          {req.amount} {req.unit}
-                        </td>
-                        <td className="py-4 text-xs">
-                          {req.attachment_path ? (
-                            <a
-                              href={`/storage/${req.attachment_path}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-teal-700 font-bold hover:underline"
-                            >
-                              File Lampiran
-                            </a>
-                          ) : (
-                            <span className="text-slate-400">-</span>
-                          )}
-                        </td>
-                        <td className="py-4">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                            req.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                            req.status === 'rejected' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
-                            'bg-amber-100 text-amber-800 border border-amber-200'
-                          }`}>
-                            {req.status === 'approved' ? 'Disetujui' :
-                             req.status === 'rejected' ? 'Ditolak' : 'Pending'}
-                          </span>
-                        </td>
-                        <td className="py-4 text-right">
-                          {req.status === 'pending' ? (
-                            <div className="flex items-center justify-end space-x-2">
-                              <button
-                                onClick={() => handleOpenApproveModal(req)}
-                                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm flex items-center space-x-1"
+                    {requests.data.map((req) => {
+                      const stageBadge = req.current_stage === 'approval_1'
+                        ? { label: 'Tingkat 1 (Supervisor)', cls: 'bg-blue-100 text-blue-800 border-blue-200' }
+                        : req.current_stage === 'approval_2'
+                        ? { label: 'Tingkat 2 (Manager)', cls: 'bg-purple-100 text-purple-800 border-purple-200' }
+                        : { label: 'HRD / PGA Admin', cls: 'bg-amber-100 text-amber-800 border-amber-200' };
+
+                      return (
+                        <tr key={req.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="py-4">
+                            <span className="font-mono text-xs font-bold text-teal-700 block">{req.request_number}</span>
+                            <span className="font-bold text-slate-900 text-sm block mt-0.5">{req.user?.name}</span>
+                            <span className="text-[11px] text-slate-500 block">{req.user?.nik} &bull; {req.user?.department?.name || 'General'}</span>
+                          </td>
+                          <td className="py-4 max-w-xs">
+                            <span className="font-bold text-slate-900 block">{req.category?.name}</span>
+                            <p className="text-xs text-slate-600 truncate mt-0.5">{req.reason}</p>
+                            {req.attachment_path && (
+                              <a
+                                href={`/storage/${req.attachment_path}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-teal-700 font-bold hover:underline text-xs block mt-1"
                               >
-                                <CheckCircle size={14} />
-                                <span>Setujui</span>
-                              </button>
-                              <button
-                                onClick={() => handleOpenRejectModal(req)}
-                                className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs flex items-center space-x-1"
-                              >
-                                <XCircle size={14} />
-                                <span>Tolak</span>
-                              </button>
+                                &bull; Lihat Lampiran
+                              </a>
+                            )}
+                          </td>
+                          <td className="py-4 text-xs font-medium text-slate-600">
+                            <div>{req.start_date} s/d {req.end_date}</div>
+                            <div className="font-bold text-slate-900 mt-0.5">{req.amount} {req.unit}</div>
+                          </td>
+                          <td className="py-4 space-y-1">
+                            {req.status === 'pending' && (
+                              <div>
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border ${stageBadge.cls}`}>
+                                  {stageBadge.label}
+                                </span>
+                              </div>
+                            )}
+                            <div>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                                req.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                                req.status === 'rejected' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                                'bg-amber-100 text-amber-800 border border-amber-200'
+                              }`}>
+                                {req.status === 'approved' ? 'Disetujui' :
+                                 req.status === 'rejected' ? 'Ditolak' : 'Pending'}
+                              </span>
                             </div>
-                          ) : (
-                            <span className="text-xs text-slate-400 italic">Selesai Ditinjau</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="py-4 text-xs">
+                            <div className="space-y-1 max-w-[200px]">
+                              {req.approver1 && (
+                                <p className="text-blue-800 font-semibold truncate">
+                                  ✓ T1: {req.approver1.name}
+                                </p>
+                              )}
+                              {req.approver2 && (
+                                <p className="text-purple-800 font-semibold truncate">
+                                  ✓ T2: {req.approver2.name}
+                                </p>
+                              )}
+                              {req.approverHrd && (
+                                <p className="text-emerald-800 font-bold truncate">
+                                  ✓ HRD: {req.approverHrd.name}
+                                </p>
+                              )}
+                              {!req.approver1 && !req.approver2 && !req.approverHrd && (
+                                <span className="text-slate-400">-</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-4 text-right">
+                            {req.status === 'pending' ? (
+                              <div className="flex items-center justify-end space-x-2">
+                                <button
+                                  onClick={() => handleOpenApproveModal(req)}
+                                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm flex items-center space-x-1"
+                                >
+                                  <CheckCircle size={14} />
+                                  <span>Setujui</span>
+                                </button>
+                                <button
+                                  onClick={() => handleOpenRejectModal(req)}
+                                  className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs flex items-center space-x-1"
+                                >
+                                  <XCircle size={14} />
+                                  <span>Tolak</span>
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-slate-400 italic">Selesai Ditinjau</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -331,16 +394,24 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h3 className="text-base font-extrabold text-slate-900 flex items-center space-x-2">
                   <CheckCircle size={20} className="text-emerald-600" />
-                  <span>Setujui Pengajuan Cuti</span>
+                  <span>
+                    {selectedReq.current_stage === 'approval_1' ? 'Persetujuan Tingkat 1 (Supervisor)' :
+                     selectedReq.current_stage === 'approval_2' ? 'Persetujuan Tingkat 2 (Manager)' :
+                     'Persetujuan Akhir HRD / PGA Admin'}
+                  </span>
                 </h3>
                 <button onClick={() => setActiveModal(null)} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400">
                   <X size={18} />
                 </button>
               </div>
 
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Anda akan menyetujui pengajuan cuti dari <strong>{selectedReq.user?.name}</strong> sejumlah <strong>{selectedReq.amount} {selectedReq.unit}</strong>.
-              </p>
+              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 space-y-1">
+                <p className="font-extrabold text-sm">{selectedReq.user?.name} ({selectedReq.user?.nik})</p>
+                <p className="text-emerald-800">
+                  Kategori: <strong>{selectedReq.category?.name}</strong> &bull; Jumlah: <strong>{selectedReq.amount} {selectedReq.unit}</strong>
+                </p>
+                <p className="text-[11px] text-emerald-700">Periode: {selectedReq.start_date} s/d {selectedReq.end_date}</p>
+              </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Catatan Persetujuan (Opsional)</label>

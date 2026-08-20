@@ -20,7 +20,7 @@ class DatabaseSeeder extends Seeder
         $deptFinance = Department::firstOrCreate(['code' => 'DEPT-FIN'], ['name' => 'Finance & Accounting']);
         $deptOps = Department::firstOrCreate(['code' => 'DEPT-OPS'], ['name' => 'Operations & Supply']);
 
-        // 2. Create Manager User
+        // 2. Create Manager User (1 Tier Approval -> Direct HRD)
         $manager = User::firstOrCreate(
             ['email' => 'manager@sgin.com'],
             [
@@ -29,11 +29,28 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'role' => 'manager',
                 'department_id' => $deptIT->id,
+                'approver_1_id' => null,
+                'approver_2_id' => null,
             ]
         );
         $deptIT->update(['manager_id' => $manager->id]);
 
-        // 3. Create HRD / Admin User
+        // 3. Create Supervisor User (2 Tier Approval -> Manager -> HRD)
+        $supervisor = User::firstOrCreate(
+            ['email' => 'spv@sgin.com'],
+            [
+                'nik' => 'SPV-102',
+                'name' => 'Bambang Sudiro (Supervisor IT)',
+                'password' => Hash::make('password'),
+                'role' => 'manager',
+                'department_id' => $deptIT->id,
+                'approver_1_id' => null,
+                'approver_2_id' => $manager->id,
+                'manager_id' => $manager->id,
+            ]
+        );
+
+        // 4. Create HRD / Admin User
         $hrdAdmin = User::firstOrCreate(
             ['email' => 'hrd@sgin.com'],
             [
@@ -42,44 +59,54 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'role' => 'admin',
                 'department_id' => $deptHR->id,
+                'approver_1_id' => null,
+                'approver_2_id' => null,
             ]
         );
         $deptHR->update(['manager_id' => $hrdAdmin->id]);
 
-        // 4. Create Employee Users
+        // 5. Create Employee 1: 3-Tier Approval (Supervisor -> Manager -> HRD)
         $employee1 = User::firstOrCreate(
             ['email' => 'karyawan@sgin.com'],
             [
                 'nik' => 'EMP-201',
-                'name' => 'Budi Santoso',
+                'name' => 'Budi Santoso (Staf IT - 3 Tier)',
                 'password' => Hash::make('password'),
                 'role' => 'employee',
                 'department_id' => $deptIT->id,
+                'approver_1_id' => $supervisor->id,
+                'approver_2_id' => $manager->id,
                 'manager_id' => $manager->id,
             ]
         );
 
+        // 6. Create Employee 2: 2-Tier Approval (Manager -> HRD)
         $employee2 = User::firstOrCreate(
             ['email' => 'siti@sgin.com'],
             [
                 'nik' => 'EMP-202',
-                'name' => 'Siti Rahmawati',
+                'name' => 'Siti Rahmawati (Staf IT - 2 Tier)',
                 'password' => Hash::make('password'),
                 'role' => 'employee',
                 'department_id' => $deptIT->id,
+                'approver_1_id' => null,
+                'approver_2_id' => $manager->id,
                 'manager_id' => $manager->id,
             ]
         );
 
+        // 7. Create Employee 3: 1-Tier Approval (Direct HRD)
         $employee3 = User::firstOrCreate(
             ['email' => 'doni@sgin.com'],
             [
                 'nik' => 'EMP-203',
-                'name' => 'Doni Kusuma',
+                'name' => 'Doni Kusuma (Staf Ops - 1 Tier)',
                 'password' => Hash::make('password'),
                 'role' => 'employee',
                 'department_id' => $deptOps->id,
-                'manager_id' => $hrdAdmin->id,
+                'approver_1_id' => null,
+                'approver_2_id' => null,
+                'manager_id' => null,
             ]
         );
 

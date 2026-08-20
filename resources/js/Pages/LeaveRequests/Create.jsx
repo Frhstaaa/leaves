@@ -357,19 +357,40 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
                   )}
                 </div>
 
-                {/* Question: Agreement Check Approval Division */}
+                {/* Multi-Tier Approval Chain Preview */}
                 <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-3">
                   <div className="flex items-start space-x-3">
-                    <ShieldCheck size={20} className="text-amber-700 shrink-0 mt-0.5" />
+                    <ShieldCheck size={22} className="text-amber-700 shrink-0 mt-0.5" />
                     <div>
-                      <h4 className="text-xs font-bold text-amber-950">Persetujuan Atasan: {user?.manager_name || 'Atasan Direct'}</h4>
+                      <h4 className="text-xs font-bold text-amber-950">Alur Persetujuan Bertingkat (Approval Chain)</h4>
                       <p className="text-[11px] text-amber-800 leading-relaxed mt-0.5">
-                        Apakah Anda menyetujui bahwa pengajuan ini akan diteruskan ke <strong>{user?.manager_name || 'Atasan Direct'}</strong> untuk proses peninjauan dan persetujuan?
+                        Permohonan ini akan diproses secara berurutan sesuai alur tingkatan persetujuan berikut:
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-4 pt-1">
+                  {/* Dynamic Approval Steps Display */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                    {(user?.approval_chain && user.approval_chain.length > 0 ? user.approval_chain : [
+                      { level: 1, role_title: 'Approval Atasan', name: 'Atasan Direct', department: 'Departemen' },
+                      { level: 2, role_title: 'Approval HRD', name: 'HRD / PGA Admin', department: 'HRD' }
+                    ]).map((chain, idx) => (
+                      <div key={idx} className="p-3 rounded-xl bg-white/90 border border-amber-200/80 shadow-xs space-y-1">
+                        <div className="flex items-center space-x-1.5">
+                          <span className="w-5 h-5 rounded-full bg-amber-500 text-white font-black text-[10px] flex items-center justify-center shrink-0">
+                            {idx + 1}
+                          </span>
+                          <span className="text-[10px] font-black uppercase text-amber-900 truncate">
+                            {chain.role_title}
+                          </span>
+                        </div>
+                        <p className="text-xs font-bold text-slate-900 truncate pl-6">{chain.name}</p>
+                        <p className="text-[10px] text-slate-500 truncate pl-6">{chain.department}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center space-x-4 pt-2 border-t border-amber-200/60">
                     <label className="flex items-center space-x-2 cursor-pointer text-xs font-bold text-slate-800">
                       <input
                         type="radio"
@@ -382,19 +403,7 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
                         }}
                         className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
                       />
-                      <span>Ya (Saya Setuju)</span>
-                    </label>
-
-                    <label className="flex items-center space-x-2 cursor-pointer text-xs font-bold text-slate-600">
-                      <input
-                        type="radio"
-                        name="approval_agreed"
-                        value="Tidak"
-                        checked={data.approval_agreed === 'Tidak'}
-                        onChange={(e) => setData('approval_agreed', e.target.value)}
-                        className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
-                      />
-                      <span>Tidak</span>
+                      <span>Ya (Saya Menyetujui Alur Persetujuan Ini)</span>
                     </label>
                   </div>
                   {agreedError && <p className="text-xs text-rose-600 font-bold">{agreedError}</p>}
@@ -573,6 +582,24 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
                   <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
                     <span className="text-slate-500 font-medium">File Lampiran</span>
                     <span className="font-semibold text-slate-700 truncate max-w-[150px]">{filePreviewName || 'Tidak Ada File'}</span>
+                  </div>
+
+                  {/* Approval Route in Review */}
+                  <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-slate-50 sm:col-span-2 space-y-1.5">
+                    <span className="text-slate-500 font-medium block">Rute Persetujuan:</span>
+                    <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                      {(user?.approval_chain && user.approval_chain.length > 0 ? user.approval_chain : [
+                        { name: 'Atasan Direct' },
+                        { name: 'HRD / PGA Admin' }
+                      ]).map((c, i, arr) => (
+                        <React.Fragment key={i}>
+                          <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-900 font-extrabold text-[11px] border border-emerald-200">
+                            {i + 1}. {c.name}
+                          </span>
+                          {i < arr.length - 1 && <span className="text-slate-400 font-bold text-xs">&rarr;</span>}
+                        </React.Fragment>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-1.5 sm:col-span-2">

@@ -77,6 +77,8 @@ export default function HrdEmployees({ employees = [], departments = [], manager
     password: 'password123',
     role: 'employee',
     department_id: departments[0]?.id || '',
+    approver_1_id: '',
+    approver_2_id: '',
     manager_id: '',
     total_quota: 12,
     avatar: null,
@@ -91,6 +93,8 @@ export default function HrdEmployees({ employees = [], departments = [], manager
     password: '',
     role: 'employee',
     department_id: '',
+    approver_1_id: '',
+    approver_2_id: '',
     manager_id: '',
     total_quota: 12,
     avatar: null,
@@ -134,6 +138,8 @@ export default function HrdEmployees({ employees = [], departments = [], manager
       password: 'password123',
       role: 'employee',
       department_id: departments[0]?.id || '',
+      approver_1_id: '',
+      approver_2_id: '',
       manager_id: '',
       total_quota: 12,
       avatar: null,
@@ -163,7 +169,9 @@ export default function HrdEmployees({ employees = [], departments = [], manager
       password: '',
       role: emp.role || 'employee',
       department_id: emp.department_id || '',
-      manager_id: emp.manager_id || '',
+      approver_1_id: emp.approver_1_id || '',
+      approver_2_id: emp.approver_2_id || emp.manager_id || '',
+      manager_id: emp.approver_2_id || emp.manager_id || '',
       total_quota: emp.current_quota?.total_quota || 12,
       avatar: null,
     });
@@ -387,8 +395,12 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                         </div>
 
                         <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60 min-w-0">
-                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Atasan Direct</span>
-                          <span className="font-medium text-slate-700 truncate block">{emp.manager ? emp.manager.name : '-'}</span>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Alur Approval</span>
+                          <span className="font-medium text-slate-700 truncate block text-[11px]">
+                            {emp.approver1 ? `T1: ${emp.approver1.name}` : ''}
+                            {emp.approver1 && (emp.approver2 || emp.manager) ? ' • ' : ''}
+                            {emp.approver2 ? `T2: ${emp.approver2.name}` : (emp.manager ? `T2: ${emp.manager.name}` : (!emp.approver1 ? 'Direct HRD' : ''))}
+                          </span>
                         </div>
 
                         <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60 min-w-0">
@@ -434,7 +446,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       <th className="py-3.5 px-4">Email</th>
                       <th className="py-3.5 px-4">Departemen</th>
                       <th className="py-3.5 px-4">Role System</th>
-                      <th className="py-3.5 px-4">Atasan Direct</th>
+                      <th className="py-3.5 px-4">Alur Approval (Atasan 1 & 2)</th>
                       <th className="py-3.5 px-4">Kuota Cuti ({new Date().getFullYear()})</th>
                       <th className="py-3.5 px-4 text-right">Aksi HRD</th>
                     </tr>
@@ -480,7 +492,21 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                           </td>
 
                           <td className="py-3.5 px-4 text-slate-600 font-medium">
-                            {emp.manager ? emp.manager.name : '-'}
+                            <div className="text-xs space-y-0.5">
+                              {emp.approver1 && (
+                                <div className="text-blue-800 font-semibold text-[11px] truncate">
+                                  T1: {emp.approver1.name}
+                                </div>
+                              )}
+                              {(emp.approver2 || emp.manager) && (
+                                <div className="text-purple-800 font-semibold text-[11px] truncate">
+                                  T2: {emp.approver2 ? emp.approver2.name : emp.manager.name}
+                                </div>
+                              )}
+                              {!emp.approver1 && !emp.approver2 && !emp.manager && (
+                                <span className="text-slate-400 italic">Direct HRD</span>
+                              )}
+                            </div>
                           </td>
 
                           <td className="py-3.5 px-4">
@@ -666,33 +692,47 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   </div>
                 </div>
 
-                {/* Manager Direct & Jatah Kuota */}
+                {/* Approval 1 & Approval 2 Settings */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Atasan Direct (Manager)</label>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 1 (Supervisor / Lead)</label>
                     <select
-                      value={addForm.data.manager_id}
-                      onChange={(e) => addForm.setData('manager_id', e.target.value)}
+                      value={addForm.data.approver_1_id}
+                      onChange={(e) => addForm.setData('approver_1_id', e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none"
                     >
-                      <option value="">Tidak ada (Direct Admin)</option>
+                      <option value="">Tidak ada (Langsung Approval 2 / HRD)</option>
                       {managers.map((m) => (
-                        <option key={m.id} value={m.id}>{m.name} ({m.department?.name || 'Manager'})</option>
+                        <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
                       ))}
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Jatah Kuota Cuti (Hari / Thn)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={addForm.data.total_quota}
-                      onChange={(e) => addForm.setData('total_quota', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
-                    />
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 2 (Manager / Dept Head)</label>
+                    <select
+                      value={addForm.data.approver_2_id}
+                      onChange={(e) => addForm.setData('approver_2_id', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none"
+                    >
+                      <option value="">Tidak ada (Langsung HRD)</option>
+                      {managers.map((m) => (
+                        <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
+                      ))}
+                    </select>
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Jatah Kuota Cuti (Hari / Thn)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={addForm.data.total_quota}
+                    onChange={(e) => addForm.setData('total_quota', e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
+                  />
                 </div>
 
                 <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
@@ -836,15 +876,16 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   </div>
                 </div>
 
+                {/* Approval 1 & Approval 2 Settings */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Atasan Direct (Manager)</label>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 1 (Supervisor / Lead)</label>
                     <select
-                      value={editForm.data.manager_id}
-                      onChange={(e) => editForm.setData('manager_id', e.target.value)}
+                      value={editForm.data.approver_1_id}
+                      onChange={(e) => editForm.setData('approver_1_id', e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none"
                     >
-                      <option value="">Tidak ada (Direct Admin)</option>
+                      <option value="">Tidak ada (Langsung Approval 2 / HRD)</option>
                       {managers.filter(m => m.id !== editingEmployee?.id).map((m) => (
                         <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
                       ))}
@@ -852,16 +893,30 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Total Jatah Kuota Cuti</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={editForm.data.total_quota}
-                      onChange={(e) => editForm.setData('total_quota', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
-                    />
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 2 (Manager / Dept Head)</label>
+                    <select
+                      value={editForm.data.approver_2_id}
+                      onChange={(e) => editForm.setData('approver_2_id', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none"
+                    >
+                      <option value="">Tidak ada (Langsung HRD)</option>
+                      {managers.filter(m => m.id !== editingEmployee?.id).map((m) => (
+                        <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
+                      ))}
+                    </select>
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Total Jatah Kuota Cuti</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={editForm.data.total_quota}
+                    onChange={(e) => editForm.setData('total_quota', e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none"
+                  />
                 </div>
 
                 <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
@@ -1008,7 +1063,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   </a>
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  Download template resmi di atas. Isi kolom: <strong>NIK, Nama Karyawan, Email, Password, Role, Kode/Nama Departemen, NIK Atasan, Kuota Cuti</strong>.
+                  Download template resmi di atas. Kolom: <strong>NIK, Nama Karyawan, Email, Password, Role, Kode/Nama Departemen, NIK Atasan 1 (Supervisor), NIK Atasan 2 (Manager), Kuota Cuti</strong>.
                 </p>
               </div>
 
