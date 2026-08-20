@@ -50,13 +50,26 @@ class LeaveRequestController extends Controller
             ['total_quota' => 12, 'used_quota' => 0, 'remaining_quota' => 12]
         );
 
+        $approverName = 'HRD / Admin Head';
+        if ($user->manager) {
+            $approverName = $user->manager->name . ' (' . ($user->manager->department ? $user->manager->department->name : 'Atasan Direct') . ')';
+        } elseif ($user->department_id) {
+            $deptManager = User::where('department_id', $user->department_id)
+                ->whereIn('role', ['manager', 'admin', 'superadmin'])
+                ->where('id', '!=', $user->id)
+                ->first();
+            if ($deptManager) {
+                $approverName = $deptManager->name . ' (Manager ' . ($user->department ? $user->department->name : 'Departemen') . ')';
+            }
+        }
+
         return Inertia::render('LeaveRequests/Create', [
             'user' => [
                 'name' => $user->name,
                 'email' => $user->email,
                 'nik' => $user->nik ?? 'EMP-' . str_pad($user->id, 3, '0', STR_PAD_LEFT),
                 'department_name' => $user->department ? $user->department->name : 'General',
-                'manager_name' => $user->manager ? $user->manager->name : 'Atasan Direct',
+                'manager_name' => $approverName,
             ],
             'categories' => $categories,
             'quota' => $quota,

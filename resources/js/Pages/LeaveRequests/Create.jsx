@@ -347,9 +347,9 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
                   <div className="flex items-start space-x-3">
                     <ShieldCheck size={20} className="text-amber-700 shrink-0 mt-0.5" />
                     <div>
-                      <h4 className="text-xs font-bold text-amber-950">Persetujuan Kepala Departemen (Division Approval Step)</h4>
+                      <h4 className="text-xs font-bold text-amber-950">Persetujuan Atasan: {user?.manager_name || 'Atasan Direct'}</h4>
                       <p className="text-[11px] text-amber-800 leading-relaxed mt-0.5">
-                        Apakah Anda menyetujui bahwa pengajuan ini akan diteruskan dan memerlukan persetujuan dari Kepala Departemen?
+                        Apakah Anda menyetujui bahwa pengajuan ini akan diteruskan ke <strong>{user?.manager_name || 'Atasan Direct'}</strong> untuk proses peninjauan dan persetujuan?
                       </p>
                     </div>
                   </div>
@@ -536,8 +536,8 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
                   </div>
 
                   <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
-                    <span className="text-slate-500 font-medium">Persetujuan Atasan</span>
-                    <span className="font-bold text-emerald-600">Ya (Menyetujui Alur Approval)</span>
+                    <span className="text-slate-500 font-medium">Tujuan Approval</span>
+                    <span className="font-bold text-emerald-700 truncate max-w-[180px]">{user?.manager_name || 'Atasan Direct'}</span>
                   </div>
 
                   <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">

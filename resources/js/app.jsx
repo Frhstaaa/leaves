@@ -28,6 +28,9 @@ window.route = function (name, params) {
     'hrd.employees': '/hrd/employees',
     'hrd.employees.template': '/hrd/employees/template',
     'hrd.employees.import': '/hrd/employees/import',
+    'hrd.employees.store': '/hrd/employees',
+    'hrd.employees.update': (id) => `/hrd/employees/${id}/update`,
+    'hrd.employees.destroy': (id) => `/hrd/employees/${id}`,
     'hrd.update-quota': (id) => `/hrd/employees/${id}/quota`,
     'hrd.export': '/hrd/export',
     'profile.avatar': '/profile/avatar',
@@ -37,6 +40,7 @@ window.route = function (name, params) {
     'superadmin.roles.destroy': (id) => `/superadmin/roles/${id}`,
     'superadmin.permissions.store': '/superadmin/permissions',
     'superadmin.users.assign-role': (id) => `/superadmin/users/${id}/assign-role`,
+    'storage.local': (path) => `/storage/${path}`,
   };
 
   if (!name) {

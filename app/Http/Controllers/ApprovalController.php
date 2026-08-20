@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Department;
 use App\Models\LeaveQuota;
 use App\Models\LeaveRequest;
 use App\Models\User;
@@ -20,6 +21,8 @@ class ApprovalController extends Controller
         }
 
         $rawStatus = $request->query('status');
+        $deptId = $request->query('department_id');
+        $search = $request->query('search');
 
         if ($request->has('status')) {
             $status = ($rawStatus === null || $rawStatus === '' || $rawStatus === 'all') ? 'all' : $rawStatus;
@@ -27,15 +30,37 @@ class ApprovalController extends Controller
             $status = 'pending';
         }
 
-        $query = LeaveRequest::with(['user.department', 'category', 'approver']);
+        $query = LeaveRequest::with(['user.department', 'user.manager', 'category', 'approver']);
 
-        if ($user->isManager()) {
-            // Managers view subordinates or department members
-            $subordinateIds = User::where('manager_id', $user->id)
-                ->orWhere('department_id', $user->department_id)
-                ->pluck('id');
+        if (!$user->isAdmin()) {
+            // Manager: Strict subordinate routing
+            // 1. Direct subordinates assigned with manager_id = $user->id
+            // 2. Department members without specific manager_id (manager_id IS NULL)
+            $subordinateIds = User::where(function ($q) use ($user) {
+                $q->where('manager_id', $user->id)
+                  ->orWhere(function ($sub) use ($user) {
+                      $sub->whereNull('manager_id')->where('department_id', $user->department_id);
+                  });
+            })->where('id', '!=', $user->id)->pluck('id');
 
-            $query->whereIn('user_id', $subordinateIds)->where('user_id', '!=', $user->id);
+            $query->whereIn('user_id', $subordinateIds);
+        } else {
+            // HRD / Admin / Superadmin: Can filter by department and search across company
+            if ($deptId) {
+                $query->whereHas('user', function ($q) use ($deptId) {
+                    $q->where('department_id', $deptId);
+                });
+            }
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('request_number', 'like', "%{$search}%")
+                  ->orWhereHas('user', function ($u) use ($search) {
+                      $u->where('name', 'like', "%{$search}%")
+                        ->orWhere('nik', 'like', "%{$search}%");
+                  });
+            });
         }
 
         if (in_array($status, ['pending', 'approved', 'rejected'])) {
@@ -43,12 +68,17 @@ class ApprovalController extends Controller
         }
 
         $requests = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
+        $departments = $user->isAdmin() ? Department::all() : [];
 
         return Inertia::render('Approvals/Index', [
             'requests' => $requests,
+            'departments' => $departments,
             'filters' => [
                 'status' => $status,
+                'department_id' => $deptId,
+                'search' => $search,
             ],
+            'isHrdAdmin' => $user->isAdmin(),
         ]);
     }
 
@@ -61,6 +91,16 @@ class ApprovalController extends Controller
         }
 
         $leaveRequest = LeaveRequest::with(['category', 'user'])->findOrFail($id);
+
+        // Security check for manager authorization
+        if (!$user->isAdmin()) {
+            $isAuthorized = ($leaveRequest->user->manager_id == $user->id) ||
+                            (is_null($leaveRequest->user->manager_id) && $leaveRequest->user->department_id == $user->department_id);
+
+            if (!$isAuthorized || $leaveRequest->user_id == $user->id) {
+                return back()->with('error', 'Anda tidak memiliki wewenang untuk menyetujui pengajuan ini.');
+            }
+        }
 
         if ($leaveRequest->status !== 'pending') {
             return back()->with('error', 'Pengajuan ini sudah tidak lagi berstatus pending.');
@@ -108,9 +148,20 @@ class ApprovalController extends Controller
             'note' => 'required|string|min:3|max:500',
         ], [
             'note.required' => 'Alasan penolakan pengajuan wajib diisi.',
+            'note.min' => 'Alasan penolakan minimal 3 karakter.',
         ]);
 
         $leaveRequest = LeaveRequest::with('user')->findOrFail($id);
+
+        // Security check for manager authorization
+        if (!$user->isAdmin()) {
+            $isAuthorized = ($leaveRequest->user->manager_id == $user->id) ||
+                            (is_null($leaveRequest->user->manager_id) && $leaveRequest->user->department_id == $user->department_id);
+
+            if (!$isAuthorized || $leaveRequest->user_id == $user->id) {
+                return back()->with('error', 'Anda tidak memiliki wewenang untuk menolak pengajuan ini.');
+            }
+        }
 
         if ($leaveRequest->status !== 'pending') {
             return back()->with('error', 'Pengajuan ini sudah tidak lagi berstatus pending.');

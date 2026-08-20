@@ -27,7 +27,7 @@ class HrdController extends Controller
         $categoryId = $request->query('category_id');
         $search = $request->query('search');
 
-        $query = LeaveRequest::with(['user.department', 'category', 'approver']);
+        $query = LeaveRequest::with(['user.department', 'user.manager', 'category', 'approver']);
 
         if ($deptId) {
             $query->whereHas('user', function ($q) use ($deptId) {
@@ -92,7 +92,7 @@ class HrdController extends Controller
         $deptId = $request->query('department_id');
         $role = $request->query('role');
 
-        $query = User::with(['department', 'manager', 'currentQuota']);
+        $query = User::with(['department', 'manager.department', 'currentQuota']);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -106,20 +106,23 @@ class HrdController extends Controller
             $query->where('department_id', $deptId);
         }
 
-        if ($role && in_array($role, ['employee', 'manager', 'admin'])) {
+        if ($role && in_array($role, ['employee', 'manager', 'admin', 'superadmin'])) {
             $query->where('role', $role);
         }
 
         $employees = $query->orderBy('name', 'asc')->get();
         $departments = Department::all();
-        $managers = User::whereIn('role', ['manager', 'admin'])->get();
+        $managers = User::whereIn('role', ['manager', 'admin', 'superadmin'])
+            ->with('department')
+            ->orderBy('name', 'asc')
+            ->get();
 
         // Overall stats
         $allUsers = User::all();
         $stats = [
             'total_employees' => $allUsers->count(),
             'total_departments' => $departments->count(),
-            'total_managers' => $allUsers->whereIn('role', ['manager', 'admin'])->count(),
+            'total_managers' => $allUsers->whereIn('role', ['manager', 'admin', 'superadmin'])->count(),
             'active_quotas' => LeaveQuota::where('year', date('Y'))->sum('remaining_quota'),
         ];
 
@@ -148,16 +151,20 @@ class HrdController extends Controller
             'nik' => 'required|string|max:50|unique:users,nik',
             'email' => 'required|email|max:255|unique:users,email',
             'password' => 'required|string|min:6',
-            'role' => 'required|in:employee,manager,admin',
+            'role' => 'required|in:employee,manager,admin,superadmin',
             'department_id' => 'nullable|exists:departments,id',
             'manager_id' => 'nullable|exists:users,id',
             'total_quota' => 'required|integer|min:0|max:100',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ], [
+            'nik.unique' => 'NIK sudah digunakan oleh karyawan lain.',
+            'email.unique' => 'Email sudah terdaftar dalam sistem.',
+            'password.min' => 'Password minimal 6 karakter.',
         ]);
 
         $avatarPath = null;
         if ($request->hasFile('avatar')) {
-            $avatarPath = $request->file('avatar')->store('avatars', 'public');
+            $avatarPath = $this->convertAvatarToWebpAndStore($request->file('avatar'));
         }
 
         $newEmployee = User::create([
@@ -170,6 +177,11 @@ class HrdController extends Controller
             'manager_id' => $validated['manager_id'],
             'avatar' => $avatarPath,
         ]);
+
+        // Sync Spatie Role
+        try {
+            $newEmployee->syncRoles([$validated['role']]);
+        } catch (\Throwable $e) {}
 
         // Create Leave Quota for current year
         $currentYear = date('Y');
@@ -199,12 +211,20 @@ class HrdController extends Controller
             'nik' => 'required|string|max:50|unique:users,nik,' . $employee->id,
             'email' => 'required|email|max:255|unique:users,email,' . $employee->id,
             'password' => 'nullable|string|min:6',
-            'role' => 'required|in:employee,manager,admin',
+            'role' => 'required|in:employee,manager,admin,superadmin',
             'department_id' => 'nullable|exists:departments,id',
             'manager_id' => 'nullable|exists:users,id',
             'total_quota' => 'required|integer|min:0|max:100',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ], [
+            'nik.unique' => 'NIK sudah digunakan oleh karyawan lain.',
+            'email.unique' => 'Email sudah terdaftar dalam sistem.',
         ]);
+
+        // Prevent self-assignment as manager
+        if ($validated['manager_id'] == $employee->id) {
+            $validated['manager_id'] = null;
+        }
 
         $updateData = [
             'name' => $validated['name'],
@@ -223,10 +243,15 @@ class HrdController extends Controller
             if ($employee->avatar && Storage::disk('public')->exists($employee->avatar)) {
                 Storage::disk('public')->delete($employee->avatar);
             }
-            $updateData['avatar'] = $request->file('avatar')->store('avatars', 'public');
+            $updateData['avatar'] = $this->convertAvatarToWebpAndStore($request->file('avatar'));
         }
 
         $employee->update($updateData);
+
+        // Sync Spatie Role
+        try {
+            $employee->syncRoles([$validated['role']]);
+        } catch (\Throwable $e) {}
 
         // Update Quota for current year
         $currentYear = date('Y');
@@ -259,6 +284,9 @@ class HrdController extends Controller
 
         $employee = User::findOrFail($userId);
         $empName = $employee->name;
+
+        // Reset subordinates' manager_id to null
+        User::where('manager_id', $employee->id)->update(['manager_id' => null]);
 
         if ($employee->avatar && Storage::disk('public')->exists($employee->avatar)) {
             Storage::disk('public')->delete($employee->avatar);
@@ -306,9 +334,21 @@ class HrdController extends Controller
             return back()->with('error', 'Akses khusus HRD/Manager.');
         }
 
-        $requests = LeaveRequest::with(['user.department', 'category', 'approver'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $query = LeaveRequest::with(['user.department', 'user.manager', 'category', 'approver'])
+            ->orderBy('created_at', 'desc');
+
+        if ($user->isManager() && !$user->isAdmin()) {
+            $subordinateIds = User::where(function ($q) use ($user) {
+                $q->where('manager_id', $user->id)
+                  ->orWhere(function ($sub) use ($user) {
+                      $sub->whereNull('manager_id')->where('department_id', $user->department_id);
+                  });
+            })->where('id', '!=', $user->id)->pluck('id');
+
+            $query->whereIn('user_id', $subordinateIds);
+        }
+
+        $requests = $query->get();
 
         $fileName = 'Rekapitulasi_Pengajuan_Cuti_' . date('Ymd_His') . '.csv';
 
@@ -330,6 +370,7 @@ class HrdController extends Controller
                 'NIK',
                 'Nama Karyawan',
                 'Departemen',
+                'Atasan Direct',
                 'Kategori',
                 'Mulai',
                 'Selesai',
@@ -337,7 +378,7 @@ class HrdController extends Controller
                 'Satuan',
                 'Alasan',
                 'Status',
-                'Approver',
+                'Disetujui Oleh',
                 'Catatan Approval',
                 'Tanggal Approval',
             ]);
@@ -348,6 +389,7 @@ class HrdController extends Controller
                     $req->user->nik ?? '-',
                     $req->user->name,
                     $req->user->department->name ?? '-',
+                    $req->user->manager->name ?? '-',
                     $req->category->name ?? '-',
                     $req->start_date ? $req->start_date->format('Y-m-d') : '-',
                     $req->end_date ? $req->end_date->format('Y-m-d') : '-',
@@ -389,32 +431,44 @@ class HrdController extends Controller
                 'Nama Karyawan',
                 'Email',
                 'Password',
-                'Role',
-                'Kode/Nama Departemen',
-                'NIK Atasan',
-                'Kuota Cuti',
+                'Role (employee/manager/admin)',
+                'Kode atau Nama Departemen',
+                'NIK atau Email Atasan',
+                'Kuota Cuti Tahunan',
             ]);
 
-            // Sample row 1 (Karyawan)
+            // Sample row 1 (Manager)
             fputcsv($file, [
-                'EMP-2026-001',
-                'Bambang Susilo',
-                'bambang@sgin.com',
+                'MGR-101',
+                'Hendra Setiawan',
+                'hendra@sgin.com',
+                'password123',
+                'manager',
+                'Information Technology',
+                '',
+                '12',
+            ]);
+
+            // Sample row 2 (Employee with direct manager)
+            fputcsv($file, [
+                'EMP-201',
+                'Budi Santoso',
+                'budi@sgin.com',
                 'password123',
                 'employee',
-                'DEPT-IT',
+                'Information Technology',
                 'MGR-101',
                 '12',
             ]);
 
-            // Sample row 2 (Manager)
+            // Sample row 3 (HRD Admin)
             fputcsv($file, [
-                'MGR-2026-002',
-                'Dewi Sartika',
-                'dewi@sgin.com',
+                'ADM-001',
+                'Siti Rahmawati',
+                'admin@sgin.com',
                 'password123',
-                'manager',
-                'DEPT-FIN',
+                'admin',
+                'HR & GA',
                 '',
                 '12',
             ]);
@@ -433,16 +487,31 @@ class HrdController extends Controller
         }
 
         $request->validate([
-            'file' => 'required|file|mimes:csv,txt,xlsx|max:5120',
+            'file' => 'required|file|max:10240',
         ]);
 
         $file = $request->file('file');
         $filePath = $file->getRealPath();
 
-        $handle = fopen($filePath, 'r');
-        if (!$handle) {
-            return back()->with('error', 'Gagal membaca file CSV yang diupload.');
+        $content = file_get_contents($filePath);
+        if ($content === false || empty(trim($content))) {
+            return back()->with('error', 'File yang diunggah kosong atau tidak dapat dibaca.');
         }
+
+        // Auto-detect delimiter: comma, semicolon, or tab
+        $firstLine = strtok($content, "\r\n");
+        $commaCount = substr_count($firstLine, ',');
+        $semicolonCount = substr_count($firstLine, ';');
+        $tabCount = substr_count($firstLine, "\t");
+
+        $delimiter = ',';
+        if ($semicolonCount > $commaCount && $semicolonCount > $tabCount) {
+            $delimiter = ';';
+        } elseif ($tabCount > $commaCount && $tabCount > $semicolonCount) {
+            $delimiter = "\t";
+        }
+
+        $handle = fopen($filePath, 'r');
 
         // Remove UTF-8 BOM if present
         $bom = fread($handle, 3);
@@ -451,24 +520,24 @@ class HrdController extends Controller
         }
 
         $successCount = 0;
+        $updatedCount = 0;
         $skippedCount = 0;
-        $skippedDetails = [];
         $rowNumber = 0;
 
         $currentYear = date('Y');
         $departments = Department::all();
-        $allManagers = User::whereIn('role', ['manager', 'admin', 'superadmin'])->get();
+        $allUsers = User::all();
 
-        while (($row = fgetcsv($handle, 1000, ',')) !== false) {
+        while (($row = fgetcsv($handle, 2000, $delimiter)) !== false) {
             $rowNumber++;
 
             // Skip header row
-            if ($rowNumber === 1 && (isset($row[0]) && stripos($row[0], 'NIK') !== false)) {
+            if ($rowNumber === 1 && (isset($row[0]) && preg_match('/(nik|nama|email)/i', $row[0]))) {
                 continue;
             }
 
             // Skip empty rows
-            if (empty(array_filter($row))) {
+            if (empty(array_filter($row, fn($val) => trim($val) !== ''))) {
                 continue;
             }
 
@@ -478,42 +547,44 @@ class HrdController extends Controller
             $password = trim($row[3] ?? '');
             $roleInput = strtolower(trim($row[4] ?? 'employee'));
             $deptInput = trim($row[5] ?? '');
-            $managerNik = trim($row[6] ?? '');
+            $managerInput = trim($row[6] ?? '');
             $quotaInput = (int) trim($row[7] ?? 12);
 
             if (empty($name) || empty($email)) {
                 $skippedCount++;
-                $skippedDetails[] = "Baris #{$rowNumber}: Nama atau Email tidak boleh kosong.";
                 continue;
             }
 
-            // Auto-generate NIK if blank
+            // Generate NIK if empty
             if (empty($nik)) {
                 $nik = 'EMP-' . date('Y') . '-' . rand(100, 999);
-            }
-
-            // Check uniqueness
-            if (User::where('email', $email)->orWhere('nik', $nik)->exists()) {
-                $skippedCount++;
-                $skippedDetails[] = "Baris #{$rowNumber}: User dengan NIK '{$nik}' atau Email '{$email}' sudah terdaftar.";
-                continue;
             }
 
             // Normalize Role
             $role = in_array($roleInput, ['employee', 'manager', 'admin', 'superadmin']) ? $roleInput : 'employee';
 
             // Find Department
-            $department = $departments->first(function ($d) use ($deptInput) {
-                return strcasecmp($d->code, $deptInput) === 0 || strcasecmp($d->name, $deptInput) === 0;
-            });
-            $departmentId = $department ? $department->id : ($departments->first()->id ?? null);
+            $departmentId = null;
+            if (!empty($deptInput)) {
+                $matchedDept = $departments->first(function ($d) use ($deptInput) {
+                    return strcasecmp($d->code, $deptInput) === 0 ||
+                           strcasecmp($d->name, $deptInput) === 0 ||
+                           $d->id == $deptInput;
+                });
+                $departmentId = $matchedDept ? $matchedDept->id : null;
+            }
 
             // Find Manager
             $managerId = null;
-            if ($managerNik) {
-                $managerUser = User::where('nik', $managerNik)->first();
-                if ($managerUser) {
-                    $managerId = $managerUser->id;
+            if (!empty($managerInput)) {
+                $matchedManager = User::where(function ($q) use ($managerInput) {
+                    $q->where('nik', $managerInput)
+                      ->orWhere('email', $managerInput)
+                      ->orWhere('name', $managerInput);
+                })->first();
+
+                if ($matchedManager) {
+                    $managerId = $matchedManager->id;
                 }
             }
 
@@ -522,45 +593,105 @@ class HrdController extends Controller
                 $password = 'password123';
             }
 
-            // Create User
-            $newEmp = User::create([
-                'nik' => $nik,
-                'name' => $name,
-                'email' => $email,
-                'password' => Hash::make($password),
-                'role' => $role,
-                'department_id' => $departmentId,
-                'manager_id' => $managerId,
-            ]);
-
-            // Assign Spatie Role
-            try {
-                $newEmp->assignRole($role);
-            } catch (\Exception $e) {
-                // Fallback ignore spatie sync error
-            }
-
-            // Create Annual Leave Quota
             $totalQuota = $quotaInput > 0 ? $quotaInput : 12;
-            LeaveQuota::create([
-                'user_id' => $newEmp->id,
-                'year' => $currentYear,
-                'total_quota' => $totalQuota,
-                'used_quota' => 0,
-                'remaining_quota' => $totalQuota,
-            ]);
 
-            $successCount++;
+            // Check if user already exists by NIK or Email
+            $existingUser = User::where('email', $email)->orWhere('nik', $nik)->first();
+
+            if ($existingUser) {
+                // Update existing user
+                $updatePayload = [
+                    'name' => $name,
+                    'role' => $role,
+                ];
+                if ($departmentId) $updatePayload['department_id'] = $departmentId;
+                if ($managerId && $managerId != $existingUser->id) $updatePayload['manager_id'] = $managerId;
+                if (!empty($password) && $password !== 'password123') {
+                    $updatePayload['password'] = Hash::make($password);
+                }
+
+                $existingUser->update($updatePayload);
+
+                try {
+                    $existingUser->syncRoles([$role]);
+                } catch (\Throwable $e) {}
+
+                // Update quota
+                $quota = LeaveQuota::firstOrCreate(
+                    ['user_id' => $existingUser->id, 'year' => $currentYear],
+                    ['total_quota' => $totalQuota, 'used_quota' => 0, 'remaining_quota' => $totalQuota]
+                );
+                $quota->update([
+                    'total_quota' => $totalQuota,
+                    'remaining_quota' => max(0, $totalQuota - $quota->used_quota),
+                ]);
+
+                $updatedCount++;
+            } else {
+                // Create New User
+                $newEmp = User::create([
+                    'nik' => $nik,
+                    'name' => $name,
+                    'email' => $email,
+                    'password' => Hash::make($password),
+                    'role' => $role,
+                    'department_id' => $departmentId,
+                    'manager_id' => $managerId,
+                ]);
+
+                try {
+                    $newEmp->syncRoles([$role]);
+                } catch (\Throwable $e) {}
+
+                LeaveQuota::create([
+                    'user_id' => $newEmp->id,
+                    'year' => $currentYear,
+                    'total_quota' => $totalQuota,
+                    'used_quota' => 0,
+                    'remaining_quota' => $totalQuota,
+                ]);
+
+                $successCount++;
+            }
         }
 
         fclose($handle);
 
-        $message = "Proses import selesai. {$successCount} karyawan berhasil ditambahkan.";
-        if ($skippedCount > 0) {
-            $message .= " {$skippedCount} baris dilewati (duplikat atau data kurang lengkap).";
+        $message = "Import selesai! ";
+        if ($successCount > 0) $message .= "{$successCount} karyawan baru ditambahkan. ";
+        if ($updatedCount > 0) $message .= "{$updatedCount} data karyawan diperbarui. ";
+        if ($skippedCount > 0) $message .= "{$skippedCount} baris dilewati (data tidak lengkap).";
+
+        return redirect()->back()->with('success', trim($message));
+    }
+
+    private function convertAvatarToWebpAndStore($file, string $folder = 'avatars', int $quality = 85): string
+    {
+        $mime = $file->getMimeType();
+        $realPath = $file->getRealPath();
+
+        $image = match ($mime) {
+            'image/jpeg', 'image/jpg' => @imagecreatefromjpeg($realPath),
+            'image/png' => @imagecreatefrompng($realPath),
+            'image/webp' => @imagecreatefromwebp($realPath),
+            default => null,
+        };
+
+        $filename = $folder . '/' . uniqid('avatar_') . '_' . time() . '.webp';
+
+        if ($image && function_exists('imagewebp')) {
+            imagealphablending($image, true);
+            imagesavealpha($image, true);
+
+            ob_start();
+            imagewebp($image, null, $quality);
+            $webpContent = ob_get_clean();
+            imagedestroy($image);
+
+            Storage::disk('public')->put($filename, $webpContent);
+            return $filename;
         }
 
-        return redirect()->back()->with('success', $message);
+        return $file->store($folder, 'public');
     }
 }
-

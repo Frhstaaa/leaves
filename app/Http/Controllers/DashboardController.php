@@ -46,17 +46,21 @@ class DashboardController extends Controller
         $teamRequests = [];
         $hrdMetrics = [];
 
-        if ($user->isManager()) {
+        if ($user->isManager() && !$user->isAdmin()) {
             // Subordinates' pending requests
-            $subordinateIds = User::where('manager_id', $user->id)->orWhere('department_id', $user->department_id)->pluck('id');
+            $subordinateIds = User::where(function ($q) use ($user) {
+                $q->where('manager_id', $user->id)
+                  ->orWhere(function ($sub) use ($user) {
+                      $sub->whereNull('manager_id')->where('department_id', $user->department_id);
+                  });
+            })->where('id', '!=', $user->id)->pluck('id');
+
             $managerPendingCount = LeaveRequest::whereIn('user_id', $subordinateIds)
                 ->where('status', 'pending')
-                ->where('user_id', '!=', $user->id)
                 ->count();
 
-            $teamRequests = LeaveRequest::with(['user', 'category'])
+            $teamRequests = LeaveRequest::with(['user.department', 'category'])
                 ->whereIn('user_id', $subordinateIds)
-                ->where('user_id', '!=', $user->id)
                 ->orderBy('created_at', 'desc')
                 ->take(5)
                 ->get();

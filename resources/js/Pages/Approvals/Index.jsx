@@ -15,11 +15,13 @@ import {
   X
 } from 'lucide-react';
 
-export default function ApprovalsIndex({ requests, filters }) {
+export default function ApprovalsIndex({ requests, departments = [], filters = {}, isHrdAdmin = false }) {
   const [activeModal, setActiveModal] = useState(null); // 'approve', 'reject', or null
   const [selectedReq, setSelectedReq] = useState(null);
   const [approvalNote, setApprovalNote] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [searchQuery, setSearchQuery] = useState(filters.search || '');
+  const [selectedDept, setSelectedDept] = useState(filters.department_id || '');
 
   const handleOpenApproveModal = (req) => {
     setSelectedReq(req);
@@ -65,7 +67,20 @@ export default function ApprovalsIndex({ requests, filters }) {
   };
 
   const handleFilterStatus = (status) => {
-    router.get(route('approvals.index'), { status }, { preserveState: true });
+    router.get(route('approvals.index'), {
+      status,
+      department_id: selectedDept,
+      search: searchQuery,
+    }, { preserveState: true });
+  };
+
+  const handleSearchSubmit = (e) => {
+    e?.preventDefault();
+    router.get(route('approvals.index'), {
+      status: filters.status || 'pending',
+      department_id: selectedDept,
+      search: searchQuery,
+    }, { preserveState: true });
   };
 
   return (
@@ -75,8 +90,47 @@ export default function ApprovalsIndex({ requests, filters }) {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 className="text-xl font-black text-slate-900">Panel Persetujuan Cuti (Approval Center)</h2>
-            <p className="text-xs text-slate-500">Kelola dan berikan persetujuan permohonan tidak bekerja tim Anda</p>
+            <p className="text-xs text-slate-500">
+              {isHrdAdmin ? 'Pengawasan dan persetujuan pengajuan cuti seluruh departemen' : 'Kelola dan berikan persetujuan permohonan tidak bekerja tim Anda'}
+            </p>
           </div>
+
+          {/* HRD / Admin Filter & Search */}
+          {isHrdAdmin && (
+            <form onSubmit={handleSearchSubmit} className="flex flex-wrap items-center gap-2">
+              <select
+                value={selectedDept}
+                onChange={(e) => {
+                  setSelectedDept(e.target.value);
+                  router.get(route('approvals.index'), {
+                    status: filters.status || 'pending',
+                    department_id: e.target.value,
+                    search: searchQuery,
+                  }, { preserveState: true });
+                }}
+                className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 shadow-sm"
+              >
+                <option value="">Semua Departemen</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari NIK / Nama..."
+                className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-800 shadow-sm outline-none focus:border-emerald-500"
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all"
+              >
+                Cari
+              </button>
+            </form>
+          )}
         </div>
 
         {/* Filter Status Tabs (2x2 Grid on Mobile for 100% Full Visibility & Horizontal Scroll on Desktop) */}
@@ -147,7 +201,7 @@ export default function ApprovalsIndex({ requests, filters }) {
 
                     <div className="space-y-1">
                       <p className="font-extrabold text-sm text-slate-900">{req.user?.name}</p>
-                      <p className="text-[11px] text-slate-500">{req.user?.nik} &bull; {req.user?.department?.name || 'General'}</p>
+                      <p className="text-[11px] text-slate-500">{req.user?.nik} &bull; {req.user?.department?.name || 'General'} {req.user?.manager ? `• Atasan: ${req.user.manager.name}` : ''}</p>
                       <p className="text-xs font-bold text-teal-700 pt-1">{req.category?.name} {req.submission_type ? `(${req.submission_type})` : ''}</p>
                       <p className="text-xs text-slate-700">{req.start_date} s/d {req.end_date} &bull; <strong className="text-slate-900">{req.amount} {req.unit}</strong></p>
                     </div>
@@ -198,7 +252,7 @@ export default function ApprovalsIndex({ requests, filters }) {
                         <td className="py-4">
                           <span className="font-mono text-xs font-bold text-teal-700 block">{req.request_number}</span>
                           <span className="font-bold text-slate-900 text-sm block mt-0.5">{req.user?.name}</span>
-                          <span className="text-[11px] text-slate-500 block">{req.user?.nik} &bull; {req.user?.department?.name || 'General'}</span>
+                          <span className="text-[11px] text-slate-500 block">{req.user?.nik} &bull; {req.user?.department?.name || 'General'} {req.user?.manager ? `• Atasan: ${req.user.manager.name}` : ''}</span>
                         </td>
                         <td className="py-4 max-w-xs">
                           <span className="font-bold text-slate-900 block">{req.category?.name}</span>

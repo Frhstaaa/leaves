@@ -360,11 +360,12 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                           </div>
                         </div>
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider shrink-0 ${
+                          emp.role === 'superadmin' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
                           emp.role === 'admin' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
                           emp.role === 'manager' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
                           'bg-emerald-100 text-emerald-800 border border-emerald-200'
                         }`}>
-                          {emp.role === 'admin' ? 'HRD / Admin' : emp.role === 'manager' ? 'Manager' : 'Staf'}
+                          {emp.role === 'superadmin' ? 'Superadmin' : emp.role === 'admin' ? 'HRD / Admin' : emp.role === 'manager' ? 'Manager' : 'Staf'}
                         </span>
                       </div>
 
@@ -463,11 +464,12 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
                           <td className="py-3.5 px-4">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                              emp.role === 'superadmin' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
                               emp.role === 'admin' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
                               emp.role === 'manager' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
                               'bg-emerald-100 text-emerald-800 border border-emerald-200'
                             }`}>
-                              {emp.role === 'admin' ? 'HRD / Admin' : emp.role === 'manager' ? 'Manager' : 'Staf Karyawan'}
+                              {emp.role === 'superadmin' ? 'Superadmin' : emp.role === 'admin' ? 'HRD / Admin' : emp.role === 'manager' ? 'Manager' : 'Staf Karyawan'}
                             </span>
                           </td>
 
@@ -639,6 +641,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       <option value="employee">Karyawan (Staf)</option>
                       <option value="manager">Manager / Supervisor</option>
                       <option value="admin">HRD / Admin System</option>
+                      <option value="superadmin">Super Admin / Direksi</option>
                     </select>
                   </div>
 
@@ -808,6 +811,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       <option value="employee">Karyawan (Staf)</option>
                       <option value="manager">Manager / Supervisor</option>
                       <option value="admin">HRD / Admin System</option>
+                      <option value="superadmin">Super Admin / Direksi</option>
                     </select>
                   </div>
 
@@ -835,8 +839,8 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none"
                     >
                       <option value="">Tidak ada (Direct Admin)</option>
-                      {managers.map((m) => (
-                        <option key={m.id} value={m.id}>{m.name}</option>
+                      {managers.filter(m => m.id !== editingEmployee?.id).map((m) => (
+                        <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
                       ))}
                     </select>
                   </div>
