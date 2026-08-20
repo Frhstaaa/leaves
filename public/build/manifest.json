@@ -1,24 +1,60 @@
 {
-  "_vendor-icons-f4125788.js": {
-    "file": "assets/vendor-icons-f4125788.js",
+  "_AuthenticatedLayout-b1d50232.js": {
+    "file": "assets/AuthenticatedLayout-b1d50232.js",
     "imports": [
-      "_vendor-react-b773bfa5.js"
+      "_vendor-motion-c21d59bc.js",
+      "_vendor-react-0addadd0.js",
+      "_vendor-inertia-7706fb61.js",
+      "_vendor-icons-70bc195a.js",
+      "_vendor-swal-6ddcfacf.js"
     ]
   },
-  "_vendor-inertia-b63fa8b0.js": {
-    "file": "assets/vendor-inertia-b63fa8b0.js",
+  "_badge-dd563ba0.js": {
+    "file": "assets/badge-dd563ba0.js",
     "imports": [
-      "_vendor-react-b773bfa5.js"
+      "_vendor-motion-c21d59bc.js",
+      "_vendor-react-0addadd0.js",
+      "_AuthenticatedLayout-b1d50232.js",
+      "_button-db7690f9.js"
     ]
   },
-  "_vendor-motion-dd313db2.js": {
-    "file": "assets/vendor-motion-dd313db2.js",
+  "_button-db7690f9.js": {
+    "file": "assets/button-db7690f9.js",
     "imports": [
-      "_vendor-react-b773bfa5.js"
+      "_vendor-motion-c21d59bc.js",
+      "_vendor-react-0addadd0.js",
+      "_AuthenticatedLayout-b1d50232.js"
     ]
   },
-  "_vendor-react-b773bfa5.js": {
-    "file": "assets/vendor-react-b773bfa5.js"
+  "_select-98d97e73.js": {
+    "file": "assets/select-98d97e73.js",
+    "imports": [
+      "_vendor-motion-c21d59bc.js",
+      "_vendor-react-0addadd0.js",
+      "_AuthenticatedLayout-b1d50232.js",
+      "_vendor-icons-70bc195a.js"
+    ]
+  },
+  "_vendor-icons-70bc195a.js": {
+    "file": "assets/vendor-icons-70bc195a.js",
+    "imports": [
+      "_vendor-react-0addadd0.js"
+    ]
+  },
+  "_vendor-inertia-7706fb61.js": {
+    "file": "assets/vendor-inertia-7706fb61.js",
+    "imports": [
+      "_vendor-react-0addadd0.js"
+    ]
+  },
+  "_vendor-motion-c21d59bc.js": {
+    "file": "assets/vendor-motion-c21d59bc.js",
+    "imports": [
+      "_vendor-react-0addadd0.js"
+    ]
+  },
+  "_vendor-react-0addadd0.js": {
+    "file": "assets/vendor-react-0addadd0.js"
   },
   "_vendor-swal-6ddcfacf.js": {
     "file": "assets/vendor-swal-6ddcfacf.js"
@@ -26,6 +62,168 @@
   "resources/css/app.css": {
     "file": "assets/app-aaad9961.css",
     "src": "resources/js/app.css"
+  },
+  "resources/js/Pages/Approvals/Index.jsx": {
+    "file": "assets/Index-a2f006c5.js",
+    "imports": [
+      "_vendor-motion-c21d59bc.js",
+      "_vendor-react-0addadd0.js",
+      "_vendor-inertia-7706fb61.js",
+      "_AuthenticatedLayout-b1d50232.js",
+      "_select-98d97e73.js",
+      "_button-db7690f9.js",
+      "_vendor-icons-70bc195a.js",
+      "_vendor-swal-6ddcfacf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "resources/js/Pages/Approvals/Index.jsx"
+  },
+  "resources/js/Pages/Auth/Login.jsx": {
+    "file": "assets/Login-892ba9fb.js",
+    "imports": [
+      "_vendor-motion-c21d59bc.js",
+      "_vendor-react-0addadd0.js",
+      "_vendor-inertia-7706fb61.js",
+      "_vendor-icons-70bc195a.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "resources/js/Pages/Auth/Login.jsx"
+  },
+  "resources/js/Pages/Dashboard.jsx": {
+    "file": "assets/Dashboard-1ebb6ae6.js",
+    "imports": [
+      "_vendor-motion-c21d59bc.js",
+      "_vendor-react-0addadd0.js",
+      "_vendor-inertia-7706fb61.js",
+      "_AuthenticatedLayout-b1d50232.js",
+      "_badge-dd563ba0.js",
+      "_button-db7690f9.js",
+      "_vendor-icons-70bc195a.js",
+      "_vendor-swal-6ddcfacf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "resources/js/Pages/Dashboard.jsx"
+  },
+  "resources/js/Pages/HRD/Departments.jsx": {
+    "file": "assets/Departments-258473e0.js",
+    "imports": [
+      "_vendor-motion-c21d59bc.js",
+      "_vendor-react-0addadd0.js",
+      "_vendor-inertia-7706fb61.js",
+      "_AuthenticatedLayout-b1d50232.js",
+      "_badge-dd563ba0.js",
+      "_button-db7690f9.js",
+      "_select-98d97e73.js",
+      "_vendor-icons-70bc195a.js",
+      "_vendor-swal-6ddcfacf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "resources/js/Pages/HRD/Departments.jsx"
+  },
+  "resources/js/Pages/HRD/Employees.jsx": {
+    "file": "assets/Employees-b97d6b09.js",
+    "imports": [
+      "_vendor-motion-c21d59bc.js",
+      "_vendor-react-0addadd0.js",
+      "_vendor-inertia-7706fb61.js",
+      "_AuthenticatedLayout-b1d50232.js",
+      "_select-98d97e73.js",
+      "_button-db7690f9.js",
+      "_vendor-icons-70bc195a.js",
+      "_vendor-swal-6ddcfacf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "resources/js/Pages/HRD/Employees.jsx"
+  },
+  "resources/js/Pages/HRD/Index.jsx": {
+    "file": "assets/Index-a37ba57c.js",
+    "imports": [
+      "_vendor-motion-c21d59bc.js",
+      "_vendor-react-0addadd0.js",
+      "_vendor-inertia-7706fb61.js",
+      "_AuthenticatedLayout-b1d50232.js",
+      "_select-98d97e73.js",
+      "_button-db7690f9.js",
+      "_vendor-icons-70bc195a.js",
+      "_vendor-swal-6ddcfacf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "resources/js/Pages/HRD/Index.jsx"
+  },
+  "resources/js/Pages/HRD/Payslips.jsx": {
+    "file": "assets/Payslips-34914cdb.js",
+    "imports": [
+      "_vendor-motion-c21d59bc.js",
+      "_vendor-react-0addadd0.js",
+      "_vendor-inertia-7706fb61.js",
+      "_AuthenticatedLayout-b1d50232.js",
+      "_badge-dd563ba0.js",
+      "_button-db7690f9.js",
+      "_select-98d97e73.js",
+      "_vendor-icons-70bc195a.js",
+      "_vendor-swal-6ddcfacf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "resources/js/Pages/HRD/Payslips.jsx"
+  },
+  "resources/js/Pages/LeaveRequests/Create.jsx": {
+    "file": "assets/Create-776039ab.js",
+    "imports": [
+      "_vendor-motion-c21d59bc.js",
+      "_vendor-react-0addadd0.js",
+      "_vendor-inertia-7706fb61.js",
+      "_AuthenticatedLayout-b1d50232.js",
+      "_select-98d97e73.js",
+      "_vendor-icons-70bc195a.js",
+      "_vendor-swal-6ddcfacf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "resources/js/Pages/LeaveRequests/Create.jsx"
+  },
+  "resources/js/Pages/LeaveRequests/Index.jsx": {
+    "file": "assets/Index-5ed5d61e.js",
+    "imports": [
+      "_vendor-motion-c21d59bc.js",
+      "_vendor-react-0addadd0.js",
+      "_vendor-inertia-7706fb61.js",
+      "_AuthenticatedLayout-b1d50232.js",
+      "_select-98d97e73.js",
+      "_button-db7690f9.js",
+      "_vendor-icons-70bc195a.js",
+      "_vendor-swal-6ddcfacf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "resources/js/Pages/LeaveRequests/Index.jsx"
+  },
+  "resources/js/Pages/Payslips/Index.jsx": {
+    "file": "assets/Index-564d1b32.js",
+    "imports": [
+      "_vendor-motion-c21d59bc.js",
+      "_vendor-react-0addadd0.js",
+      "_vendor-inertia-7706fb61.js",
+      "_AuthenticatedLayout-b1d50232.js",
+      "_badge-dd563ba0.js",
+      "_button-db7690f9.js",
+      "_select-98d97e73.js",
+      "_vendor-icons-70bc195a.js",
+      "_vendor-swal-6ddcfacf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "resources/js/Pages/Payslips/Index.jsx"
+  },
+  "resources/js/Pages/Superadmin/RolePermission/Index.jsx": {
+    "file": "assets/Index-a1625e66.js",
+    "imports": [
+      "_vendor-motion-c21d59bc.js",
+      "_vendor-react-0addadd0.js",
+      "_vendor-inertia-7706fb61.js",
+      "_AuthenticatedLayout-b1d50232.js",
+      "_select-98d97e73.js",
+      "_vendor-icons-70bc195a.js",
+      "_vendor-swal-6ddcfacf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "resources/js/Pages/Superadmin/RolePermission/Index.jsx"
   },
   "resources/js/app.css": {
     "file": "assets/app-aaad9961.css",
@@ -35,13 +233,24 @@
     "css": [
       "assets/app-aaad9961.css"
     ],
-    "file": "assets/app-51932878.js",
+    "dynamicImports": [
+      "resources/js/Pages/Approvals/Index.jsx",
+      "resources/js/Pages/Auth/Login.jsx",
+      "resources/js/Pages/Dashboard.jsx",
+      "resources/js/Pages/HRD/Departments.jsx",
+      "resources/js/Pages/HRD/Employees.jsx",
+      "resources/js/Pages/HRD/Index.jsx",
+      "resources/js/Pages/HRD/Payslips.jsx",
+      "resources/js/Pages/LeaveRequests/Create.jsx",
+      "resources/js/Pages/LeaveRequests/Index.jsx",
+      "resources/js/Pages/Payslips/Index.jsx",
+      "resources/js/Pages/Superadmin/RolePermission/Index.jsx"
+    ],
+    "file": "assets/app-1e2938c7.js",
     "imports": [
-      "_vendor-motion-dd313db2.js",
-      "_vendor-react-b773bfa5.js",
-      "_vendor-inertia-b63fa8b0.js",
-      "_vendor-icons-f4125788.js",
-      "_vendor-swal-6ddcfacf.js"
+      "_vendor-motion-c21d59bc.js",
+      "_vendor-inertia-7706fb61.js",
+      "_vendor-react-0addadd0.js"
     ],
     "isEntry": true,
     "src": "resources/js/app.jsx"

@@ -23,12 +23,21 @@ class DashboardController extends Controller
             ['total_quota' => 12, 'used_quota' => 0, 'remaining_quota' => 12]
         );
 
-        // Fetch stats based on role
+        // Fetch stats based on role with single efficient query
+        $reqStats = LeaveRequest::where('user_id', $user->id)
+            ->selectRaw('
+                COUNT(*) as total,
+                COUNT(CASE WHEN status = "pending" THEN 1 END) as pending,
+                COUNT(CASE WHEN status = "approved" THEN 1 END) as approved,
+                COUNT(CASE WHEN status = "rejected" THEN 1 END) as rejected
+            ')
+            ->first();
+
         $stats = [
-            'total_requests' => LeaveRequest::where('user_id', $user->id)->count(),
-            'pending_requests' => LeaveRequest::where('user_id', $user->id)->where('status', 'pending')->count(),
-            'approved_requests' => LeaveRequest::where('user_id', $user->id)->where('status', 'approved')->count(),
-            'rejected_requests' => LeaveRequest::where('user_id', $user->id)->where('status', 'rejected')->count(),
+            'total_requests' => (int) ($reqStats->total ?? 0),
+            'pending_requests' => (int) ($reqStats->pending ?? 0),
+            'approved_requests' => (int) ($reqStats->approved ?? 0),
+            'rejected_requests' => (int) ($reqStats->rejected ?? 0),
             'remaining_quota' => $quota->remaining_quota,
             'total_quota' => $quota->total_quota,
             'used_quota' => $quota->used_quota,

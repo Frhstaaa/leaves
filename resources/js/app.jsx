@@ -79,21 +79,13 @@ window.route = function (name, params) {
   return fallbackPath;
 };
 
-const appName = window.document.getElementsByTagName('title')[0]?.innerText || 'Form SGIN';
+import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 
-// Eagerly load all Inertia page components
-const pages = import.meta.glob('./Pages/**/*.jsx', { eager: true });
+const appName = window.document.getElementsByTagName('title')[0]?.innerText || 'Form SGIN';
 
 createInertiaApp({
   title: (title) => `${title} - ${appName}`,
-  resolve: (name) => {
-    const pageKey = `./Pages/${name}.jsx`;
-    const pageModule = pages[pageKey];
-    if (!pageModule) {
-      console.error(`Page component "${name}" not found at path "${pageKey}". Available pages:`, Object.keys(pages));
-    }
-    return pageModule?.default || pageModule;
-  },
+  resolve: (name) => resolvePageComponent(`./Pages/${name}.jsx`, import.meta.glob('./Pages/**/*.jsx')),
   setup({ el, App, props }) {
     const targetElement = el || document.getElementById('app');
     if (!targetElement) {

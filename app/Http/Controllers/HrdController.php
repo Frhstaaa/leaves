@@ -57,14 +57,21 @@ class HrdController extends Controller
         $departments = Department::all();
         $categories = LeaveCategory::all();
 
-        // Calculate Stats
-        $allRequests = LeaveRequest::all();
+        // Calculate Stats with single fast SQL aggregation
+        $statRow = LeaveRequest::selectRaw('
+            COUNT(*) as total,
+            COUNT(CASE WHEN status = "pending" THEN 1 END) as pending,
+            COUNT(CASE WHEN status = "approved" THEN 1 END) as approved,
+            COUNT(CASE WHEN status = "rejected" THEN 1 END) as rejected,
+            COALESCE(SUM(CASE WHEN status = "approved" THEN amount ELSE 0 END), 0) as total_days_used
+        ')->first();
+
         $stats = [
-            'total' => $allRequests->count(),
-            'pending' => $allRequests->where('status', 'pending')->count(),
-            'approved' => $allRequests->where('status', 'approved')->count(),
-            'rejected' => $allRequests->where('status', 'rejected')->count(),
-            'total_days_used' => $allRequests->where('status', 'approved')->sum('amount'),
+            'total' => (int) ($statRow->total ?? 0),
+            'pending' => (int) ($statRow->pending ?? 0),
+            'approved' => (int) ($statRow->approved ?? 0),
+            'rejected' => (int) ($statRow->rejected ?? 0),
+            'total_days_used' => (float) ($statRow->total_days_used ?? 0),
         ];
 
         return Inertia::render('HRD/Index', [
@@ -125,13 +132,17 @@ class HrdController extends Controller
             ->orderBy('name', 'asc')
             ->get();
 
-        // Overall stats
-        $allUsers = User::all();
+        // Overall stats with fast query
+        $userStat = User::selectRaw('
+            COUNT(*) as total_employees,
+            COUNT(CASE WHEN role IN ("manager", "admin", "superadmin") THEN 1 END) as total_managers
+        ')->first();
+
         $stats = [
-            'total_employees' => $allUsers->count(),
+            'total_employees' => (int) ($userStat->total_employees ?? 0),
             'total_departments' => $departments->count(),
-            'total_managers' => $allUsers->whereIn('role', ['manager', 'admin', 'superadmin'])->count(),
-            'active_quotas' => LeaveQuota::where('year', date('Y'))->sum('remaining_quota'),
+            'total_managers' => (int) ($userStat->total_managers ?? 0),
+            'active_quotas' => (float) LeaveQuota::where('year', date('Y'))->sum('remaining_quota'),
         ];
 
         return Inertia::render('HRD/Employees', [
