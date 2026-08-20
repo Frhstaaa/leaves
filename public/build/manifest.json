@@ -1,4 +1,28 @@
 {
+  "_vendor-icons-e436e946.js": {
+    "file": "assets/vendor-icons-e436e946.js",
+    "imports": [
+      "_vendor-react-45e21f80.js"
+    ]
+  },
+  "_vendor-inertia-b5bcaf7d.js": {
+    "file": "assets/vendor-inertia-b5bcaf7d.js",
+    "imports": [
+      "_vendor-react-45e21f80.js"
+    ]
+  },
+  "_vendor-motion-680332da.js": {
+    "file": "assets/vendor-motion-680332da.js",
+    "imports": [
+      "_vendor-react-45e21f80.js"
+    ]
+  },
+  "_vendor-react-45e21f80.js": {
+    "file": "assets/vendor-react-45e21f80.js"
+  },
+  "_vendor-swal-6ddcfacf.js": {
+    "file": "assets/vendor-swal-6ddcfacf.js"
+  },
   "resources/css/app.css": {
     "file": "assets/app-440e4675.css",
     "src": "resources/js/app.css"
@@ -11,7 +35,14 @@
     "css": [
       "assets/app-440e4675.css"
     ],
-    "file": "assets/app-96e7b0fa.js",
+    "file": "assets/app-9b8fb3dc.js",
+    "imports": [
+      "_vendor-motion-680332da.js",
+      "_vendor-react-45e21f80.js",
+      "_vendor-inertia-b5bcaf7d.js",
+      "_vendor-swal-6ddcfacf.js",
+      "_vendor-icons-e436e946.js"
+    ],
     "isEntry": true,
     "src": "resources/js/app.jsx"
   }

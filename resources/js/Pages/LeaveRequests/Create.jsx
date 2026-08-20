@@ -253,10 +253,17 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-
+            <AnimatePresence mode="wait">
             {/* STEP 1: JENIS PENGAJUAN & DIVISION APPROVAL */}
             {currentStep === 1 && (
-              <div className="space-y-5 animate-fade-in">
+              <motion.div
+                key="step1"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="space-y-5"
+              >
                 {/* User Identity Info Card */}
                 <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
                   <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Identitas Pemohon (Auto-filled)</span>
@@ -408,12 +415,19 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
                   </div>
                   {agreedError && <p className="text-xs text-rose-600 font-bold">{agreedError}</p>}
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {/* STEP 2: DETAIL FORMULIR & TANGGAL */}
             {currentStep === 2 && (
-              <div className="space-y-5 animate-fade-in">
+              <motion.div
+                key="step2"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="space-y-5"
+              >
                 {/* Quota Summary Box */}
                 {selectedCategory?.name?.toLowerCase().includes('cuti tahunan') && (
                   <div className="p-4 sm:p-5 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-between">
@@ -528,12 +542,19 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
                   </div>
                   {errors.attachment && <p className="text-xs text-rose-600 font-bold">{errors.attachment}</p>}
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {/* STEP 3: REVIEW & PRATINJAU PENGAJUAN */}
             {currentStep === 3 && (
-              <div className="space-y-5 animate-fade-in">
+              <motion.div
+                key="step3"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="space-y-5"
+              >
                 {Object.keys(errors).length > 0 && (
                   <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 space-y-1">
                     <div className="flex items-center space-x-2 font-bold text-xs">
@@ -607,8 +628,9 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
                     <p className="font-semibold text-slate-800 bg-white p-3 rounded-lg border border-slate-200 leading-relaxed">{data.reason}</p>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             )}
+            </AnimatePresence>
 
             {/* Stepper Buttons (Lanjutkan / Kirim Pengajuan) */}
             <div className="flex items-center justify-between pt-4 border-t border-slate-100">

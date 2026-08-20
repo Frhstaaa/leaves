@@ -110,7 +110,12 @@ export default function Dashboard({ user, stats, recentRequests, managerPendingC
         )}
 
         {/* Hero Card Banner (Emerald Accent matching mockup) */}
-        <div className="p-6 rounded-3xl bg-gradient-to-r from-[#0FA172] to-[#1CB67C] text-white shadow-lg shadow-emerald-600/20 relative overflow-hidden">
+        <motion.div
+          variants={itemVariants}
+          whileHover={{ scale: 1.01 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          className="p-6 rounded-3xl bg-gradient-to-r from-[#0FA172] to-[#1CB67C] text-white shadow-lg shadow-emerald-600/20 relative overflow-hidden"
+        >
           <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
 
           <div className="relative z-10 flex items-center justify-between">
@@ -132,12 +137,10 @@ export default function Dashboard({ user, stats, recentRequests, managerPendingC
               <span className="hidden sm:inline">Buat Pengajuan</span>
             </Link>
           </div>
-        </div>
-
-
+        </motion.div>
 
         {/* Ringkasan Stats Grid matching mockup */}
-        <div className="space-y-3">
+        <motion.div variants={itemVariants} className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ringkasan Pengajuan</h3>
             <Link href={route('leave-requests.index')} className="text-xs font-bold text-emerald-600 hover:underline">
@@ -147,7 +150,10 @@ export default function Dashboard({ user, stats, recentRequests, managerPendingC
 
           <div className="grid grid-cols-4 gap-2 sm:gap-4">
             {/* TOTAL */}
-            <div className="p-3 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col items-center text-center space-y-1">
+            <motion.div
+              whileHover={{ y: -3, transition: { duration: 0.15 } }}
+              className="p-3 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col items-center text-center space-y-1 transition-colors"
+            >
               <span className="px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 font-extrabold text-[9px] uppercase tracking-wider">
                 TOTAL
               </span>
@@ -155,39 +161,48 @@ export default function Dashboard({ user, stats, recentRequests, managerPendingC
                 {(stats.pending_requests || 0) + (stats.approved_requests || 0) + (stats.rejected_requests || 0)}
               </span>
               <span className="text-[10px] text-slate-400 font-medium">Pengajuan</span>
-            </div>
+            </motion.div>
 
             {/* PROSES */}
-            <div className="p-3 sm:p-4 rounded-2xl bg-white border border-amber-200/60 shadow-sm flex flex-col items-center text-center space-y-1">
+            <motion.div
+              whileHover={{ y: -3, transition: { duration: 0.15 } }}
+              className="p-3 sm:p-4 rounded-2xl bg-white border border-amber-200/60 shadow-sm flex flex-col items-center text-center space-y-1 transition-colors"
+            >
               <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-extrabold text-[9px] uppercase tracking-wider">
                 PROSES
               </span>
               <span className="text-lg sm:text-2xl font-black text-amber-600">{stats.pending_requests || 0}</span>
               <span className="text-[10px] text-slate-400 font-medium">Proses</span>
-            </div>
+            </motion.div>
 
             {/* SELESAI */}
-            <div className="p-3 sm:p-4 rounded-2xl bg-white border border-emerald-200/60 shadow-sm flex flex-col items-center text-center space-y-1">
+            <motion.div
+              whileHover={{ y: -3, transition: { duration: 0.15 } }}
+              className="p-3 sm:p-4 rounded-2xl bg-white border border-emerald-200/60 shadow-sm flex flex-col items-center text-center space-y-1 transition-colors"
+            >
               <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-extrabold text-[9px] uppercase tracking-wider">
                 SELESAI
               </span>
               <span className="text-lg sm:text-2xl font-black text-emerald-600">{stats.approved_requests || 0}</span>
               <span className="text-[10px] text-slate-400 font-medium">Selesai</span>
-            </div>
+            </motion.div>
 
             {/* TOLAK */}
-            <div className="p-3 sm:p-4 rounded-2xl bg-white border border-rose-200/60 shadow-sm flex flex-col items-center text-center space-y-1">
+            <motion.div
+              whileHover={{ y: -3, transition: { duration: 0.15 } }}
+              className="p-3 sm:p-4 rounded-2xl bg-white border border-rose-200/60 shadow-sm flex flex-col items-center text-center space-y-1 transition-colors"
+            >
               <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 font-extrabold text-[9px] uppercase tracking-wider">
                 TOLAK
               </span>
               <span className="text-lg sm:text-2xl font-black text-rose-600">{stats.rejected_requests || 0}</span>
               <span className="text-[10px] text-slate-400 font-medium">Ditolak</span>
-            </div>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Riwayat Pengajuan Terakhir List (Matching mockup card layout) */}
-        <div className="space-y-3">
+        <motion.div variants={itemVariants} className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900">Riwayat Pengajuan Terakhir</h3>
             <Link href={route('leave-requests.index')} className="text-xs font-bold text-emerald-600 hover:underline">
@@ -198,37 +213,41 @@ export default function Dashboard({ user, stats, recentRequests, managerPendingC
           {recentRequests && recentRequests.length > 0 ? (
             <div className="space-y-2.5">
               {recentRequests.map((req) => (
-                <Link
+                <motion.div
                   key={req.id}
-                  href={route('leave-requests.index')}
-                  className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-md flex items-center justify-between transition-all group"
+                  whileHover={{ y: -2, transition: { duration: 0.15 } }}
                 >
-                  <div className="flex items-center space-x-3.5 min-w-0">
-                    <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <FileText size={20} />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-mono text-xs font-bold text-slate-900">{req.request_number}</span>
+                  <Link
+                    href={route('leave-requests.index')}
+                    className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-md flex items-center justify-between transition-all group"
+                  >
+                    <div className="flex items-center space-x-3.5 min-w-0">
+                      <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <FileText size={20} />
                       </div>
-                      <p className="text-xs font-semibold text-slate-500 truncate">{req.category?.name}</p>
-                      <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-                        {req.start_date} &bull; {req.amount} {req.unit}
-                      </p>
+                      <div className="min-w-0">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-mono text-xs font-bold text-slate-900">{req.request_number}</span>
+                        </div>
+                        <p className="text-xs font-semibold text-slate-500 truncate">{req.category?.name}</p>
+                        <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                          {req.start_date} &bull; {req.amount} {req.unit}
+                        </p>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center space-x-3 shrink-0">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold ${
-                      req.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                      req.status === 'rejected' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
-                      'bg-amber-100 text-amber-800 border border-amber-200'
-                    }`}>
-                      {req.status === 'approved' ? 'Disetujui' : req.status === 'rejected' ? 'Ditolak' : 'Pending'}
-                    </span>
-                    <ChevronRight size={18} className="text-slate-400 group-hover:text-emerald-600" />
-                  </div>
-                </Link>
+                    <div className="flex items-center space-x-3 shrink-0">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold ${
+                        req.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                        req.status === 'rejected' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                        'bg-amber-100 text-amber-800 border border-amber-200'
+                      }`}>
+                        {req.status === 'approved' ? 'Disetujui' : req.status === 'rejected' ? 'Ditolak' : 'Pending'}
+                      </span>
+                      <ChevronRight size={18} className="text-slate-400 group-hover:text-emerald-600" />
+                    </div>
+                  </Link>
+                </motion.div>
               ))}
             </div>
           ) : (
@@ -240,7 +259,7 @@ export default function Dashboard({ user, stats, recentRequests, managerPendingC
               </Link>
             </div>
           )}
-        </div>
+        </motion.div>
 
       </motion.div>
     </AuthenticatedLayout>

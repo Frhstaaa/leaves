@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useForm, router, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckSquare,
   CheckCircle,
@@ -186,7 +187,7 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
             <div>
               {/* Mobile Card View (< md) */}
               <div className="block md:hidden space-y-3">
-                {requests.data.map((req) => {
+                {requests.data.map((req, index) => {
                   const stageBadge = req.current_stage === 'approval_1'
                     ? { label: 'Tingkat 1 (Supervisor)', cls: 'bg-blue-100 text-blue-800 border-blue-200' }
                     : req.current_stage === 'approval_2'
@@ -194,7 +195,14 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
                     : { label: 'HRD / PGA Admin', cls: 'bg-amber-100 text-amber-800 border-amber-200' };
 
                   return (
-                    <div key={req.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                    <motion.div
+                      key={req.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.25, delay: Math.min(index * 0.04, 0.3), ease: 'easeOut' }}
+                      whileHover={{ y: -2, transition: { duration: 0.15 } }}
+                      className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 shadow-xs"
+                    >
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-xs font-bold text-teal-700">{req.request_number}</span>
                         <div className="flex items-center space-x-1.5">
@@ -241,14 +249,14 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
                           <>
                             <button
                               onClick={() => handleOpenApproveModal(req)}
-                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center space-x-1 shadow-sm"
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center space-x-1 shadow-sm transition-transform active:scale-95"
                             >
                               <CheckCircle size={14} />
                               <span>Setujui</span>
                             </button>
                             <button
                               onClick={() => handleOpenRejectModal(req)}
-                              className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold flex items-center space-x-1 hover:bg-rose-100"
+                              className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold flex items-center space-x-1 hover:bg-rose-100 transition-transform active:scale-95"
                             >
                               <XCircle size={14} />
                               <span>Tolak</span>
@@ -258,7 +266,7 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
                           <span className="text-xs text-slate-400 italic">Selesai Ditinjau</span>
                         )}
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>
@@ -388,115 +396,147 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
         </div>
 
         {/* Approve Modal */}
-        {activeModal === 'approve' && selectedReq && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-            <div className="w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 className="text-base font-extrabold text-slate-900 flex items-center space-x-2">
-                  <CheckCircle size={20} className="text-emerald-600" />
-                  <span>
-                    {selectedReq.current_stage === 'approval_1' ? 'Persetujuan Tingkat 1 (Supervisor)' :
-                     selectedReq.current_stage === 'approval_2' ? 'Persetujuan Tingkat 2 (Manager)' :
-                     'Persetujuan Akhir HRD / PGA Admin'}
-                  </span>
-                </h3>
-                <button onClick={() => setActiveModal(null)} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400">
-                  <X size={18} />
-                </button>
-              </div>
+        <AnimatePresence>
+          {activeModal === 'approve' && selectedReq && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm"
+                onClick={() => setActiveModal(null)}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4"
+              >
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="text-base font-extrabold text-slate-900 flex items-center space-x-2">
+                    <CheckCircle size={20} className="text-emerald-600" />
+                    <span>
+                      {selectedReq.current_stage === 'approval_1' ? 'Persetujuan Tingkat 1 (Supervisor)' :
+                       selectedReq.current_stage === 'approval_2' ? 'Persetujuan Tingkat 2 (Manager)' :
+                       'Persetujuan Akhir HRD / PGA Admin'}
+                    </span>
+                  </h3>
+                  <button onClick={() => setActiveModal(null)} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400">
+                    <X size={18} />
+                  </button>
+                </div>
 
-              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 space-y-1">
-                <p className="font-extrabold text-sm">{selectedReq.user?.name} ({selectedReq.user?.nik})</p>
-                <p className="text-emerald-800">
-                  Kategori: <strong>{selectedReq.category?.name}</strong> &bull; Jumlah: <strong>{selectedReq.amount} {selectedReq.unit}</strong>
-                </p>
-                <p className="text-[11px] text-emerald-700">Periode: {selectedReq.start_date} s/d {selectedReq.end_date}</p>
-              </div>
+                <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 space-y-1">
+                  <p className="font-extrabold text-sm">{selectedReq.user?.name} ({selectedReq.user?.nik})</p>
+                  <p className="text-emerald-800">
+                    Kategori: <strong>{selectedReq.category?.name}</strong> &bull; Jumlah: <strong>{selectedReq.amount} {selectedReq.unit}</strong>
+                  </p>
+                  <p className="text-[11px] text-emerald-700">Periode: {selectedReq.start_date} s/d {selectedReq.end_date}</p>
+                </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Catatan Persetujuan (Opsional)</label>
-                <textarea
-                  rows={3}
-                  value={approvalNote}
-                  onChange={(e) => setApprovalNote(e.target.value)}
-                  placeholder="Tambahkan catatan persetujuan jika ada..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none"
-                />
-              </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Catatan Persetujuan (Opsional)</label>
+                  <textarea
+                    rows={3}
+                    value={approvalNote}
+                    onChange={(e) => setApprovalNote(e.target.value)}
+                    placeholder="Tambahkan catatan persetujuan jika ada..."
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none"
+                  />
+                </div>
 
-              <div className="flex items-center justify-end space-x-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveModal(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-slate-200"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSubmitApprove}
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20"
-                >
-                  Konfirmasi Setuju
-                </button>
-              </div>
+                <div className="flex items-center justify-end space-x-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveModal(null)}
+                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-slate-200"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSubmitApprove}
+                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all"
+                  >
+                    Konfirmasi Setuju
+                  </button>
+                </div>
+              </motion.div>
             </div>
-          </div>
-        )}
+          )}
+        </AnimatePresence>
 
         {/* Reject Modal */}
-        {activeModal === 'reject' && selectedReq && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-            <div className="w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 className="text-base font-extrabold text-slate-900 flex items-center space-x-2">
-                  <XCircle size={20} className="text-rose-600" />
-                  <span>Tolak Pengajuan Cuti</span>
-                </h3>
-                <button onClick={() => setActiveModal(null)} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400">
-                  <X size={18} />
-                </button>
-              </div>
+        <AnimatePresence>
+          {activeModal === 'reject' && selectedReq && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm"
+                onClick={() => setActiveModal(null)}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4"
+              >
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="text-base font-extrabold text-slate-900 flex items-center space-x-2">
+                    <XCircle size={20} className="text-rose-600" />
+                    <span>Tolak Pengajuan Cuti</span>
+                  </h3>
+                  <button onClick={() => setActiveModal(null)} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400">
+                    <X size={18} />
+                  </button>
+                </div>
 
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Anda akan menolak pengajuan cuti dari <strong>{selectedReq.user?.name}</strong>. Silakan isi alasan penolakan di bawah ini.
-              </p>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Anda akan menolak pengajuan cuti dari <strong>{selectedReq.user?.name}</strong>. Silakan isi alasan penolakan di bawah ini.
+                </p>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Alasan Penolakan (Wajib) <span className="text-rose-600">*</span></label>
-                <textarea
-                  rows={3}
-                  value={approvalNote}
-                  onChange={(e) => {
-                    setApprovalNote(e.target.value);
-                    setErrorMsg('');
-                  }}
-                  placeholder="Isikan alasan spesifik penolakan pengajuan..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-rose-500/20 focus:border-rose-600 outline-none"
-                  required
-                />
-                {errorMsg && <p className="mt-1 text-xs text-rose-600 font-bold">{errorMsg}</p>}
-              </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Alasan Penolakan (Wajib) <span className="text-rose-600">*</span></label>
+                  <textarea
+                    rows={3}
+                    value={approvalNote}
+                    onChange={(e) => {
+                      setApprovalNote(e.target.value);
+                      setErrorMsg('');
+                    }}
+                    placeholder="Isikan alasan spesifik penolakan pengajuan..."
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-rose-500/20 focus:border-rose-600 outline-none"
+                    required
+                  />
+                  {errorMsg && <p className="mt-1 text-xs text-rose-600 font-bold">{errorMsg}</p>}
+                </div>
 
-              <div className="flex items-center justify-end space-x-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveModal(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-slate-200"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSubmitReject}
-                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-md shadow-rose-600/20"
-                >
-                  Konfirmasi Tolak
-                </button>
-              </div>
+                <div className="flex items-center justify-end space-x-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveModal(null)}
+                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-slate-200"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSubmitReject}
+                    className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-md shadow-rose-600/20 active:scale-95 transition-all"
+                  >
+                    Konfirmasi Tolak
+                  </button>
+                </div>
+              </motion.div>
             </div>
-          </div>
-        )}
+          )}
+        </AnimatePresence>
       </div>
     </AuthenticatedLayout>
   );

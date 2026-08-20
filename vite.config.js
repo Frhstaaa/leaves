@@ -10,4 +10,20 @@ export default defineConfig({
         }),
         react(),
     ],
+    build: {
+        cssCodeSplit: true,
+        chunkSizeWarningLimit: 1000,
+        minify: 'esbuild',
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    'vendor-react': ['react', 'react-dom'],
+                    'vendor-inertia': ['@inertiajs/react'],
+                    'vendor-motion': ['framer-motion'],
+                    'vendor-icons': ['lucide-react'],
+                    'vendor-swal': ['sweetalert2'],
+                },
+            },
+        },
+    },
 });
