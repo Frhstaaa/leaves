@@ -92,7 +92,15 @@ class HrdController extends Controller
         $deptId = $request->query('department_id');
         $role = $request->query('role');
 
-        $query = User::with(['department', 'manager.department', 'approver1.department', 'approver2.department', 'currentQuota']);
+        $query = User::with([
+            'department.manager',
+            'department.approver1',
+            'department.approver2',
+            'manager.department',
+            'approver1.department',
+            'approver2.department',
+            'currentQuota'
+        ]);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -111,7 +119,7 @@ class HrdController extends Controller
         }
 
         $employees = $query->orderBy('name', 'asc')->get();
-        $departments = Department::all();
+        $departments = Department::with(['manager', 'approver1', 'approver2'])->get();
         $managers = User::whereIn('role', ['manager', 'admin', 'superadmin'])
             ->with('department')
             ->orderBy('name', 'asc')

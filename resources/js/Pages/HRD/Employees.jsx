@@ -40,6 +40,10 @@ export default function HrdEmployees({ employees = [], departments = [], manager
   const [quotaEmployee, setQuotaEmployee] = useState(null);
   const [deletingEmployee, setDeletingEmployee] = useState(null);
 
+  // Approval Mode: 'inherit' (automatic from department) vs 'custom' (manual per employee)
+  const [addApprovalMode, setAddApprovalMode] = useState('inherit');
+  const [editApprovalMode, setEditApprovalMode] = useState('inherit');
+
   // Avatar Previews
   const [addAvatarPreview, setAddAvatarPreview] = useState(null);
   const [editAvatarPreview, setEditAvatarPreview] = useState(null);
@@ -131,6 +135,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
   const handleOpenAddModal = () => {
     addForm.reset();
+    setAddApprovalMode('inherit');
     addForm.setData({
       nik: generateNIK(),
       name: '',
@@ -150,17 +155,25 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
   const handleAddSubmit = (e) => {
     e.preventDefault();
+    if (addApprovalMode === 'inherit') {
+      addForm.data.approver_1_id = '';
+      addForm.data.approver_2_id = '';
+      addForm.data.manager_id = '';
+    }
     addForm.post(route('hrd.employees.store'), {
       onSuccess: () => {
         setIsAddOpen(false);
         addForm.reset();
         setAddAvatarPreview(null);
+        showToast('Karyawan baru berhasil ditambahkan!');
       },
     });
   };
 
   const handleOpenEditModal = (emp) => {
     setEditingEmployee(emp);
+    const hasCustom = Boolean(emp.approver_1_id || emp.approver_2_id);
+    setEditApprovalMode(hasCustom ? 'custom' : 'inherit');
     editForm.setData({
       id: emp.id,
       nik: emp.nik || '',
@@ -180,11 +193,17 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
   const handleEditSubmit = (e) => {
     e.preventDefault();
+    if (editApprovalMode === 'inherit') {
+      editForm.data.approver_1_id = '';
+      editForm.data.approver_2_id = '';
+      editForm.data.manager_id = '';
+    }
     editForm.post(route('hrd.employees.update', editingEmployee.id), {
       onSuccess: () => {
         setEditingEmployee(null);
         editForm.reset();
         setEditAvatarPreview(null);
+        showToast('Data karyawan berhasil diperbarui!');
       },
     });
   };
@@ -360,13 +379,18 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   const quota = emp.current_quota;
                   const remaining = quota?.remaining_quota ?? 12;
                   const total = quota?.total_quota ?? 12;
+                  const used = quota?.used_quota ?? 0;
+
+                  const isInherited = !emp.approver_1_id && !emp.approver_2_id && emp.department_id;
+                  const effApprover1 = emp.approver1 || (emp.department?.approver1);
+                  const effApprover2 = emp.approver2 || emp.manager || (emp.department?.approver2 || emp.department?.manager);
 
                   return (
-                    <div key={emp.id} className="p-4 space-y-3">
+                    <div key={emp.id} className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-3">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3 min-w-0">
+                        <div className="flex items-center space-x-3">
                           <UserAvatar user={emp} size="w-10 h-10" textSize="text-xs" />
-                          <div className="min-w-0">
+                          <div>
                             <h4 className="font-extrabold text-slate-900 text-sm truncate">{emp.name}</h4>
                             <span className="font-mono text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 inline-block mt-0.5">
                               {emp.nik || 'EMP-???'}
@@ -394,16 +418,33 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                           <span className="font-bold text-slate-900 truncate block">{emp.department?.name || 'General'}</span>
                         </div>
 
-                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60 min-w-0">
-                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Alur Approval</span>
-                          <span className="font-medium text-slate-700 truncate block text-[11px]">
-                            {emp.approver1 ? `T1: ${emp.approver1.name}` : ''}
-                            {emp.approver1 && (emp.approver2 || emp.manager) ? ' • ' : ''}
-                            {emp.approver2 ? `T2: ${emp.approver2.name}` : (emp.manager ? `T2: ${emp.manager.name}` : (!emp.approver1 ? 'Direct HRD' : ''))}
-                          </span>
+                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60 min-w-0 col-span-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase">Alur Approval Cuti</span>
+                            {isInherited ? (
+                              <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase">
+                                🛡️ Ikut Dept ({emp.department?.name})
+                              </span>
+                            ) : (emp.approver_1_id || emp.approver_2_id) ? (
+                              <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 text-[9px] font-black uppercase">
+                                ⚙️ Kustom
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="text-[11px] font-semibold text-slate-700 flex flex-wrap gap-x-3 gap-y-0.5">
+                            {effApprover1 && (
+                              <span className="text-blue-700">T1: {effApprover1.name}</span>
+                            )}
+                            {effApprover2 && (
+                              <span className="text-purple-700">T2: {effApprover2.name}</span>
+                            )}
+                            {!effApprover1 && !effApprover2 && (
+                              <span className="text-slate-400 italic">Direct HRD</span>
+                            )}
+                          </div>
                         </div>
 
-                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60 min-w-0">
+                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60 min-w-0 col-span-2">
                           <span className="text-[10px] text-slate-400 font-bold uppercase block">Sisa Kuota Cuti</span>
                           <span className="font-black text-emerald-600 block">{remaining} / {total} Hari</span>
                         </div>
@@ -458,6 +499,10 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       const total = quota?.total_quota ?? 12;
                       const used = quota?.used_quota ?? 0;
 
+                      const isInherited = !emp.approver_1_id && !emp.approver_2_id && emp.department_id;
+                      const effApprover1 = emp.approver1 || (emp.department?.approver1);
+                      const effApprover2 = emp.approver2 || emp.manager || (emp.department?.approver2 || emp.department?.manager);
+
                       return (
                         <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors">
                           <td className="py-3.5 px-4">
@@ -492,20 +537,34 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                           </td>
 
                           <td className="py-3.5 px-4 text-slate-600 font-medium">
-                            <div className="text-xs space-y-0.5">
-                              {emp.approver1 && (
-                                <div className="text-blue-800 font-semibold text-[11px] truncate">
-                                  T1: {emp.approver1.name}
-                                </div>
-                              )}
-                              {(emp.approver2 || emp.manager) && (
-                                <div className="text-purple-800 font-semibold text-[11px] truncate">
-                                  T2: {emp.approver2 ? emp.approver2.name : emp.manager.name}
-                                </div>
-                              )}
-                              {!emp.approver1 && !emp.approver2 && !emp.manager && (
-                                <span className="text-slate-400 italic">Direct HRD</span>
-                              )}
+                            <div className="text-xs space-y-1">
+                              <div className="flex items-center space-x-1.5">
+                                {isInherited ? (
+                                  <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-extrabold">
+                                    🛡️ Ikut {emp.department?.name}
+                                  </span>
+                                ) : (emp.approver_1_id || emp.approver_2_id) ? (
+                                  <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-extrabold">
+                                    ⚙️ Kustom
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-extrabold">
+                                    Direct HRD
+                                  </span>
+                                )}
+                              </div>
+                              <div className="space-y-0.5 text-[11px]">
+                                {effApprover1 && (
+                                  <div className="text-blue-800 font-semibold truncate">
+                                    T1: {effApprover1.name}
+                                  </div>
+                                )}
+                                {effApprover2 && (
+                                  <div className="text-purple-800 font-semibold truncate">
+                                    T2: {effApprover2.name}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </td>
 
@@ -692,35 +751,118 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   </div>
                 </div>
 
-                {/* Approval 1 & Approval 2 Settings */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 1 (Supervisor / Lead)</label>
-                    <select
-                      value={addForm.data.approver_1_id}
-                      onChange={(e) => addForm.setData('approver_1_id', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none"
-                    >
-                      <option value="">Tidak ada (Langsung Approval 2 / HRD)</option>
-                      {managers.map((m) => (
-                        <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
-                      ))}
-                    </select>
+                {/* Approval Flow Configuration */}
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                      Pengaturan Alur Approval
+                    </label>
+                    <div className="inline-flex rounded-xl bg-slate-200/80 p-0.5 text-[10px] font-bold">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAddApprovalMode('inherit');
+                          addForm.setData((prev) => ({ ...prev, approver_1_id: '', approver_2_id: '', manager_id: '' }));
+                        }}
+                        className={`px-2.5 py-1 rounded-lg transition-all ${
+                          addApprovalMode === 'inherit'
+                            ? 'bg-white text-emerald-800 shadow-xs font-black'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        🛡️ Ikut Departemen
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAddApprovalMode('custom')}
+                        className={`px-2.5 py-1 rounded-lg transition-all ${
+                          addApprovalMode === 'custom'
+                            ? 'bg-white text-purple-800 shadow-xs font-black'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        ⚙️ Kustom Atasan
+                      </button>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 2 (Manager / Dept Head)</label>
-                    <select
-                      value={addForm.data.approver_2_id}
-                      onChange={(e) => addForm.setData('approver_2_id', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none"
-                    >
-                      <option value="">Tidak ada (Langsung HRD)</option>
-                      {managers.map((m) => (
-                        <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
-                      ))}
-                    </select>
-                  </div>
+                  {addApprovalMode === 'inherit' ? (
+                    <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200/80 text-xs space-y-2">
+                      {(() => {
+                        const curDept = departments.find(d => String(d.id) === String(addForm.data.department_id));
+                        const flowLabel = curDept?.approval_type === '3_tier'
+                          ? '3 Tingkat (Supervisor -> Manager -> HRD)'
+                          : curDept?.approval_type === '2_tier'
+                          ? '2 Tingkat (Manager -> HRD)'
+                          : curDept?.approval_type === '1_tier'
+                          ? '1 Tingkat (Langsung HRD)'
+                          : '3 Tingkat Standar';
+                        return (
+                          <>
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-extrabold text-emerald-950">
+                                Alur: {flowLabel}
+                              </span>
+                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                                Otomatis
+                              </span>
+                            </div>
+                            <div className="space-y-1 text-[11px] pt-1 border-t border-emerald-200/60">
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-600 font-medium">Atasan 1 (Supervisor):</span>
+                                <span className="font-bold text-slate-900">
+                                  {curDept?.approver1?.name || (curDept?.approval_type === '2_tier' || curDept?.approval_type === '1_tier' ? <span className="text-slate-400 italic">Dilewati</span> : <span className="text-amber-700 italic">Belum Diatur di Departemen</span>)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-600 font-medium">Atasan 2 (Manager):</span>
+                                <span className="font-bold text-slate-900">
+                                  {curDept?.approver2?.name || curDept?.manager?.name || (curDept?.approval_type === '1_tier' ? <span className="text-slate-400 italic">Dilewati</span> : <span className="text-amber-700 italic">Belum Diatur di Departemen</span>)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-600 font-medium">Persetujuan Akhir:</span>
+                                <span className="font-bold text-emerald-900">HRD / PGA Admin</span>
+                              </div>
+                            </div>
+                            <p className="text-[10px] text-emerald-700/90 italic pt-0.5">
+                              💡 Karyawan ini otomatis mengikuti aturan approval departemen. Ketika atasan departemen diubah di menu Setup Departemen, persetujuan cuti karyawan ini otomatis menyesuaikan.
+                            </p>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 1 (Supervisor / Lead)</label>
+                        <select
+                          value={addForm.data.approver_1_id}
+                          onChange={(e) => addForm.setData('approver_1_id', e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none"
+                        >
+                          <option value="">Tidak ada (Langsung Approval 2 / HRD)</option>
+                          {managers.map((m) => (
+                            <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 2 (Manager / Dept Head)</label>
+                        <select
+                          value={addForm.data.approver_2_id}
+                          onChange={(e) => addForm.setData('approver_2_id', e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none"
+                        >
+                          <option value="">Tidak ada (Langsung HRD)</option>
+                          {managers.map((m) => (
+                            <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -876,35 +1018,118 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   </div>
                 </div>
 
-                {/* Approval 1 & Approval 2 Settings */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 1 (Supervisor / Lead)</label>
-                    <select
-                      value={editForm.data.approver_1_id}
-                      onChange={(e) => editForm.setData('approver_1_id', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none"
-                    >
-                      <option value="">Tidak ada (Langsung Approval 2 / HRD)</option>
-                      {managers.filter(m => m.id !== editingEmployee?.id).map((m) => (
-                        <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
-                      ))}
-                    </select>
+                {/* Approval Flow Configuration */}
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                      Pengaturan Alur Approval
+                    </label>
+                    <div className="inline-flex rounded-xl bg-slate-200/80 p-0.5 text-[10px] font-bold">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditApprovalMode('inherit');
+                          editForm.setData((prev) => ({ ...prev, approver_1_id: '', approver_2_id: '', manager_id: '' }));
+                        }}
+                        className={`px-2.5 py-1 rounded-lg transition-all ${
+                          editApprovalMode === 'inherit'
+                            ? 'bg-white text-emerald-800 shadow-xs font-black'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        🛡️ Ikut Departemen
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditApprovalMode('custom')}
+                        className={`px-2.5 py-1 rounded-lg transition-all ${
+                          editApprovalMode === 'custom'
+                            ? 'bg-white text-purple-800 shadow-xs font-black'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        ⚙️ Kustom Atasan
+                      </button>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 2 (Manager / Dept Head)</label>
-                    <select
-                      value={editForm.data.approver_2_id}
-                      onChange={(e) => editForm.setData('approver_2_id', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none"
-                    >
-                      <option value="">Tidak ada (Langsung HRD)</option>
-                      {managers.filter(m => m.id !== editingEmployee?.id).map((m) => (
-                        <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
-                      ))}
-                    </select>
-                  </div>
+                  {editApprovalMode === 'inherit' ? (
+                    <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200/80 text-xs space-y-2">
+                      {(() => {
+                        const curDept = departments.find(d => String(d.id) === String(editForm.data.department_id));
+                        const flowLabel = curDept?.approval_type === '3_tier'
+                          ? '3 Tingkat (Supervisor -> Manager -> HRD)'
+                          : curDept?.approval_type === '2_tier'
+                          ? '2 Tingkat (Manager -> HRD)'
+                          : curDept?.approval_type === '1_tier'
+                          ? '1 Tingkat (Langsung HRD)'
+                          : '3 Tingkat Standar';
+                        return (
+                          <>
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-extrabold text-emerald-950">
+                                Alur: {flowLabel}
+                              </span>
+                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                                Otomatis
+                              </span>
+                            </div>
+                            <div className="space-y-1 text-[11px] pt-1 border-t border-emerald-200/60">
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-600 font-medium">Atasan 1 (Supervisor):</span>
+                                <span className="font-bold text-slate-900">
+                                  {curDept?.approver1?.name || (curDept?.approval_type === '2_tier' || curDept?.approval_type === '1_tier' ? <span className="text-slate-400 italic">Dilewati</span> : <span className="text-amber-700 italic">Belum Diatur di Departemen</span>)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-600 font-medium">Atasan 2 (Manager):</span>
+                                <span className="font-bold text-slate-900">
+                                  {curDept?.approver2?.name || curDept?.manager?.name || (curDept?.approval_type === '1_tier' ? <span className="text-slate-400 italic">Dilewati</span> : <span className="text-amber-700 italic">Belum Diatur di Departemen</span>)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-600 font-medium">Persetujuan Akhir:</span>
+                                <span className="font-bold text-emerald-900">HRD / PGA Admin</span>
+                              </div>
+                            </div>
+                            <p className="text-[10px] text-emerald-700/90 italic pt-0.5">
+                              💡 Karyawan ini otomatis mengikuti aturan approval departemen. Ketika atasan departemen diubah di menu Setup Departemen, persetujuan cuti karyawan ini otomatis menyesuaikan.
+                            </p>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 1 (Supervisor / Lead)</label>
+                        <select
+                          value={editForm.data.approver_1_id}
+                          onChange={(e) => editForm.setData('approver_1_id', e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none"
+                        >
+                          <option value="">Tidak ada (Langsung Approval 2 / HRD)</option>
+                          {managers.filter(m => m.id !== editingEmployee?.id).map((m) => (
+                            <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 2 (Manager / Dept Head)</label>
+                        <select
+                          value={editForm.data.approver_2_id}
+                          onChange={(e) => editForm.setData('approver_2_id', e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none"
+                        >
+                          <option value="">Tidak ada (Langsung HRD)</option>
+                          {managers.filter(m => m.id !== editingEmployee?.id).map((m) => (
+                            <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
