@@ -24,18 +24,18 @@
     "file": "assets/vendor-swal-6ddcfacf.js"
   },
   "resources/css/app.css": {
-    "file": "assets/app-831b7554.css",
+    "file": "assets/app-cd76faf3.css",
     "src": "resources/js/app.css"
   },
   "resources/js/app.css": {
-    "file": "assets/app-831b7554.css",
+    "file": "assets/app-cd76faf3.css",
     "src": "resources/js/app.css"
   },
   "resources/js/app.jsx": {
     "css": [
-      "assets/app-831b7554.css"
+      "assets/app-cd76faf3.css"
     ],
-    "file": "assets/app-40bba6c2.js",
+    "file": "assets/app-4ac46da5.js",
     "imports": [
       "_vendor-motion-680332da.js",
       "_vendor-react-45e21f80.js",

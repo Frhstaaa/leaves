@@ -80,6 +80,16 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
     }
   };
 
+  const handleSelectCategory = (cat) => {
+    setData((prev) => ({
+      ...prev,
+      leave_category_id: cat.id,
+      unit: cat.unit_type || 'hari',
+    }));
+    setCategoryModalOpen(false);
+    setCategorySearch('');
+  };
+
   const handleNextStep = () => {
     if (currentStep === 1) {
       if (data.approval_agreed !== 'Ya') {
@@ -729,17 +739,21 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
                         key={cat.id}
                         type="button"
                         onClick={() => handleSelectCategory(cat)}
-                        className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all ${
+                        className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all active:scale-[0.99] cursor-pointer ${
                           isSelected
-                            ? 'bg-emerald-50 border-emerald-500 shadow-sm'
-                            : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                            ? 'bg-emerald-50 border-emerald-500 shadow-sm ring-2 ring-emerald-500/20'
+                            : 'bg-slate-50 border-slate-200 hover:bg-slate-100 hover:border-emerald-300'
                         }`}
                       >
                         <div className="min-w-0 flex-1 pr-2">
                           <div className="flex items-center space-x-2">
                             <span className="font-bold text-xs text-slate-900">{cat.name}</span>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-slate-200 text-slate-700">
-                              {cat.type}
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                              cat.requires_attachment
+                                ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                : 'bg-slate-200 text-slate-700'
+                            }`}>
+                              {cat.requires_attachment ? 'Wajib Lampiran' : cat.unit_type || 'Hari'}
                             </span>
                           </div>
                           {cat.description && (
@@ -748,7 +762,7 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
                         </div>
 
                         {isSelected && (
-                          <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                          <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
                             <Check size={14} />
                           </div>
                         )}
