@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\LeaveCategory;
 use App\Models\LeaveQuota;
 use App\Models\LeaveRequest;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
