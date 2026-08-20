@@ -109,6 +109,7 @@ class SettingController extends Controller
         $shortName = $settings['app_name'] ?? 'Form SGIN';
         $themeColor = $settings['theme_color'] ?? '#059669';
         $description = $settings['app_description'] ?? 'Sistem Informasi Pengajuan Cuti & Slip Gaji Karyawan';
+        $version = substr(md5(($settings['app_logo'] ?? '') . ($settings['app_name'] ?? '')), 0, 8);
 
         $manifest = [
             'name' => $appName . ' - Absence & Leave Management',
@@ -122,16 +123,28 @@ class SettingController extends Controller
             'orientation' => 'portrait',
             'icons' => [
                 [
-                    'src' => '/app-icon/192',
+                    'src' => "/app-icon/192?v={$version}",
                     'sizes' => '192x192',
                     'type' => 'image/png',
-                    'purpose' => 'any maskable',
+                    'purpose' => 'any',
                 ],
                 [
-                    'src' => '/app-icon/512',
+                    'src' => "/app-icon/192?v={$version}&maskable=1",
+                    'sizes' => '192x192',
+                    'type' => 'image/png',
+                    'purpose' => 'maskable',
+                ],
+                [
+                    'src' => "/app-icon/512?v={$version}",
                     'sizes' => '512x512',
                     'type' => 'image/png',
-                    'purpose' => 'any maskable',
+                    'purpose' => 'any',
+                ],
+                [
+                    'src' => "/app-icon/512?v={$version}&maskable=1",
+                    'sizes' => '512x512',
+                    'type' => 'image/png',
+                    'purpose' => 'maskable',
                 ],
             ],
             'shortcuts' => [
@@ -140,59 +153,88 @@ class SettingController extends Controller
                     'short_name' => 'Pengajuan',
                     'description' => 'Buat pengajuan cuti atau izin baru',
                     'url' => '/leave-requests/create',
-                    'icons' => [['src' => '/app-icon/192', 'sizes' => '192x192']],
+                    'icons' => [['src' => "/app-icon/192?v={$version}", 'sizes' => '192x192']],
                 ],
                 [
                     'name' => 'Persetujuan Team',
                     'short_name' => 'Approval',
                     'description' => 'Tinjau persetujuan cuti bawahan',
                     'url' => '/approvals',
-                    'icons' => [['src' => '/app-icon/192', 'sizes' => '192x192']],
+                    'icons' => [['src' => "/app-icon/192?v={$version}", 'sizes' => '192x192']],
                 ],
             ],
         ];
 
         return response()->json($manifest)
             ->header('Content-Type', 'application/manifest+json; charset=utf-8')
-            ->header('Cache-Control', 'public, max-age=3600');
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate');
     }
 
-    public function getAppIcon($size = 192)
+    public function getAppIcon(Request $request, $size = 192)
     {
-        $size = in_array((int)$size, [192, 512]) ? (int)$size : 192;
+        $isMaskable = $request->query('maskable') == '1';
+        $size = in_array((int)$size, [180, 192, 512]) ? (int)$size : 192;
         $settings = Setting::getAll();
         $customIcon = $settings['app_pwa_icon'] ?? $settings['app_logo'] ?? null;
 
-        if ($customIcon && Storage::disk('public')->exists($customIcon)) {
-            $fullPath = storage_path('app/public/' . $customIcon);
-            $mime = function_exists('mime_content_type') ? @mime_content_type($fullPath) : '';
+        $filePath = null;
+        if ($customIcon) {
+            $cleaned = preg_replace('/^\/?storage\//', '', $customIcon);
+            if (Storage::disk('public')->exists($cleaned)) {
+                $filePath = storage_path('app/public/' . $cleaned);
+            } elseif (file_exists(public_path('storage/' . $cleaned))) {
+                $filePath = public_path('storage/' . $cleaned);
+            } elseif (file_exists(public_path($customIcon))) {
+                $filePath = public_path($customIcon);
+            }
+        }
 
+        if ($filePath && file_exists($filePath)) {
+            $mime = function_exists('mime_content_type') ? @mime_content_type($filePath) : '';
             $src = match (true) {
-                str_contains($mime, 'jpeg') || str_contains($mime, 'jpg') => @imagecreatefromjpeg($fullPath),
-                str_contains($mime, 'png') => @imagecreatefrompng($fullPath),
-                str_contains($mime, 'webp') => @imagecreatefromwebp($fullPath),
+                str_contains($mime, 'jpeg') || str_contains($mime, 'jpg') => @imagecreatefromjpeg($filePath),
+                str_contains($mime, 'png') => @imagecreatefrompng($filePath),
+                str_contains($mime, 'webp') => @imagecreatefromwebp($filePath),
                 default => null,
             };
+
+            if (!$src) {
+                $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+                $src = match ($ext) {
+                    'jpg', 'jpeg' => @imagecreatefromjpeg($filePath),
+                    'png' => @imagecreatefrompng($filePath),
+                    'webp' => @imagecreatefromwebp($filePath),
+                    default => null,
+                };
+            }
 
             if ($src) {
                 $canvas = imagecreatetruecolor($size, $size);
                 imagealphablending($canvas, false);
                 imagesavealpha($canvas, true);
-                $transparent = imagecolorallocatealpha($canvas, 255, 255, 255, 127);
-                imagefilledrectangle($canvas, 0, 0, $size, $size, $transparent);
+
+                if ($isMaskable || $size === 180) {
+                    // Solid crisp white canvas for maskable & iOS home screen icons so no black background appears
+                    $bgColor = imagecolorallocate($canvas, 255, 255, 255);
+                    imagefilledrectangle($canvas, 0, 0, $size, $size, $bgColor);
+                    $padding = (int) round($size * 0.16);
+                } else {
+                    // Transparent canvas for 'any' purpose
+                    $transparent = imagecolorallocatealpha($canvas, 255, 255, 255, 127);
+                    imagefilledrectangle($canvas, 0, 0, $size, $size, $transparent);
+                    $padding = (int) round($size * 0.08);
+                }
 
                 $w = imagesx($src);
                 $h = imagesy($src);
-
-                // Fit within canvas with margin
-                $padding = (int) round($size * 0.08);
                 $targetArea = $size - ($padding * 2);
-                $ratio = min($targetArea / $w, $targetArea / $h);
+                $ratio = min($targetArea / max(1, $w), $targetArea / max(1, $h));
                 $newW = (int) round($w * $ratio);
                 $newH = (int) round($h * $ratio);
                 $dstX = (int) round(($size - $newW) / 2);
                 $dstY = (int) round(($size - $newH) / 2);
 
+                imagealphablending($canvas, true);
                 imagecopyresampled($canvas, $src, $dstX, $dstY, 0, 0, $newW, $newH, $w, $h);
 
                 ob_start();
@@ -203,7 +245,8 @@ class SettingController extends Controller
 
                 return response($pngData, 200, [
                     'Content-Type' => 'image/png',
-                    'Cache-Control' => 'public, max-age=86400',
+                    'Cache-Control' => 'no-cache, must-revalidate',
+                    'Pragma' => 'no-cache',
                 ]);
             }
         }
@@ -234,7 +277,8 @@ class SettingController extends Controller
 
         return response($pngData, 200, [
             'Content-Type' => 'image/png',
-            'Cache-Control' => 'public, max-age=86400',
+            'Cache-Control' => 'no-cache, must-revalidate',
+            'Pragma' => 'no-cache',
         ]);
     }
 }

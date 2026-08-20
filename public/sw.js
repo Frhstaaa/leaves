@@ -1,12 +1,10 @@
 // Service Worker for Form SGIN PWA
-const CACHE_NAME = 'sgin-pwa-v1';
+const CACHE_NAME = 'sgin-pwa-v2';
 const OFFLINE_URL = '/';
 
 const ASSETS_TO_CACHE = [
   '/',
   '/manifest.webmanifest',
-  '/app-icon/192',
-  '/app-icon/512',
 ];
 
 // Install Event
@@ -48,13 +46,31 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Network-first for manifest and app-icon to always get the latest logo
+  if (url.pathname.startsWith('/manifest.') || url.pathname.startsWith('/app-icon/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
         // Cache successful response for static assets
         if (
           networkResponse.status === 200 &&
-          (url.pathname.startsWith('/build/') || url.pathname.startsWith('/app-icon/'))
+          url.pathname.startsWith('/build/')
         ) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {

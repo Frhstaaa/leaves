@@ -127,10 +127,10 @@ export default function PwaInstallModal() {
                 <img
                   src={appLogo}
                   alt={appName}
-                  className="w-14 h-14 rounded-2xl object-cover border-2 border-emerald-500/30 shadow-lg shadow-emerald-600/15"
+                  className="w-14 h-14 rounded-2xl object-contain bg-white p-1 border-2 border-emerald-500/30 shadow-lg shadow-emerald-600/15 shrink-0"
                 />
               ) : (
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center font-black text-white text-xl shadow-lg shadow-emerald-600/25 border border-white/20">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center font-black text-white text-xl shadow-lg shadow-emerald-600/25 border border-white/20 shrink-0">
                   SG
                 </div>
               )}

@@ -24,14 +24,18 @@
         $settings = \App\Models\Setting::getAll();
         $appName = $settings['app_name'] ?? 'Form SGIN';
         $themeColor = $settings['theme_color'] ?? '#F5FAF7';
+        $pwaVersion = substr(md5(($settings['app_logo'] ?? '') . ($settings['app_name'] ?? '')), 0, 8);
     @endphp
 
-    <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="apple-touch-icon" href="/app-icon/192">
-    <link rel="icon" type="image/png" sizes="192x192" href="/app-icon/192">
+    <link rel="manifest" href="/manifest.webmanifest?v={{ $pwaVersion }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="/app-icon/180?v={{ $pwaVersion }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="/app-icon/192?v={{ $pwaVersion }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="/app-icon/512?v={{ $pwaVersion }}">
+    <link rel="shortcut icon" href="/app-icon/192?v={{ $pwaVersion }}">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="{{ $appName }}">
+    <meta name="application-name" content="{{ $appName }}">
 
     @if($cssFile)
         <link rel="preload" as="style" href="{{ asset($cssFile) }}">
