@@ -29,7 +29,8 @@ import {
   FileText,
   Check,
   Send,
-  MoreVertical
+  MoreVertical,
+  X
 } from 'lucide-react';
 import {
   Select,
