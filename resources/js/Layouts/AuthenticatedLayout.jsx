@@ -409,6 +409,16 @@ export default function AuthenticatedLayout({ children, title }) {
                 <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full"></span>
               )}
             </button>
+
+            {/* Profile Avatar Button */}
+            <button
+              type="button"
+              onClick={() => setActionMenuOpen(true)}
+              className="rounded-full ring-2 ring-emerald-500/30 hover:ring-emerald-500 transition-all active:scale-95 shrink-0"
+              title="Menu Profil"
+            >
+              <UserAvatar user={user} size="w-8 h-8" textSize="text-xs" />
+            </button>
           </div>
         </header>
 
