@@ -601,7 +601,7 @@ export default function HrdPayslips({
       {/* ========================================================================= */}
       <AnimatePresence>
         {isBulkOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -614,7 +614,7 @@ export default function HrdPayslips({
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="relative z-10 w-full max-w-xl rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl overflow-hidden my-6 max-h-[92vh] flex flex-col transform-gpu"
+              className="relative z-10 w-full max-w-xl rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl overflow-hidden my-6 max-h-[92vh] flex flex-col transform-gpu my-auto sm:my-auto"
             >
               {/* Modal Header */}
               <div className="p-5 sm:p-6 pb-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
@@ -791,7 +791,7 @@ export default function HrdPayslips({
       {/* ========================================================================= */}
       <AnimatePresence>
         {isSingleOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -804,7 +804,7 @@ export default function HrdPayslips({
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="relative z-10 w-full max-w-lg rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl overflow-hidden my-6 max-h-[92vh] flex flex-col transform-gpu"
+              className="relative z-10 w-full max-w-lg rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl overflow-hidden my-6 max-h-[92vh] flex flex-col transform-gpu my-auto sm:my-auto"
             >
               <div className="p-5 sm:p-6 pb-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
                 <div className="flex items-center space-x-3">
@@ -956,7 +956,7 @@ export default function HrdPayslips({
       {/* ========================================================================= */}
       <AnimatePresence>
         {previewPayslip && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-2 sm:p-4 overflow-hidden">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -969,7 +969,7 @@ export default function HrdPayslips({
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="relative z-10 w-full max-w-4xl h-[92vh] rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl overflow-hidden flex flex-col transform-gpu"
+              className="relative z-10 w-full max-w-4xl h-[92vh] rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl overflow-hidden flex flex-col transform-gpu my-auto sm:my-auto"
             >
               <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50">
                 <div className="flex items-center space-x-3">

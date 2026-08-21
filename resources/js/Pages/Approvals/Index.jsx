@@ -452,7 +452,7 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
         {/* Approve Modal */}
         <AnimatePresence>
           {activeModal === 'approve' && selectedReq && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -466,7 +466,7 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 15 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4"
+                className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 my-auto sm:my-auto"
               >
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <h3 className="text-base font-extrabold text-slate-900 flex items-center space-x-2">
@@ -525,7 +525,7 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
         {/* Reject Modal */}
         <AnimatePresence>
           {activeModal === 'reject' && selectedReq && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -539,7 +539,7 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 15 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4"
+                className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 my-auto sm:my-auto"
               >
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <h3 className="text-base font-extrabold text-slate-900 flex items-center space-x-2">

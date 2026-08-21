@@ -858,7 +858,7 @@ export default function RolePermissionIndex({
       {/* ========================================================================= */}
       <AnimatePresence>
         {(isCreateRoleOpen || editingRole) && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -876,7 +876,7 @@ export default function RolePermissionIndex({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-              className="relative z-10 w-full max-w-3xl p-5 sm:p-7 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-5 my-6 max-h-[90vh] flex flex-col transform-gpu"
+              className="relative z-10 w-full max-w-3xl p-5 sm:p-7 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-5 my-6 max-h-[calc(100dvh-3rem)] sm:max-h-[90vh] flex flex-col transform-gpu my-auto sm:my-auto"
             >
               {/* Header */}
               <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
@@ -1126,7 +1126,7 @@ export default function RolePermissionIndex({
       {/* ========================================================================= */}
       <AnimatePresence>
         {assigningUser && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1141,7 +1141,7 @@ export default function RolePermissionIndex({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-              className="relative z-10 w-full max-w-lg p-5 sm:p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 my-6 max-h-[88vh] flex flex-col transform-gpu"
+              className="relative z-10 w-full max-w-lg p-5 sm:p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 my-6 max-h-[88vh] flex flex-col transform-gpu my-auto sm:my-auto"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
                 <div className="flex items-center space-x-3">
@@ -1281,7 +1281,7 @@ export default function RolePermissionIndex({
       {/* ========================================================================= */}
       <AnimatePresence>
         {isCreatePermissionOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
+          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-3 sm:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1296,7 +1296,7 @@ export default function RolePermissionIndex({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-              className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 transform-gpu"
+              className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 transform-gpu my-auto sm:my-auto"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center space-x-2.5">

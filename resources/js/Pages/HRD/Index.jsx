@@ -569,9 +569,9 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
         {/* MODAL 1: DETAIL PENGURUSAN UNTUK HRD                                      */}
         {/* ========================================================================= */}
         {selectedRequest && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in">
+          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 animate-fade-in">
             <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setSelectedRequest(null)} />
-            <div className="relative z-10 w-full max-w-lg p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="relative z-10 w-full max-w-lg p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 max-h-[calc(100dvh-3rem)] sm:max-h-[85vh] overflow-y-auto my-auto sm:my-auto">
 
               {/* Modal Header */}
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -719,9 +719,9 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
         {/* MODAL 2: MANUAL STATUS OVERRIDE PANEL (PILIHAN 2 OPSI & KUSTOMISASI)      */}
         {/* ========================================================================= */}
         {overrideRequest && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 animate-fade-in">
+          <div className="fixed inset-0 z-[110] flex items-start sm:items-center justify-center p-4 animate-fade-in">
             <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setOverrideRequest(null)} />
-            <div className="relative z-10 w-full max-w-lg p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="relative z-10 w-full max-w-lg p-6 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 max-h-[calc(100dvh-3rem)] sm:max-h-[90vh] overflow-y-auto my-auto sm:my-auto">
 
               {/* Header */}
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">

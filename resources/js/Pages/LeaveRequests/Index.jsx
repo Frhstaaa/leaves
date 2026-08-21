@@ -264,7 +264,7 @@ export default function LeaveRequestsIndex({ user: propUser, requests, filters, 
         {/* Modal Detail Request (100% Mobile Responsive, Seamless Full Backdrop) */}
         <AnimatePresence>
           {selectedRequest && (
-            <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
+            <div className="fixed inset-0 z-[100] flex items-end sm:items-start sm:items-center justify-center sm:p-4">
               {/* Full-screen Dark Backdrop Overlay */}
               <motion.div
                 initial={{ opacity: 0 }}
@@ -281,7 +281,7 @@ export default function LeaveRequestsIndex({ user: propUser, requests, filters, 
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 30, scale: 0.96 }}
                 transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                className="relative z-10 w-full max-w-lg p-5 sm:p-6 rounded-t-3xl sm:rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 max-h-[85vh] flex flex-col"
+                className="relative z-10 w-full max-w-lg p-5 sm:p-6 rounded-t-3xl sm:rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 max-h-[calc(100dvh-3rem)] sm:max-h-[85vh] flex flex-col my-auto sm:my-auto"
               >
 
                 {/* Header */}
