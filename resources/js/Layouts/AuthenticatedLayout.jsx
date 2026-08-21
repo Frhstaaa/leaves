@@ -30,7 +30,8 @@ import {
   ChevronDown,
   Settings as SettingsIcon,
   Smartphone,
-  Download
+  Download,
+  Activity
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -279,6 +280,14 @@ export default function AuthenticatedLayout({ children, title }) {
       icon: SettingsIcon,
       active: url.startsWith('/hrd/settings'),
       show: isAdmin,
+    },
+    {
+      name: 'Executive Analytics',
+      shortName: 'Monitoring',
+      href: route('monitoring.index'),
+      icon: Activity,
+      active: url.startsWith('/monitoring'),
+      show: isAdmin || isManager,
     },
     {
       name: 'Hak Akses & Role',

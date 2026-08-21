@@ -471,4 +471,88 @@ class HrdController extends Controller
         fclose($handle);
         return back()->with('success', "Import berhasil! {$successCount} data karyawan berhasil diproses.");
     }
+
+    public function exportLeaveQuotas(Request $request): StreamedResponse
+    {
+        $user = Auth::user();
+        if (!$user->can('view-leave-quota-report') && !$user->isAdmin()) {
+            abort(403, 'Akses khusus HRD.');
+        }
+
+        $year = $request->query('year', date('Y'));
+        $quotas = LeaveQuota::with('user.department')->where('year', $year)->get();
+        $fileName = "laporan_sisa_cuti_sgin_{$year}_" . date('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
+        ];
+
+        return response()->stream(function () use ($quotas) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['NIK', 'Nama Karyawan', 'Departemen', 'Tahun', 'Total Kuota', 'Terpakai', 'Sisa Kuota']);
+
+            foreach ($quotas as $q) {
+                fputcsv($file, [
+                    $q->user->nik ?? '-',
+                    $q->user->name ?? '-',
+                    $q->user->department->name ?? 'General',
+                    $q->year,
+                    $q->total_quota,
+                    $q->used_quota,
+                    $q->remaining_quota,
+                ]);
+            }
+            fclose($file);
+        }, 200, $headers);
+    }
+
+    public function exportDepartmentSummary(Request $request): StreamedResponse
+    {
+        $user = Auth::user();
+        if (!$user->can('view-department-report') && !$user->isAdmin()) {
+            abort(403, 'Akses khusus HRD.');
+        }
+
+        $departments = \App\Models\Department::with(['users.leaveRequests' => function($q) {
+            $q->select('user_id', 'status', 'amount');
+        }])->get();
+
+        $fileName = 'rekap_departemen_sgin_' . date('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
+        ];
+
+        return response()->stream(function () use ($departments) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['Kode', 'Departemen', 'Total Karyawan', 'Cuti Pending', 'Cuti Disetujui (Hari)', 'Cuti Ditolak']);
+
+            foreach ($departments as $dept) {
+                $totalEmployees = $dept->users->count();
+                $pending = 0;
+                $approvedDays = 0;
+                $rejected = 0;
+
+                foreach ($dept->users as $u) {
+                    foreach ($u->leaveRequests as $lr) {
+                        if ($lr->status === 'pending') $pending++;
+                        if ($lr->status === 'approved') $approvedDays += (float) $lr->amount;
+                        if ($lr->status === 'rejected') $rejected++;
+                    }
+                }
+
+                fputcsv($file, [
+                    $dept->code,
+                    $dept->name,
+                    $totalEmployees,
+                    $pending,
+                    $approvedDays,
+                    $rejected,
+                ]);
+            }
+            fclose($file);
+        }, 200, $headers);
+    }
 }

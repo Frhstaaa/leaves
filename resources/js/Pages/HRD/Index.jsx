@@ -208,13 +208,29 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
             <p className="text-xs text-slate-500">Monitoring terpusat, alur multi-tier approval, dan panel override status pengajuan langsung</p>
           </div>
 
-          <a
-            href={route('hrd.export')}
-            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-lg shadow-emerald-600/20 flex items-center space-x-2 transition-all duration-200 self-start md:self-auto"
-          >
-            <Download size={16} />
-            <span>Export Rekapitulasi (CSV/Excel)</span>
-          </a>
+          <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
+            <a
+              href={route('hrd.export')}
+              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-[11px] shadow-lg shadow-emerald-600/20 flex items-center space-x-1.5 transition-all duration-200"
+            >
+              <Download size={14} />
+              <span>Rekap Pengajuan</span>
+            </a>
+            <a
+              href={route('hrd.reports.quotas')}
+              className="px-4 py-2.5 rounded-2xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-extrabold text-[11px] shadow-sm flex items-center space-x-1.5 transition-all duration-200"
+            >
+              <Download size={14} />
+              <span>Sisa Kuota Cuti</span>
+            </a>
+            <a
+              href={route('hrd.reports.departments')}
+              className="px-4 py-2.5 rounded-2xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-extrabold text-[11px] shadow-sm flex items-center space-x-1.5 transition-all duration-200"
+            >
+              <Download size={14} />
+              <span>Rekap Departemen</span>
+            </a>
+          </div>
         </div>
 
         {/* Summary Statistics Cards */}

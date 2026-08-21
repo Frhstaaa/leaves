@@ -30,10 +30,15 @@ class RolePermissionSeeder extends Seeder
             // Manager / Approval
             ['name' => 'manage-approvals', 'guard_name' => 'web'],
             
-            // HRD / PGA Admin
-            ['name' => 'manage-employees', 'guard_name' => 'web'],
+            // HRD / PGA Admin (Granular)
+            ['name' => 'create-employee', 'guard_name' => 'web'],
+            ['name' => 'edit-employee', 'guard_name' => 'web'],
+            ['name' => 'delete-employee', 'guard_name' => 'web'],
             ['name' => 'view-hrd-rekap', 'guard_name' => 'web'],
             ['name' => 'export-hrd-reports', 'guard_name' => 'web'],
+            ['name' => 'view-leave-quota-report', 'guard_name' => 'web'],
+            ['name' => 'view-department-report', 'guard_name' => 'web'],
+            ['name' => 'manage-leave-categories', 'guard_name' => 'web'],
             
             // Superadmin / System
             ['name' => 'manage-roles', 'guard_name' => 'web'],
@@ -58,9 +63,14 @@ class RolePermissionSeeder extends Seeder
             'create-leave-request',
             'view-leave-history',
             'manage-approvals',
-            'manage-employees',
+            'create-employee',
+            'edit-employee',
+            'delete-employee',
             'view-hrd-rekap',
             'export-hrd-reports',
+            'view-leave-quota-report',
+            'view-department-report',
+            'manage-leave-categories',
         ]);
 
         $managerRole->syncPermissions([

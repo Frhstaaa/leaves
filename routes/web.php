@@ -60,6 +60,12 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/hrd/employees/{userId}/quota', [HrdController::class, 'updateQuota'])->name('hrd.update-quota');
     Route::post('/hrd/requests/{id}/override', [HrdController::class, 'overrideStatus'])->name('hrd.requests.override');
     Route::get('/hrd/export', [HrdController::class, 'export'])->name('hrd.export');
+    Route::get('/hrd/reports/quotas', [HrdController::class, 'exportLeaveQuotas'])->name('hrd.reports.quotas');
+    Route::get('/hrd/reports/departments', [HrdController::class, 'exportDepartmentSummary'])->name('hrd.reports.departments');
+
+    // Enterprise Monitoring Dashboard
+    Route::get('/monitoring', [\App\Http\Controllers\MonitoringController::class, 'index'])->name('monitoring.index');
+
     // App Settings Routes
     Route::get('/hrd/settings', [\App\Http\Controllers\SettingController::class, 'index'])->name('hrd.settings');
     Route::post('/hrd/settings', [\App\Http\Controllers\SettingController::class, 'update'])->name('hrd.settings.update');
