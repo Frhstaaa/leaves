@@ -663,9 +663,9 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
         {/* MODAL 1: TAMBAH KARYAWAN BARU */}
         {isAddOpen && (
-          <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-3 sm:p-4 flex min-h-full items-center justify-center animate-fade-in">
+          <div className="fixed inset-0 z-[100] overflow-y-auto p-4 sm:p-6 flex min-h-full justify-center animate-fade-in">
             <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setIsAddOpen(false)} />
-            <div className="relative z-10 w-full max-w-lg p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overflow-x-hidden">
+            <div className="relative z-10 w-full max-w-lg p-5 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 my-auto">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center space-x-2">
                   <UserPlus size={20} className="text-emerald-600 shrink-0" />
@@ -937,9 +937,9 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
         {/* MODAL 2: EDIT DATA KARYAWAN */}
         {editingEmployee && (
-          <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-3 sm:p-4 flex min-h-full items-center justify-center animate-fade-in">
+          <div className="fixed inset-0 z-[100] overflow-y-auto p-4 sm:p-6 flex min-h-full justify-center animate-fade-in">
             <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setEditingEmployee(null)} />
-            <div className="relative z-10 w-full max-w-lg p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overflow-x-hidden">
+            <div className="relative z-10 w-full max-w-lg p-5 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 my-auto">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center space-x-2">
                   <Edit3 size={20} className="text-emerald-600 shrink-0" />
