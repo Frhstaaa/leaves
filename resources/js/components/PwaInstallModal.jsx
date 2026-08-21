@@ -86,7 +86,7 @@ export default function PwaInstallModal() {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[120] flex items-start sm:items-center justify-center p-4">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -103,7 +103,7 @@ export default function PwaInstallModal() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 25 }}
             transition={{ type: 'spring', damping: 28, stiffness: 380 }}
-            className="relative z-10 w-full max-w-sm sm:max-w-md p-6 rounded-3xl bg-white border border-slate-200/90 text-slate-900 shadow-2xl space-y-5 overflow-hidden my-auto sm:my-auto"
+            className="relative z-10 w-full max-w-sm sm:max-w-md p-6 rounded-3xl bg-white border border-slate-200/90 text-slate-900 shadow-2xl space-y-5 overflow-hidden"
           >
             {/* Top decorative gradient glow */}
             <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />

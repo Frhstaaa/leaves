@@ -669,7 +669,7 @@ export default function AuthenticatedLayout({ children, title }) {
       {/* MOBILE ALL-MENU DRAWER / MODAL WITH FRAMER MOTION */}
       <AnimatePresence>
         {mobileMenuOpen && (
-          <div className="fixed inset-0 z-[100] flex items-end sm:items-start sm:items-center justify-center p-0 sm:p-4 md:hidden">
+          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 md:hidden">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -684,7 +684,7 @@ export default function AuthenticatedLayout({ children, title }) {
               exit={{ y: '100%', opacity: 0 }}
               transition={{ type: 'spring', damping: 30, stiffness: 360, mass: 0.8 }}
               style={{ willChange: 'transform, opacity' }}
-              className="relative z-10 w-full max-w-lg p-5 sm:p-6 rounded-t-3xl sm:rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 max-h-[82vh] overflow-y-auto pb-10 sm:pb-6 transform-gpu my-auto sm:my-auto"
+              className="relative z-10 w-full max-w-lg p-5 sm:p-6 rounded-t-3xl sm:rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 max-h-[82vh] overflow-y-auto pb-10 sm:pb-6 transform-gpu"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center space-x-2.5">
@@ -778,7 +778,7 @@ export default function AuthenticatedLayout({ children, title }) {
       {/* NOTIFICATIONS MODAL WITH FRAMER MOTION */}
       <AnimatePresence>
         {notificationsOpen && (
-          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -793,7 +793,7 @@ export default function AuthenticatedLayout({ children, title }) {
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               style={{ willChange: 'transform, opacity' }}
-              className="relative z-10 w-full max-w-md p-5 sm:p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 max-h-[calc(100dvh-3rem)] sm:max-h-[85vh] overflow-y-auto overflow-x-hidden transform-gpu my-auto sm:my-auto"
+              className="relative z-10 w-full max-w-md p-5 sm:p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto overflow-x-hidden transform-gpu"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center space-x-2">
@@ -974,7 +974,7 @@ export default function AuthenticatedLayout({ children, title }) {
       {/* PROFILE ACTION MENU MODAL WITH FRAMER MOTION */}
       <AnimatePresence>
         {actionMenuOpen && (
-          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -989,7 +989,7 @@ export default function AuthenticatedLayout({ children, title }) {
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               style={{ willChange: 'transform, opacity' }}
-              className="relative z-10 w-full max-w-sm p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 transform-gpu my-auto sm:my-auto"
+              className="relative z-10 w-full max-w-sm p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 transform-gpu"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center space-x-3">
@@ -1078,7 +1078,7 @@ export default function AuthenticatedLayout({ children, title }) {
       {/* FULL MY PROFILE MODAL WITH FRAMER MOTION */}
       <AnimatePresence>
         {myProfileOpen && (
-          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1093,7 +1093,7 @@ export default function AuthenticatedLayout({ children, title }) {
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               style={{ willChange: 'transform, opacity' }}
-              className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-5 transform-gpu my-auto sm:my-auto"
+              className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-5 transform-gpu"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
                 <div className="flex items-center space-x-2">

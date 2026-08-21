@@ -663,9 +663,9 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
         {/* MODAL 1: TAMBAH KARYAWAN BARU */}
         {isAddOpen && (
-          <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-3 sm:p-4 flex min-h-full items-start sm:items-center justify-center animate-fade-in">
+          <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-3 sm:p-4 flex min-h-full items-center justify-center animate-fade-in">
             <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setIsAddOpen(false)} />
-            <div className="relative z-10 w-full max-w-lg p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 my-auto max-h-[calc(100dvh-3rem)] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden my-auto sm:my-auto">
+            <div className="relative z-10 w-full max-w-lg p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overflow-x-hidden">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center space-x-2">
                   <UserPlus size={20} className="text-emerald-600 shrink-0" />
@@ -937,9 +937,9 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
         {/* MODAL 2: EDIT DATA KARYAWAN */}
         {editingEmployee && (
-          <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-3 sm:p-4 flex min-h-full items-start sm:items-center justify-center animate-fade-in">
+          <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-3 sm:p-4 flex min-h-full items-center justify-center animate-fade-in">
             <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setEditingEmployee(null)} />
-            <div className="relative z-10 w-full max-w-lg p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 my-auto max-h-[calc(100dvh-3rem)] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden my-auto sm:my-auto">
+            <div className="relative z-10 w-full max-w-lg p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overflow-x-hidden">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center space-x-2">
                   <Edit3 size={20} className="text-emerald-600 shrink-0" />
@@ -1204,9 +1204,9 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
         {/* MODAL 3: EDIT KUOTA CUTI TAHUNAN */}
         {quotaEmployee && (
-          <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-3 sm:p-4 flex min-h-full items-start sm:items-center justify-center animate-fade-in">
+          <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-3 sm:p-4 flex min-h-full items-center justify-center animate-fade-in">
             <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setQuotaEmployee(null)} />
-            <div className="relative z-10 w-full max-w-md p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 my-auto max-h-[calc(100dvh-3rem)] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden my-auto sm:my-auto">
+            <div className="relative z-10 w-full max-w-md p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overflow-x-hidden">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h3 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">Update Kuota Cuti Tahunan</h3>
                 <button onClick={() => setQuotaEmployee(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 shrink-0">
@@ -1259,7 +1259,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
         {/* MODAL 4: KONFIRMASI HAPUS KARYAWAN */}
         {deletingEmployee && (
-          <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-3 sm:p-4 flex min-h-full items-start sm:items-center justify-center animate-fade-in">
+          <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-3 sm:p-4 flex min-h-full items-center justify-center animate-fade-in">
             <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setDeletingEmployee(null)} />
             <div className="relative z-10 w-full max-w-sm p-5 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 text-center my-auto">
               <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
@@ -1293,9 +1293,9 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
         {/* MODAL 5: IMPORT EXCEL / CSV KARYAWAN */}
         {isImportOpen && (
-          <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-3 sm:p-4 flex min-h-full items-start sm:items-center justify-center animate-fade-in">
+          <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-3 sm:p-4 flex min-h-full items-center justify-center animate-fade-in">
             <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setIsImportOpen(false)} />
-            <div className="relative z-10 w-full max-w-lg p-4 sm:p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-5 my-auto max-h-[calc(100dvh-3rem)] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden my-auto sm:my-auto">
+            <div className="relative z-10 w-full max-w-lg p-4 sm:p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-5 my-auto max-h-[90vh] overflow-y-auto overflow-x-hidden">
               <div className="flex items-center justify-between border-b border-slate-200 pb-3 sm:pb-4">
                 <div className="flex items-center space-x-3 min-w-0">
                   <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shrink-0">

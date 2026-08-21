@@ -705,7 +705,7 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
       {/* ALL CATEGORIES SEARCHABLE MODAL WITH FRAMER MOTION */}
       <AnimatePresence>
         {categoryModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-end sm:items-start sm:items-center justify-center p-0 sm:p-4">
+          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -720,7 +720,7 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: '100%', opacity: 0 }}
               transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-              className="relative z-10 w-full max-w-lg p-5 rounded-t-3xl sm:rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 max-h-[calc(100dvh-3rem)] sm:max-h-[85vh] flex flex-col my-auto sm:my-auto"
+              className="relative z-10 w-full max-w-lg p-5 rounded-t-3xl sm:rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 max-h-[85vh] flex flex-col"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
                 <div className="flex items-center space-x-2">

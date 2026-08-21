@@ -308,7 +308,7 @@ export default function PayslipsIndex({ payslips = [], selectedYear = new Date()
       {/* ========================================================================= */}
       <AnimatePresence>
         {previewPayslip && (
-          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-2 sm:p-4 overflow-hidden">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -322,7 +322,7 @@ export default function PayslipsIndex({ payslips = [], selectedYear = new Date()
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-              className="relative z-10 w-full max-w-4xl h-[92vh] rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl overflow-hidden flex flex-col transform-gpu my-auto sm:my-auto"
+              className="relative z-10 w-full max-w-4xl h-[92vh] rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl overflow-hidden flex flex-col transform-gpu"
             >
               {/* Modal Header */}
               <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50">
