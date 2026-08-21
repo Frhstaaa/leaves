@@ -62,8 +62,8 @@ class MonitoringController extends Controller
 
         // 4. Category Breakdown
         $categoriesRaw = LeaveRequest::with('category')->whereYear('created_at', $year)
-            ->select('category_id', DB::raw('count(*) as total'))
-            ->groupBy('category_id')
+            ->select('leave_category_id', DB::raw('count(*) as total'))
+            ->groupBy('leave_category_id')
             ->get();
             
         $categoryBreakdown = $categoriesRaw->map(function ($item) {
