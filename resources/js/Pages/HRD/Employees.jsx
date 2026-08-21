@@ -663,20 +663,25 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
         {/* MODAL 1: TAMBAH KARYAWAN BARU */}
         {isAddOpen && (
-          <div className="fixed inset-0 z-[100] overflow-y-auto p-4 sm:p-6 flex min-h-full justify-center animate-fade-in">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
             <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setIsAddOpen(false)} />
-            <div className="relative z-10 w-full max-w-lg p-5 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 my-auto">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center space-x-2">
-                  <UserPlus size={20} className="text-emerald-600 shrink-0" />
-                  <h3 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">Tambah Karyawan Baru</h3>
+            <div className="relative z-10 w-full max-w-lg rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl overflow-hidden my-6 max-h-[92vh] flex flex-col transform-gpu animate-fade-in">
+              <div className="flex items-center justify-between border-b border-slate-100 p-4 sm:p-5 shrink-0 bg-white">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shrink-0">
+                    <UserPlus size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-black text-slate-900 leading-tight truncate">Tambah Karyawan Baru</h3>
+                  </div>
                 </div>
-                <button onClick={() => setIsAddOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 shrink-0">
+                <button onClick={() => setIsAddOpen(false)} className="p-1.5 rounded-xl bg-slate-100 text-slate-400 hover:text-slate-800 transition-colors shrink-0">
                   <X size={18} />
                 </button>
               </div>
 
-              <form onSubmit={handleAddSubmit} className="space-y-3.5 text-xs">
+              <form onSubmit={handleAddSubmit} className="flex flex-col flex-1 overflow-hidden">
+                <div className="p-4 sm:p-5 space-y-3.5 overflow-y-auto flex-1 text-xs">
                 {/* Avatar File Upload */}
                 <div className="flex items-center space-x-3 p-3 rounded-2xl bg-slate-50 border border-slate-200">
                   <div className="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-lg overflow-hidden shrink-0">
@@ -914,20 +919,22 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   />
                 </div>
 
-                <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+                </div>
+                {/* Modal Footer */}
+                <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-200 flex items-center justify-end space-x-2.5 shrink-0">
                   <button
                     type="button"
                     onClick={() => setIsAddOpen(false)}
-                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 font-semibold hover:bg-slate-200 transition-colors"
+                    className="px-4 py-2 rounded-xl bg-slate-200 text-slate-600 font-bold hover:bg-slate-300 transition-colors"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
                     disabled={addForm.processing}
-                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-md shadow-emerald-600/20 disabled:opacity-50 transition-all"
+                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-md shadow-emerald-600/20 disabled:opacity-50 transition-all flex items-center space-x-1.5"
                   >
-                    {addForm.processing ? 'Menyimpan...' : 'Simpan Karyawan'}
+                    <span>{addForm.processing ? 'Menyimpan...' : 'Simpan Karyawan'}</span>
                   </button>
                 </div>
               </form>
@@ -937,20 +944,25 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
         {/* MODAL 2: EDIT DATA KARYAWAN */}
         {editingEmployee && (
-          <div className="fixed inset-0 z-[100] overflow-y-auto p-4 sm:p-6 flex min-h-full justify-center animate-fade-in">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
             <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setEditingEmployee(null)} />
-            <div className="relative z-10 w-full max-w-lg p-5 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 my-auto">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center space-x-2">
-                  <Edit3 size={20} className="text-emerald-600 shrink-0" />
-                  <h3 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">Edit Data Karyawan</h3>
+            <div className="relative z-10 w-full max-w-lg rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl overflow-hidden my-6 max-h-[92vh] flex flex-col transform-gpu animate-fade-in">
+              <div className="flex items-center justify-between border-b border-slate-100 p-4 sm:p-5 shrink-0 bg-white">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shrink-0">
+                    <Edit3 size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-black text-slate-900 leading-tight truncate">Edit Data Karyawan</h3>
+                  </div>
                 </div>
-                <button onClick={() => setEditingEmployee(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 shrink-0">
+                <button onClick={() => setEditingEmployee(null)} className="p-1.5 rounded-xl bg-slate-100 text-slate-400 hover:text-slate-800 transition-colors shrink-0">
                   <X size={18} />
                 </button>
               </div>
 
-              <form onSubmit={handleEditSubmit} className="space-y-3.5 text-xs">
+              <form onSubmit={handleEditSubmit} className="flex flex-col flex-1 overflow-hidden">
+                <div className="p-4 sm:p-5 space-y-3.5 overflow-y-auto flex-1 text-xs">
                 {/* Avatar Preview & File Input */}
                 <div className="flex items-center space-x-3 p-3 rounded-2xl bg-slate-50 border border-slate-200">
                   <div className="shrink-0">
@@ -1181,20 +1193,22 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   />
                 </div>
 
-                <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+                </div>
+                {/* Modal Footer */}
+                <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-200 flex items-center justify-end space-x-2.5 shrink-0">
                   <button
                     type="button"
                     onClick={() => setEditingEmployee(null)}
-                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 font-semibold hover:bg-slate-200 transition-colors"
+                    className="px-4 py-2 rounded-xl bg-slate-200 text-slate-600 font-bold hover:bg-slate-300 transition-colors"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
                     disabled={editForm.processing}
-                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-md shadow-emerald-600/20 disabled:opacity-50 transition-all"
+                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-md shadow-emerald-600/20 disabled:opacity-50 transition-all flex items-center space-x-1.5"
                   >
-                    {editForm.processing ? 'Memperbarui...' : 'Simpan Perubahan'}
+                    <span>{editForm.processing ? 'Memperbarui...' : 'Simpan Perubahan'}</span>
                   </button>
                 </div>
               </form>
