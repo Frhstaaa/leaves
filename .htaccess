@@ -5,26 +5,28 @@
 </IfModule>
 # php -- END cPanel-generated handler, do not edit
 
+DirectoryIndex index.php index.html
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    
-    # 1. Block direct access to sensitive files
+
+    # 1. Block direct access to sensitive files and folders
     RewriteRule ^\.env - [F,L]
     RewriteRule ^vendor - [F,L]
     RewriteRule ^storage/framework - [F,L]
     RewriteRule ^bootstrap - [F,L]
     RewriteRule ^database - [F,L]
-    
-    # 2. Redirect to public/ if not already requesting public folder
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} !/public/
+
+    # 2. If already inside public directory, do not rewrite further
+    RewriteCond %{REQUEST_URI} ^.*/public/ [NC]
+    RewriteRule ^ - [L]
+
+    # 3. Allow direct access to update.php and setup.php in root
+    RewriteRule ^(update\.php|setup\.php) - [L]
+
+    # 4. Route root URL and all other requests to public folder
+    RewriteRule ^$ public/ [L]
     RewriteRule ^(.*)$ public/$1 [L]
-    
-    # 3. Send all other requests to root or public index.php
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^ index.php [L]
 </IfModule>
 
 # Enable Long-lived Browser Caching & CORS for Static Assets
