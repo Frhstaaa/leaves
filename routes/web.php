@@ -63,19 +63,24 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/hrd/reports/quotas', [HrdController::class, 'exportLeaveQuotas'])->name('hrd.reports.quotas');
     Route::get('/hrd/reports/departments', [HrdController::class, 'exportDepartmentSummary'])->name('hrd.reports.departments');
 
-    // Enterprise Monitoring Dashboard
+    // Enterprise Monitoring Dashboard & Annual Leave Matrix Reports
     Route::get('/monitoring', [\App\Http\Controllers\MonitoringController::class, 'index'])->name('monitoring.index');
+    Route::get('/monitoring/annual-report', [\App\Http\Controllers\MonitoringController::class, 'annualReport'])->name('monitoring.annual-report');
+    Route::get('/monitoring/annual-report/pdf', [\App\Http\Controllers\MonitoringController::class, 'annualReportPdf'])->name('monitoring.annual-report.pdf');
+    Route::get('/monitoring/annual-report/export', [\App\Http\Controllers\MonitoringController::class, 'exportAnnualReportCsv'])->name('monitoring.annual-report.export');
 
     // App Settings Routes
     Route::get('/hrd/settings', [\App\Http\Controllers\SettingController::class, 'index'])->name('hrd.settings');
     Route::post('/hrd/settings', [\App\Http\Controllers\SettingController::class, 'update'])->name('hrd.settings.update');
-    // Profile Avatar Route
+    // Profile Routes
     Route::post('/profile/avatar', [\App\Http\Controllers\ProfileController::class, 'updateAvatar'])->name('profile.avatar');
+    Route::put('/profile/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('profile.password');
 
     // Employee Payslips Portal
     Route::get('/payslips', [PayslipController::class, 'index'])->name('payslips.index');
     Route::get('/payslips/{id}/download', [PayslipController::class, 'download'])->name('payslips.download');
     Route::get('/payslips/{id}/preview', [PayslipController::class, 'preview'])->name('payslips.preview');
+    Route::post('/payslips/{id}/viewed', [PayslipController::class, 'markViewed'])->name('payslips.mark-viewed');
 
     // HRD Payslip Management & Bulk Upload
     Route::get('/hrd/payslips', [PayslipController::class, 'manage'])->name('hrd.payslips');
@@ -94,11 +99,38 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
-// Fallback storage route to ensure uploaded files/attachments are accessible even without symlink
+// Robust storage route to ensure uploaded files, logos, and attachments are accessible even without symlink
 Route::get('/storage/{path}', function ($path) {
-    $filePath = storage_path('app/public/' . $path);
-    if (!file_exists($filePath)) {
-        abort(404, 'File not found on server.');
+    $candidates = [
+        storage_path('app/public/' . $path),
+        storage_path('app/' . $path),
+        public_path('storage/' . $path),
+        public_path($path),
+    ];
+
+    foreach ($candidates as $filePath) {
+        if (file_exists($filePath) && !is_dir($filePath)) {
+            return response()->file($filePath);
+        }
     }
-    return response()->file($filePath);
+
+    abort(404, 'File not found on server.');
 })->where('path', '.*')->name('storage.local');
+
+// Route to serve PWA ServiceWorker script reliably across subfolders
+Route::get('/sw.js', function () {
+    $path = public_path('sw.js');
+    if (!file_exists($path)) {
+        $path = base_path('sw.js');
+    }
+    if (file_exists($path)) {
+        return response()->file($path, [
+            'Content-Type' => 'application/javascript; charset=utf-8',
+            'Service-Worker-Allowed' => '/',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+        ]);
+    }
+    abort(404, 'Service worker script not found.');
+});
+
+

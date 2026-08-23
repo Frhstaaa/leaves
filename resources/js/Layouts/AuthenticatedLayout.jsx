@@ -31,7 +31,12 @@ import {
   Settings as SettingsIcon,
   Smartphone,
   Download,
-  Activity
+  Activity,
+  CalendarRange,
+  KeyRound,
+  Eye,
+  EyeOff,
+  Lock
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -80,9 +85,12 @@ export default function AuthenticatedLayout({ children, title }) {
 
   const appName = app_settings?.app_name || 'Form SGIN';
   const appSubname = app_settings?.app_subname || 'Cuti & Ketidakhadiran';
-  const appLogo = app_settings?.app_logo
-    ? (app_settings.app_logo.startsWith('http') ? app_settings.app_logo : `/storage/${app_settings.app_logo}`)
-    : null;
+  const appLogo = app_settings?.app_logo_url
+    || (app_settings?.app_logo
+      ? (app_settings.app_logo.startsWith('http')
+          ? app_settings.app_logo
+          : `${typeof window !== 'undefined' && window.Ziggy?.url ? window.Ziggy.url : ''}/storage/${app_settings.app_logo.replace(/^\/?storage\//, '')}`)
+      : null);
 
   // Modals State
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
@@ -90,6 +98,43 @@ export default function AuthenticatedLayout({ children, title }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // Profile Modal Tab & Password Form State
+  const [profileTab, setProfileTab] = useState('info'); // 'info' | 'password'
+  const [pwData, setPwData] = useState({
+    current_password: '',
+    password: '',
+    password_confirmation: '',
+  });
+  const [pwErrors, setPwErrors] = useState({});
+  const [isUpdatingPw, setIsUpdatingPw] = useState(false);
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault();
+    setPwErrors({});
+    setIsUpdatingPw(true);
+
+    router.put(route('profile.password'), pwData, {
+      preserveScroll: true,
+      onSuccess: () => {
+        setPwData({
+          current_password: '',
+          password: '',
+          password_confirmation: '',
+        });
+        setIsUpdatingPw(false);
+        showToast('Kata sandi Anda berhasil diperbarui!', 'success');
+        setProfileTab('info');
+      },
+      onError: (err) => {
+        setPwErrors(err || {});
+        setIsUpdatingPw(false);
+      },
+    });
+  };
 
   // Skeleton Loading & Navigation State (Debounced for zero-flicker speed)
   const [isNavigating, setIsNavigating] = useState(false);
@@ -199,105 +244,144 @@ export default function AuthenticatedLayout({ children, title }) {
   const pendingApprovalsList = user?.pending_approvals_list || [];
   const myRecentRequests = user?.my_recent_requests || [];
 
-  const navItems = [
+  const navSections = [
     {
-      name: 'Dashboard',
-      shortName: 'Home',
-      href: route('dashboard'),
-      icon: LayoutDashboard,
-      active: isDashboard,
-      show: true,
+      title: 'MENU UTAMA',
+      items: [
+        {
+          name: 'Dashboard',
+          shortName: 'Home',
+          href: route('dashboard'),
+          icon: LayoutDashboard,
+          active: isDashboard,
+          show: true,
+        },
+        {
+          name: 'Buat Pengajuan',
+          shortName: 'Pengajuan',
+          href: route('leave-requests.create'),
+          icon: FilePlus,
+          active: isCreateRequest,
+          show: true,
+        },
+        {
+          name: 'Riwayat Cuti',
+          shortName: 'Riwayat',
+          href: route('leave-requests.index'),
+          icon: History,
+          active: isHistoryRequest,
+          show: true,
+        },
+        {
+          name: 'Slip Gaji Saya',
+          shortName: 'Slip Gaji',
+          href: route('payslips.index'),
+          icon: Receipt,
+          active: isPayslipsPage,
+          show: true,
+        },
+      ],
     },
     {
-      name: 'Buat Pengajuan',
-      shortName: 'Pengajuan',
-      href: route('leave-requests.create'),
-      icon: FilePlus,
-      active: isCreateRequest,
-      show: true,
-    },
-    {
-      name: 'Riwayat Cuti',
-      shortName: 'Riwayat',
-      href: route('leave-requests.index'),
-      icon: History,
-      active: isHistoryRequest,
-      show: true,
-    },
-    {
-      name: 'Slip Gaji Saya',
-      shortName: 'Slip Gaji',
-      href: route('payslips.index'),
-      icon: Receipt,
-      active: isPayslipsPage,
-      show: true,
-    },
-    {
-      name: 'Persetujuan Team',
-      shortName: 'Approval',
-      href: route('approvals.index'),
-      icon: CheckSquare,
-      active: isApproval,
+      title: 'TIM & PERSETUJUAN',
       show: isManager || isAdmin,
-      badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : null,
+      items: [
+        {
+          name: 'Persetujuan Team',
+          shortName: 'Approval',
+          href: route('approvals.index'),
+          icon: CheckSquare,
+          active: isApproval,
+          show: isManager || isAdmin,
+          badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : null,
+        },
+      ],
     },
     {
-      name: 'Setup Departemen',
-      shortName: 'Departemen',
-      href: route('hrd.departments'),
-      icon: Building,
-      active: isHrdDepartments,
+      title: 'LAPORAN & MONITORING',
+      show: isManager || isAdmin,
+      items: [
+        {
+          name: 'Laporan Cuti 1 Tahun',
+          shortName: 'Matrix Cuti',
+          href: route('monitoring.annual-report'),
+          icon: CalendarRange,
+          active: url.startsWith('/monitoring/annual-report'),
+          show: isManager || isAdmin,
+        },
+        {
+          name: 'Executive Analytics',
+          shortName: 'Monitoring',
+          href: route('monitoring.index'),
+          icon: Activity,
+          active: url === '/monitoring',
+          show: isManager || isAdmin,
+        },
+      ],
+    },
+    {
+      title: 'MANAJEMEN HRD',
       show: isAdmin,
+      items: [
+        {
+          name: 'Data Karyawan',
+          shortName: 'Karyawan',
+          href: route('hrd.employees'),
+          icon: Users,
+          active: isHrdEmployees,
+          show: isAdmin,
+        },
+        {
+          name: 'Setup Departemen',
+          shortName: 'Departemen',
+          href: route('hrd.departments'),
+          icon: Building,
+          active: isHrdDepartments,
+          show: isAdmin,
+        },
+        {
+          name: 'Rekapitulasi HRD',
+          shortName: 'Rekap',
+          href: route('hrd.index'),
+          icon: FileSpreadsheet,
+          active: isHrdIndex,
+          show: isAdmin,
+        },
+        {
+          name: 'Distribusi Slip Gaji',
+          shortName: 'Slip Gaji',
+          href: route('hrd.payslips'),
+          icon: Receipt,
+          active: isHrdPayslips,
+          show: isAdmin,
+        },
+        {
+          name: 'Pengaturan Aplikasi',
+          shortName: 'Setup App',
+          href: route('hrd.settings'),
+          icon: SettingsIcon,
+          active: url.startsWith('/hrd/settings'),
+          show: isAdmin,
+        },
+      ],
     },
     {
-      name: 'Data Karyawan',
-      shortName: 'Karyawan',
-      href: route('hrd.employees'),
-      icon: Users,
-      active: isHrdEmployees,
-      show: isAdmin,
-    },
-    {
-      name: 'Distribusi Slip Gaji',
-      shortName: 'Slip Gaji',
-      href: route('hrd.payslips'),
-      icon: Receipt,
-      active: isHrdPayslips,
-      show: isAdmin,
-    },
-    {
-      name: 'Rekapitulasi HRD',
-      shortName: 'Rekap',
-      href: route('hrd.index'),
-      icon: FileSpreadsheet,
-      active: isHrdIndex,
-      show: isAdmin,
-    },
-    {
-      name: 'Pengaturan Aplikasi',
-      shortName: 'Setup App',
-      href: route('hrd.settings'),
-      icon: SettingsIcon,
-      active: url.startsWith('/hrd/settings'),
-      show: isAdmin,
-    },
-    {
-      name: 'Executive Analytics',
-      shortName: 'Monitoring',
-      href: route('monitoring.index'),
-      icon: Activity,
-      active: url.startsWith('/monitoring'),
-      show: isAdmin || isManager,
-    },
-    {
-      name: 'Hak Akses & Role',
-      shortName: 'Role Spatie',
-      href: route('superadmin.roles.index'),
-      icon: ShieldCheck,
-      active: isRolesPage,
+      title: 'SISTEM & HAK AKSES',
       show: isSuperadmin || isAdmin,
+      items: [
+        {
+          name: 'Hak Akses & Role',
+          shortName: 'Role Spatie',
+          href: route('superadmin.roles.index'),
+          icon: ShieldCheck,
+          active: isRolesPage,
+          show: isSuperadmin || isAdmin,
+        },
+      ],
     },
   ];
+
+  const navItems = navSections.flatMap(section => section.items.filter(item => item.show));
 
   return (
     <div className="min-h-screen bg-[#F5FAF7] text-slate-900 flex flex-col md:flex-row font-sans pb-20 md:pb-0">
@@ -305,56 +389,65 @@ export default function AuthenticatedLayout({ children, title }) {
       {/* DESKTOP SIDEBAR */}
       <aside className="hidden md:flex w-64 flex-col shrink-0 min-h-screen sticky top-0 h-screen bg-white border-r border-slate-200 shadow-sm">
         {/* Brand Header */}
-        <div className="p-5 border-b border-slate-200 flex items-center justify-between">
+        <div className="p-4 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center space-x-3 min-w-0">
             {appLogo ? (
               <img
                 src={appLogo}
                 alt={appName}
-                className="w-10 h-10 rounded-xl object-cover shadow-md shadow-emerald-600/20 border border-emerald-500/20 shrink-0"
+                className="w-9 h-9 rounded-xl object-contain bg-white p-0.5 shadow-md shadow-emerald-600/20 border border-emerald-500/20 shrink-0"
               />
             ) : (
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center font-black text-white text-base shadow-lg shadow-emerald-600/20 shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center font-black text-white text-sm shadow-lg shadow-emerald-600/20 shrink-0">
                 SG
               </div>
             )}
             <div className="min-w-0">
-              <h2 className="font-extrabold text-base text-slate-900 tracking-tight leading-none truncate">{appName}</h2>
-              <span className="text-[11px] font-bold text-emerald-600 tracking-wide uppercase truncate block mt-0.5">{appSubname}</span>
+              <h2 className="font-extrabold text-sm text-slate-900 tracking-tight leading-tight truncate">{appName}</h2>
+              <span className="text-[10px] font-bold text-emerald-600 tracking-wider uppercase truncate block">{appSubname}</span>
             </div>
           </div>
         </div>
 
         {/* Desktop Navigation Menu */}
-        <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
-          {navItems.filter(item => item.show).map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`
-                  flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group
-                  ${item.active
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20 font-extrabold'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}
-                `}
-              >
-                <div className="flex items-center space-x-3">
-                  <Icon size={19} className={item.active ? 'text-white' : 'text-slate-400 group-hover:text-emerald-600'} />
-                  <span>{item.name}</span>
-                </div>
-                <div className="flex items-center space-x-1.5">
-                  {item.badge && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white shadow-xs animate-pulse">
-                      {item.badge}
-                    </span>
-                  )}
-                  {item.active && <ChevronRight size={16} className="text-white/80" />}
-                </div>
-              </Link>
-            );
-          })}
+        <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-4">
+          {navSections.filter(sec => sec.show !== false && sec.items.some(i => i.show)).map((section, secIdx) => (
+            <div key={section.title || secIdx} className="space-y-1">
+              <p className="px-2 text-[10px] font-extrabold tracking-wider text-slate-400 uppercase">
+                {section.title}
+              </p>
+              <div className="space-y-0.5">
+                {section.items.filter(i => i.show).map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={`
+                        flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-150 group
+                        ${item.active
+                          ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/20 font-extrabold'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'}
+                      `}
+                    >
+                      <div className="flex items-center space-x-2.5 min-w-0">
+                        <Icon size={16} className={`shrink-0 ${item.active ? 'text-white' : 'text-slate-400 group-hover:text-emerald-600'}`} />
+                        <span className="truncate">{item.name}</span>
+                      </div>
+                      <div className="flex items-center space-x-1 shrink-0">
+                        {item.badge && (
+                          <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-rose-500 text-white shadow-xs animate-pulse">
+                            {item.badge}
+                          </span>
+                        )}
+                        {item.active && <ChevronRight size={13} className="text-white/80" />}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* Footer Logout */}
@@ -489,9 +582,13 @@ export default function AuthenticatedLayout({ children, title }) {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Akun Saya ({user.nik || 'EMP'})</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setMyProfileOpen(true)}>
+                <DropdownMenuItem onClick={() => { setProfileTab('info'); setMyProfileOpen(true); }}>
                   <User className="mr-2 h-4 w-4 text-emerald-600" />
                   <span>Lihat Profil Lengkap</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setProfileTab('password'); setMyProfileOpen(true); }}>
+                  <KeyRound className="mr-2 h-4 w-4 text-amber-600" />
+                  <span>Ganti Kata Sandi</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setActionMenuOpen(true)}>
                   <Camera className="mr-2 h-4 w-4 text-blue-600" />
@@ -1016,6 +1113,7 @@ export default function AuthenticatedLayout({ children, title }) {
                   type="button"
                   onClick={() => {
                     setActionMenuOpen(false);
+                    setProfileTab('info');
                     setMyProfileOpen(true);
                   }}
                   className="w-full p-3.5 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100 flex items-center justify-between transition-all active:scale-[0.98]"
@@ -1030,6 +1128,28 @@ export default function AuthenticatedLayout({ children, title }) {
                     </div>
                   </div>
                   <ChevronRight size={16} className="text-slate-400" />
+                </button>
+
+                {/* Opsi 2: Ganti Kata Sandi */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActionMenuOpen(false);
+                    setProfileTab('password');
+                    setMyProfileOpen(true);
+                  }}
+                  className="w-full p-3.5 rounded-2xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100/70 flex items-center justify-between transition-all active:scale-[0.98]"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 rounded-xl bg-amber-100 text-amber-700">
+                      <KeyRound size={20} />
+                    </div>
+                    <div className="text-left">
+                      <h4 className="text-xs font-bold text-slate-900">Ganti Kata Sandi</h4>
+                      <p className="text-[10px] text-slate-500">Ubah kata sandi akun karyawan Anda</p>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-amber-500" />
                 </button>
 
                 {/* Opsi 2: Install PWA App */}
@@ -1093,104 +1213,264 @@ export default function AuthenticatedLayout({ children, title }) {
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               style={{ willChange: 'transform, opacity' }}
-              className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-5 transform-gpu"
+              className="relative z-10 w-full max-w-md p-5 sm:p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-2xl space-y-4 max-h-[92vh] flex flex-col transform-gpu overflow-hidden"
             >
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
                 <div className="flex items-center space-x-2">
                   <User size={20} className="text-emerald-600" />
-                  <h3 className="text-base font-extrabold text-slate-900">Profil Karyawan Saya</h3>
+                  <h3 className="text-base font-extrabold text-slate-900">Pengaturan Akun & Profil</h3>
                 </div>
                 <button
                   onClick={() => setMyProfileOpen(false)}
-                  className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:text-slate-800"
+                  className="p-1.5 rounded-xl bg-slate-100 text-slate-400 hover:text-slate-800 transition-colors"
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              {/* Profile Avatar Header with Photo Upload Button */}
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 text-white flex items-center justify-between shadow-md shadow-emerald-600/20">
-                <div className="flex items-center space-x-3.5 min-w-0">
-                  <div className="relative group shrink-0">
-                    <UserAvatar user={user} size="w-14 h-14" textSize="text-xl" />
-
-                    {/* Upload Overlay Button */}
-                    <label className="absolute inset-0 bg-slate-950/50 hover:bg-slate-950/70 rounded-full flex flex-col items-center justify-center cursor-pointer opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Camera size={16} className="text-white" />
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAvatarUpload}
-                        disabled={uploading}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-
-                  <div className="min-w-0">
-                    <h2 className="text-base font-black tracking-tight truncate">{user.name}</h2>
-                    <p className="text-xs text-emerald-100 truncate">{user.email}</p>
-                    <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white text-emerald-800">
-                      {user.role}
-                    </span>
-                  </div>
-                </div>
-
-                <label className="px-3 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs flex items-center space-x-1 cursor-pointer transition-colors shrink-0">
-                  <Upload size={14} />
-                  <span className="text-[11px]">{uploading ? 'Mengunggah...' : 'Ganti Foto'}</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    disabled={uploading}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-
-              {/* Complete User Details Grid */}
-              <div className="space-y-2.5 text-xs">
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
-                  <span className="text-slate-500 font-medium">Nama Lengkap</span>
-                  <span className="font-bold text-slate-900">{user.name}</span>
-                </div>
-
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
-                  <span className="text-slate-500 font-medium">No Induk Karyawan (NIK)</span>
-                  <span className="font-mono font-bold text-emerald-700">{user.nik || 'EMP-201'}</span>
-                </div>
-
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
-                  <span className="text-slate-500 font-medium">Email Terdaftar</span>
-                  <span className="font-semibold text-slate-800">{user.email}</span>
-                </div>
-
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
-                  <span className="text-slate-500 font-medium">Departemen / Divisi</span>
-                  <span className="font-bold text-slate-900">{user.department_name || user.department?.name || 'Information Technology'}</span>
-                </div>
-
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
-                  <span className="text-slate-500 font-medium">Jabatan / Role</span>
-                  <span className="uppercase font-bold text-purple-700">{user.role}</span>
-                </div>
-
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
-                  <span className="text-slate-500 font-medium">Status Akun Karyawan</span>
-                  <span className="font-bold text-emerald-600 flex items-center space-x-1">
-                    <Check size={14} />
-                    <span>Aktif (Terverifikasi)</span>
-                  </span>
-                </div>
-              </div>
-
-              <div className="pt-2">
+              {/* Tab Navigation */}
+              <div className="flex rounded-2xl bg-slate-100 p-1 shrink-0">
                 <button
-                  onClick={() => setMyProfileOpen(false)}
-                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition-colors shadow-md shadow-emerald-600/20"
+                  type="button"
+                  onClick={() => { setProfileTab('info'); setPwErrors({}); }}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 ${
+                    profileTab === 'info'
+                      ? 'bg-white text-emerald-800 shadow-xs font-extrabold'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
                 >
-                  Tutup Profil
+                  <User size={14} />
+                  <span>Data Karyawan</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setProfileTab('password'); setPwErrors({}); }}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 ${
+                    profileTab === 'password'
+                      ? 'bg-white text-emerald-800 shadow-xs font-extrabold'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  <KeyRound size={14} />
+                  <span>Ganti Kata Sandi</span>
+                </button>
+              </div>
+
+              {/* Scrollable Tab Content */}
+              <div className="overflow-y-auto flex-1 space-y-4 pr-1">
+                {profileTab === 'info' ? (
+                  <>
+                    {/* Profile Avatar Header with Photo Upload Button */}
+                    <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 text-white flex items-center justify-between shadow-md shadow-emerald-600/20">
+                      <div className="flex items-center space-x-3.5 min-w-0">
+                        <div className="relative group shrink-0">
+                          <UserAvatar user={user} size="w-14 h-14" textSize="text-xl" />
+
+                          {/* Upload Overlay Button */}
+                          <label className="absolute inset-0 bg-slate-950/50 hover:bg-slate-950/70 rounded-full flex flex-col items-center justify-center cursor-pointer opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Camera size={16} className="text-white" />
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleAvatarUpload}
+                              disabled={uploading}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+
+                        <div className="min-w-0">
+                          <h2 className="text-base font-black tracking-tight truncate">{user.name}</h2>
+                          <p className="text-xs text-emerald-100 truncate">{user.email}</p>
+                          <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white text-emerald-800">
+                            {user.role}
+                          </span>
+                        </div>
+                      </div>
+
+                      <label className="px-3 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs flex items-center space-x-1 cursor-pointer transition-colors shrink-0">
+                        <Upload size={14} />
+                        <span className="text-[11px]">{uploading ? 'Mengunggah...' : 'Ganti Foto'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarUpload}
+                          disabled={uploading}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    {/* Complete User Details Grid */}
+                    <div className="space-y-2 text-xs">
+                      <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
+                        <span className="text-slate-500 font-medium">Nama Lengkap</span>
+                        <span className="font-bold text-slate-900">{user.name}</span>
+                      </div>
+
+                      <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
+                        <span className="text-slate-500 font-medium">No Induk Karyawan (NIK)</span>
+                        <span className="font-mono font-bold text-emerald-700">{user.nik || 'EMP-201'}</span>
+                      </div>
+
+                      <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
+                        <span className="text-slate-500 font-medium">Email Terdaftar</span>
+                        <span className="font-semibold text-slate-800">{user.email}</span>
+                      </div>
+
+                      <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
+                        <span className="text-slate-500 font-medium">Departemen / Divisi</span>
+                        <span className="font-bold text-slate-900">{user.department_name || user.department?.name || 'Information Technology'}</span>
+                      </div>
+
+                      <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
+                        <span className="text-slate-500 font-medium">Jabatan / Role</span>
+                        <span className="uppercase font-bold text-purple-700">{user.role}</span>
+                      </div>
+
+                      <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center">
+                        <span className="text-slate-500 font-medium">Status Akun Karyawan</span>
+                        <span className="font-bold text-emerald-600 flex items-center space-x-1">
+                          <Check size={14} />
+                          <span>Aktif (Terverifikasi)</span>
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  /* TAB 2: GANTI KATA SANDI FORM */
+                  <form onSubmit={handlePasswordSubmit} className="space-y-3.5">
+                    <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-900 flex items-start space-x-2.5">
+                      <Lock size={16} className="text-amber-600 mt-0.5 shrink-0" />
+                      <p className="text-[11px] leading-relaxed">
+                        Gunakan kata sandi baru minimal <strong>6 karakter</strong> dengan kombinasi huruf dan angka agar akun Anda tetap terlindungi.
+                      </p>
+                    </div>
+
+                    {/* Kata Sandi Saat Ini */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Kata Sandi Saat Ini <span className="text-rose-600">*</span>
+                      </label>
+                      <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-emerald-600">
+                          <Lock size={16} />
+                        </div>
+                        <input
+                          type={showCurrentPw ? 'text' : 'password'}
+                          value={pwData.current_password}
+                          onChange={(e) => setPwData({ ...pwData, current_password: e.target.value })}
+                          placeholder="Masukkan kata sandi lama Anda"
+                          className={`w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 border ${
+                            pwErrors.current_password ? 'border-rose-400 bg-rose-50/40' : 'border-slate-300 focus:border-emerald-600'
+                          } text-xs sm:text-sm font-semibold text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all`}
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPw(!showCurrentPw)}
+                          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-700"
+                        >
+                          {showCurrentPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                      {pwErrors.current_password && (
+                        <p className="text-[11px] text-rose-600 font-bold pl-1 mt-1">{pwErrors.current_password}</p>
+                      )}
+                    </div>
+
+                    {/* Kata Sandi Baru */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Kata Sandi Baru <span className="text-rose-600">*</span>
+                      </label>
+                      <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-emerald-600">
+                          <KeyRound size={16} />
+                        </div>
+                        <input
+                          type={showNewPw ? 'text' : 'password'}
+                          value={pwData.password}
+                          onChange={(e) => setPwData({ ...pwData, password: e.target.value })}
+                          placeholder="Minimal 6 karakter"
+                          className={`w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 border ${
+                            pwErrors.password ? 'border-rose-400 bg-rose-50/40' : 'border-slate-300 focus:border-emerald-600'
+                          } text-xs sm:text-sm font-semibold text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all`}
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPw(!showNewPw)}
+                          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-700"
+                        >
+                          {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                      {pwErrors.password && (
+                        <p className="text-[11px] text-rose-600 font-bold pl-1 mt-1">{pwErrors.password}</p>
+                      )}
+                    </div>
+
+                    {/* Konfirmasi Kata Sandi Baru */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Ulangi Kata Sandi Baru <span className="text-rose-600">*</span>
+                      </label>
+                      <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-emerald-600">
+                          <KeyRound size={16} />
+                        </div>
+                        <input
+                          type={showConfirmPw ? 'text' : 'password'}
+                          value={pwData.password_confirmation}
+                          onChange={(e) => setPwData({ ...pwData, password_confirmation: e.target.value })}
+                          placeholder="Ketik ulang kata sandi baru"
+                          className={`w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 border ${
+                            pwErrors.password_confirmation ? 'border-rose-400 bg-rose-50/40' : 'border-slate-300 focus:border-emerald-600'
+                          } text-xs sm:text-sm font-semibold text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all`}
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPw(!showConfirmPw)}
+                          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-700"
+                        >
+                          {showConfirmPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                      {pwErrors.password_confirmation && (
+                        <p className="text-[11px] text-rose-600 font-bold pl-1 mt-1">{pwErrors.password_confirmation}</p>
+                      )}
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isUpdatingPw}
+                      className="w-full mt-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-extrabold text-xs transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center space-x-2 disabled:opacity-50 cursor-pointer"
+                    >
+                      {isUpdatingPw ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <KeyRound size={15} />
+                          <span>Perbarui Kata Sandi</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="pt-2 border-t border-slate-100 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setMyProfileOpen(false)}
+                  className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
+                >
+                  Tutup
                 </button>
               </div>
             </motion.div>

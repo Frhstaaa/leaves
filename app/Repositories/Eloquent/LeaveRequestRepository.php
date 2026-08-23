@@ -116,7 +116,7 @@ class LeaveRequestRepository implements LeaveRequestRepositoryInterface
         }
 
         if (!empty($filters['category_id'])) {
-            $query->where('category_id', $filters['category_id']);
+            $query->where('leave_category_id', $filters['category_id']);
         }
 
         if (!empty($filters['start_date'])) {

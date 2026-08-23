@@ -1,15 +1,16 @@
 <?php
 /**
- * SGIN - Web Application Update Center (GitHub Connected)
+ * SGIN / Leaves Management System - Web Application Update Center (GitHub Connected)
  * Menghubungkan aplikasi langsung ke GitHub: Auto-Pull, Webhook, dan One-Click Update.
  */
 
-// Disable time limits for migrations & git operations
-@set_time_limit(300);
-@ini_set('max_execution_time', 300);
+// Disable execution time limit for migrations, git pulls & builds
+@set_time_limit(600);
+@ini_set('max_execution_time', 600);
+@ini_set('memory_limit', '512M');
 
-// Default GitHub Configuration
-define('DEFAULT_GITHUB_REPO', 'Frhstaaa/sgin');
+// Default GitHub Configuration for Leaves Repository
+define('DEFAULT_GITHUB_REPO', 'Frhstaaa/leaves');
 define('DEFAULT_GITHUB_BRANCH', 'main');
 define('DEFAULT_WEBHOOK_SECRET', 'sgin-secret-webhook-key');
 
@@ -21,7 +22,7 @@ if (!file_exists($basePath . '/vendor/autoload.php')) {
     }
 }
 
-// Ensure required storage folders exist
+// Ensure required storage folders exist and have correct permissions
 $requiredDirs = [
     $basePath . '/storage/framework/sessions',
     $basePath . '/storage/framework/views',
@@ -30,6 +31,7 @@ $requiredDirs = [
     $basePath . '/storage/logs',
     $basePath . '/storage/app/public',
     $basePath . '/bootstrap/cache',
+    $basePath . '/public/build',
 ];
 
 foreach ($requiredDirs as $dir) {
@@ -59,12 +61,21 @@ if ($hasVendor && $hasBootstrap) {
     }
 }
 
+// Helper Function: Safe Command Execution
+function executeCommand($cmd, $workingDir) {
+    if (!function_exists('shell_exec')) {
+        return "Fungsi shell_exec dinonaktifkan di server PHP ini.";
+    }
+    $fullCmd = "cd " . escapeshellarg($workingDir) . " && " . $cmd . " 2>&1";
+    return @shell_exec($fullCmd);
+}
+
 // Helper Function: Pull from GitHub via Git CLI or Zip Download
 function syncFromGithub($basePath, $repo, $branch, $token = '') {
     $logs = [];
-    $logs[] = "Menghubungkan ke GitHub: https://github.com/$repo (Branch: $branch)";
+    $logs[] = "Menghubungkan ke GitHub Repository: https://github.com/$repo (Branch: $branch)";
 
-    // Try Method 1: Git CLI (if git command is available)
+    // Method 1: Git CLI (if git command is available)
     $gitAvailable = false;
     if (function_exists('shell_exec')) {
         $gitVersion = @shell_exec('git --version 2>&1');
@@ -74,37 +85,40 @@ function syncFromGithub($basePath, $repo, $branch, $token = '') {
     }
 
     if ($gitAvailable) {
-        $logs[] = "Menggunakan Git CLI di server...";
+        $logs[] = "✓ Git CLI terdeteksi di server (" . trim($gitVersion) . ")";
         
         // Check if .git exists in project root
         if (!is_dir($basePath . '/.git')) {
-            $logs[] = "Inisialisasi git repository lokal...";
-            @shell_exec("cd " . escapeshellarg($basePath) . " && git init 2>&1");
+            $logs[] = "Inisialisasi git repository lokal di $basePath...";
+            executeCommand("git init", $basePath);
             $remoteUrl = $token 
                 ? "https://$token@github.com/$repo.git"
                 : "https://github.com/$repo.git";
-            @shell_exec("cd " . escapeshellarg($basePath) . " && git remote add origin " . escapeshellarg($remoteUrl) . " 2>&1");
+            executeCommand("git remote add origin " . escapeshellarg($remoteUrl), $basePath);
         } else {
-            // Update remote URL with token if provided
-            if ($token) {
-                $remoteUrl = "https://$token@github.com/$repo.git";
-                @shell_exec("cd " . escapeshellarg($basePath) . " && git remote set-url origin " . escapeshellarg($remoteUrl) . " 2>&1");
-            }
+            // Update remote URL with token if provided or update repository target
+            $remoteUrl = $token 
+                ? "https://$token@github.com/$repo.git"
+                : "https://github.com/$repo.git";
+            executeCommand("git remote set-url origin " . escapeshellarg($remoteUrl), $basePath);
         }
 
-        // Fetch and pull/reset
-        $cmd = "cd " . escapeshellarg($basePath) . " && git fetch origin $branch 2>&1 && git reset --hard origin/$branch 2>&1";
-        $gitOutput = @shell_exec($cmd);
-        $logs[] = "Git Output:\n" . ($gitOutput ?: "Tidak ada output.");
+        // Fetch and hard-reset to avoid merge conflicts on production
+        $logs[] = "Menjalankan git fetch & hard-reset branch '$branch'...";
+        $fetchOutput = executeCommand("git fetch origin $branch", $basePath);
+        $resetOutput = executeCommand("git reset --hard origin/$branch", $basePath);
         
-        if ($gitOutput && (str_contains($gitOutput, 'HEAD is now at') || str_contains($gitOutput, 'Updating') || str_contains($gitOutput, 'Already up to date'))) {
+        $combinedOutput = trim(($fetchOutput ?: '') . "\n" . ($resetOutput ?: ''));
+        $logs[] = "Git Output:\n" . ($combinedOutput ?: "Berhasil sinkronisasi tanpa log tambahan.");
+        
+        if (str_contains($combinedOutput, 'HEAD is now at') || str_contains($combinedOutput, 'Updating') || str_contains($combinedOutput, 'Already up to date')) {
             $logs[] = "✓ Kodingan berhasil diperbarui via Git CLI!";
             return [true, implode("\n", $logs)];
         }
     }
 
     // Method 2: Fallback to GitHub ZIP Archive Download
-    $logs[] = "Metode Git CLI tidak dapat digunakan, beralih ke unduhan ZIP dari GitHub API...";
+    $logs[] = "Metode Git CLI tidak aktif / mengalami kendala, beralih ke unduhan ZIP dari GitHub API...";
     $zipUrl = "https://github.com/$repo/archive/refs/heads/$branch.zip";
     if ($token) {
         $zipUrl = "https://api.github.com/repos/$repo/zipball/$branch";
@@ -114,7 +128,7 @@ function syncFromGithub($basePath, $repo, $branch, $token = '') {
     curl_setopt($ch, CURLOPT_URL, $zipUrl);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'SGIN-Updater');
+    curl_setopt($ch, CURLOPT_USERAGENT, 'SGIN-Leaves-Updater');
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     if ($token) {
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -142,7 +156,6 @@ function syncFromGithub($basePath, $repo, $branch, $token = '') {
     if ($zip->open($tempZip) === TRUE) {
         $extractPath = $basePath . '/storage/github_extracted';
         if (is_dir($extractPath)) {
-            // Clean up old extraction
             $files = new RecursiveIteratorIterator(
                 new RecursiveDirectoryIterator($extractPath, RecursiveDirectoryIterator::SKIP_DOTS),
                 RecursiveIteratorIterator::CHILD_FIRST
@@ -157,7 +170,7 @@ function syncFromGithub($basePath, $repo, $branch, $token = '') {
         $zip->close();
         @unlink($tempZip);
 
-        // Find the root folder inside zip (e.g. sgin-main or Frhstaaa-sgin-...)
+        // Find root folder inside zip (e.g. leaves-main or Frhstaaa-leaves-...)
         $extractedItems = scandir($extractPath);
         $sourceDir = '';
         foreach ($extractedItems as $item) {
@@ -184,7 +197,6 @@ function syncFromGithub($basePath, $repo, $branch, $token = '') {
             $subPath = substr($item->getPathname(), strlen($sourceDir) + 1);
             $destPath = $basePath . '/' . $subPath;
 
-            // Check ignore list
             $skip = false;
             foreach ($ignoreList as $ignored) {
                 if (str_starts_with($subPath, $ignored)) {
@@ -265,57 +277,84 @@ $actionExecuted = $_POST['action'] ?? null;
 $repoName = $_POST['github_repo'] ?? DEFAULT_GITHUB_REPO;
 $branchName = $_POST['github_branch'] ?? DEFAULT_GITHUB_BRANCH;
 $githubToken = $_POST['github_token'] ?? '';
+$customCommand = $_POST['custom_artisan'] ?? '';
 
 if ($actionExecuted) {
     ob_start();
     try {
         switch ($actionExecuted) {
             case 'github_pull_update':
-                echo "=====================================================\n";
-                echo "     1-CLICK GITHUB PULL & AUTO-UPDATE SGIN          \n";
-                echo "=====================================================\n\n";
+                echo "=================================================================\n";
+                echo "       1-CLICK GITHUB PULL & AUTO-UPDATE LEAVES SYSTEM           \n";
+                echo "=================================================================\n\n";
 
                 // 1. Pull / Download from GitHub
-                echo "[1/4] Mengambil pembaruan kodingan dari GitHub ($repoName:$branchName)...\n";
+                echo "[1/5] Mengambil pembaruan kodingan dari GitHub ($repoName:$branchName)...\n";
                 list($success, $syncLog) = syncFromGithub($basePath, $repoName, $branchName, $githubToken);
                 echo $syncLog . "\n\n";
 
-                if ($success && $app) {
-                    // 2. Database Migration
-                    echo "[2/4] Menjalankan migrasi database baru...\n";
-                    \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-                    echo \Illuminate\Support\Facades\Artisan::output() . "\n";
+                if ($success) {
+                    // 2. Composer Check
+                    echo "[2/5] Memeriksa dependensi Composer...\n";
+                    if (function_exists('shell_exec')) {
+                        $composerVer = @shell_exec('composer --version 2>&1');
+                        if ($composerVer && str_contains(strtolower($composerVer), 'composer')) {
+                            echo "Menjalankan composer install...\n";
+                            $composerOut = executeCommand("composer install --no-dev --optimize-autoloader --no-interaction", $basePath);
+                            echo ($composerOut ?: "Composer selesai.\n") . "\n";
+                        } elseif (file_exists($basePath . '/composer.phar')) {
+                            echo "Menjalankan php composer.phar install...\n";
+                            $composerOut = executeCommand("php composer.phar install --no-dev --optimize-autoloader --no-interaction", $basePath);
+                            echo ($composerOut ?: "Composer selesai.\n") . "\n";
+                        } else {
+                            echo "✓ Folder vendor siap (menggunakan vendor yang terpasang).\n\n";
+                        }
+                    }
 
-                    // 3. Storage link
-                    echo "[3/4] Memeriksa tautan storage...\n";
+                    // 3. Database Migration
+                    echo "[3/5] Menjalankan migrasi database baru...\n";
+                    if ($app) {
+                        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+                        echo \Illuminate\Support\Facades\Artisan::output() . "\n";
+                    } else {
+                        echo "⚠️ Bootstrap Laravel belum aktif, lewati migrasi via kernel.\n\n";
+                    }
+
+                    // 4. Storage Link
+                    echo "[4/5] Memeriksa tautan storage...\n";
                     $publicStorage = $basePath . '/public/storage';
                     $appStorage = $basePath . '/storage/app/public';
-                    if (!file_exists($publicStorage)) {
+                    if (!file_exists($publicStorage) && !is_link($publicStorage)) {
                         @symlink($appStorage, $publicStorage);
+                    }
+                    if ($app) {
                         \Illuminate\Support\Facades\Artisan::call('storage:link');
+                        echo \Illuminate\Support\Facades\Artisan::output() . "\n";
                     }
                     echo "✓ Storage link siap.\n\n";
 
-                    // 4. Optimize & Cache
-                    echo "[4/4] Membersihkan dan merefresh cache aplikasi...\n";
+                    // 5. Optimize & Cache
+                    echo "[5/5] Membersihkan dan merefresh cache aplikasi...\n";
                     if (function_exists('opcache_reset')) {
                         @opcache_reset();
                         echo "✓ PHP OPcache di-reset.\n";
                     }
-                    \Illuminate\Support\Facades\Artisan::call('optimize:clear');
-                    \Illuminate\Support\Facades\Artisan::call('config:cache');
-                    \Illuminate\Support\Facades\Artisan::call('route:cache');
-                    \Illuminate\Support\Facades\Artisan::call('view:cache');
-                    echo "✓ Cache production berhasil diperbarui.\n\n";
+                    if ($app) {
+                        \Illuminate\Support\Facades\Artisan::call('optimize:clear');
+                        \Illuminate\Support\Facades\Artisan::call('config:cache');
+                        \Illuminate\Support\Facades\Artisan::call('route:cache');
+                        \Illuminate\Support\Facades\Artisan::call('view:cache');
+                        echo "✓ Cache production berhasil diperbarui.\n\n";
+                    }
 
-                    echo "=====================================================\n";
-                    echo "   ✓ KODINGAN GITHUB & UPDATE SELESAI DITERAPKAN!   \n";
-                    echo "=====================================================\n";
+                    echo "=================================================================\n";
+                    echo "  ✓ KODINGAN REPO LEAVES & UPDATE BERHASIL DITERAPKAN KE SERVER! \n";
+                    echo "=================================================================\n";
                 }
                 break;
 
             case 'github_pull_only':
-                echo "=== PULL / SYNC DARI GITHUB SAJA ===\n";
+                echo "=== PULL / SYNC DARI GITHUB REPO LEAVES SAJA ===\n";
                 list($success, $syncLog) = syncFromGithub($basePath, $repoName, $branchName, $githubToken);
                 echo $syncLog . "\n";
                 if ($success && $app) {
@@ -324,16 +363,65 @@ if ($actionExecuted) {
                 }
                 break;
 
+            case 'composer_install':
+                echo "=== MENJALANKAN COMPOSER INSTALL ===\n";
+                if (function_exists('shell_exec')) {
+                    $composerVer = @shell_exec('composer --version 2>&1');
+                    if ($composerVer && str_contains(strtolower($composerVer), 'composer')) {
+                        echo executeCommand("composer install --no-dev --optimize-autoloader --no-interaction", $basePath);
+                    } elseif (file_exists($basePath . '/composer.phar')) {
+                        echo executeCommand("php composer.phar install --no-dev --optimize-autoloader --no-interaction", $basePath);
+                    } else {
+                        echo "✗ Composer CLI atau composer.phar tidak ditemukan di server.";
+                    }
+                } else {
+                    echo "✗ shell_exec dinonaktifkan di server.";
+                }
+                break;
+
+            case 'npm_build':
+                echo "=== MENJALANKAN NPM BUILD (COMPILE FRONTEND) ===\n";
+                if (function_exists('shell_exec')) {
+                    $nodeVer = @shell_exec('node --version 2>&1');
+                    $npmVer = @shell_exec('npm --version 2>&1');
+                    echo "Node Version: " . ($nodeVer ?: 'Tidak ditemukan') . "\n";
+                    echo "NPM Version: " . ($npmVer ?: 'Tidak ditemukan') . "\n\n";
+                    if ($nodeVer && str_contains($nodeVer, 'v')) {
+                        echo executeCommand("npm run build", $basePath);
+                    } else {
+                        echo "ℹ️ NodeJS/NPM tidak terpasang di hosting. Frontend sudah otomatis menggunakan file build yang ter-sync dari GitHub (public/build/).\n";
+                    }
+                } else {
+                    echo "✗ shell_exec dinonaktifkan di server.";
+                }
+                break;
+
             case 'migrate_only':
                 echo "=== MENJALANKAN MIGRASI DATABASE BARU ===\n";
                 if ($app) {
                     \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
                     echo \Illuminate\Support\Facades\Artisan::output();
+                } else {
+                    echo "✗ Laravel kernel belum terhubung.";
+                }
+                break;
+
+            case 'db_seed':
+                echo "=== MENJALANKAN DATABASE SEEDER ===\n";
+                if ($app) {
+                    \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
+                    echo \Illuminate\Support\Facades\Artisan::output();
+                } else {
+                    echo "✗ Laravel kernel belum terhubung.";
                 }
                 break;
 
             case 'clear_cache':
                 echo "=== MEMBERSIHKAN SELURUH CACHE APLIKASI ===\n";
+                if (function_exists('opcache_reset')) {
+                    @opcache_reset();
+                    echo "✓ OPcache di-reset.\n";
+                }
                 if ($app) {
                     \Illuminate\Support\Facades\Artisan::call('optimize:clear');
                     echo \Illuminate\Support\Facades\Artisan::output();
@@ -367,6 +455,24 @@ if ($actionExecuted) {
                 }
                 break;
 
+            case 'run_custom_artisan':
+                echo "=== EKSEKUSI ARTISAN COMMAND: " . htmlspecialchars($customCommand) . " ===\n";
+                if ($app && !empty($customCommand)) {
+                    $parts = explode(' ', trim($customCommand));
+                    $cmdName = array_shift($parts);
+                    $args = [];
+                    foreach ($parts as $part) {
+                        if (str_starts_with($part, '--')) {
+                            $args[$part] = true;
+                        }
+                    }
+                    \Illuminate\Support\Facades\Artisan::call($cmdName, $args);
+                    echo \Illuminate\Support\Facades\Artisan::output();
+                } else {
+                    echo "✗ Perintah kosong atau kernel tidak terhubung.";
+                }
+                break;
+
             case 'delete_self':
                 echo "=== MENGHAPUS UPDATE.PHP DARI SERVER ===\n";
                 @unlink($basePath . '/update.php');
@@ -383,10 +489,10 @@ if ($actionExecuted) {
 }
 
 // Check Git Status if .git is available
-$lastCommitInfo = 'Tidak terdeteksi';
+$lastCommitInfo = 'Belum terhubung ke Git';
 if (is_dir($basePath . '/.git') && function_exists('shell_exec')) {
     $commitLog = @shell_exec("cd " . escapeshellarg($basePath) . " && git log -1 --pretty=format:'%h - %s (%cr) <%an>' 2>&1");
-    if ($commitLog) {
+    if ($commitLog && !str_contains($commitLog, 'fatal:')) {
         $lastCommitInfo = $commitLog;
     }
 }
@@ -405,15 +511,17 @@ if ($app) {
 }
 
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
-$currentHost = $_SERVER['HTTP_HOST'] ?? 'leave-application-sgin.frahesta.com';
-$webhookUrl = "$protocol://$currentHost/update.php?webhook=1&secret=" . DEFAULT_WEBHOOK_SECRET;
+$currentHost = $_SERVER['HTTP_HOST'] ?? 'sgin.co.id';
+$currentUri = $_SERVER['REQUEST_URI'] ?? '/update.php';
+$cleanUri = strtok($currentUri, '?');
+$webhookUrl = "$protocol://$currentHost$cleanUri?webhook=1&secret=" . DEFAULT_WEBHOOK_SECRET;
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SGIN - GitHub Auto-Update & Maintenance</title>
+    <title>SGIN - GitHub Auto-Update & Maintenance (Leaves)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -429,11 +537,11 @@ $webhookUrl = "$protocol://$currentHost/update.php?webhook=1&secret=" . DEFAULT_
         <div class="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-emerald-950 border border-slate-700/80 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
                 <div class="flex items-center space-x-2">
-                    <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-extrabold uppercase border border-emerald-400/30">GitHub Sync v2.0</span>
-                    <span class="text-xs text-slate-300">Auto Pull & Deploy</span>
+                    <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-extrabold uppercase border border-emerald-400/30">GitHub Sync (Leaves)</span>
+                    <span class="text-xs text-slate-300">Auto Pull & Deploy Center</span>
                 </div>
-                <h1 class="text-2xl font-black text-white mt-1">SGIN GitHub Update Center</h1>
-                <p class="text-xs text-slate-300 mt-0.5">Tarik kodingan terbaru dari GitHub & terapkan migrasi otomatis ke server CyberPanel</p>
+                <h1 class="text-2xl font-black text-white mt-1">Leaves Application Update Center</h1>
+                <p class="text-xs text-slate-300 mt-0.5">Tarik kodingan terbaru dari repo <code>Frhstaaa/leaves</code> & terapkan migrasi otomatis ke server</p>
             </div>
             <a href="./" class="px-5 py-2.5 rounded-2xl bg-white text-slate-950 hover:bg-emerald-50 font-black text-xs shadow-lg transition-transform hover:scale-105 shrink-0 text-center">
                 &larr; Buka Website SGIN
@@ -472,7 +580,7 @@ $webhookUrl = "$protocol://$currentHost/update.php?webhook=1&secret=" . DEFAULT_
                         <span>🚀 Tarik dari GitHub & Update Otomatis (1-Click)</span>
                     </h3>
                     <p class="text-xs text-slate-400 mt-0.5">
-                        Mengambil kodingan terbaru dari GitHub (<code><?= DEFAULT_GITHUB_REPO ?>:<?= DEFAULT_GITHUB_BRANCH ?></code>), menjalankan migrasi database baru, dan merefresh cache server.
+                        Mengambil kodingan terbaru dari repo <code><?= DEFAULT_GITHUB_REPO ?>:<?= DEFAULT_GITHUB_BRANCH ?></code>, menjalankan migrasi database baru, memverifikasi dependensi, dan merefresh cache server.
                     </p>
                 </div>
                 <form method="POST">
@@ -480,7 +588,7 @@ $webhookUrl = "$protocol://$currentHost/update.php?webhook=1&secret=" . DEFAULT_
                     <input type="hidden" name="github_repo" value="<?= htmlspecialchars($repoName) ?>">
                     <input type="hidden" name="github_branch" value="<?= htmlspecialchars($branchName) ?>">
                     <input type="hidden" name="github_token" value="<?= htmlspecialchars($githubToken) ?>">
-                    <button type="submit" onclick="return confirm('Tarik kodingan terbaru dari GitHub dan terapkan update sekarang?')" class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-lg shadow-emerald-600/30 flex items-center space-x-2 transition-all hover:scale-105 shrink-0">
+                    <button type="submit" onclick="return confirm('Tarik kodingan terbaru dari repo Frhstaaa/leaves dan terapkan update sekarang?')" class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-lg shadow-emerald-600/30 flex items-center space-x-2 transition-all hover:scale-105 shrink-0">
                         <span>Tarik dari GitHub & Update</span>
                         <span>&rarr;</span>
                     </button>
@@ -495,8 +603,8 @@ $webhookUrl = "$protocol://$currentHost/update.php?webhook=1&secret=" . DEFAULT_
                 <h3 class="text-sm font-black text-indigo-300 uppercase tracking-wider">⚡ Setup GitHub Webhook (Auto-Deploy Setiap 'git push')</h3>
             </div>
             <p class="text-xs text-slate-300 leading-relaxed">
-                Ingin server CyberPanel Anda otomatis ter-update setiap kali Anda melakukan <code>git push</code> di laptop/komputer?
-                Tambahkan Webhook ini di GitHub repository Anda:
+                Ingin server hosting Anda otomatis ter-update setiap kali Anda melakukan <code>git push</code> ke repo <strong>Frhstaaa/leaves</strong>?
+                Tambahkan Webhook ini di repository GitHub Anda:
             </p>
             <div class="space-y-2 text-xs font-mono bg-black/60 p-4 rounded-2xl border border-slate-800">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
@@ -521,13 +629,13 @@ $webhookUrl = "$protocol://$currentHost/update.php?webhook=1&secret=" . DEFAULT_
         <div class="p-6 rounded-3xl bg-slate-900/40 border border-slate-800 space-y-5">
             <h3 class="text-sm font-extrabold uppercase tracking-wider text-slate-400">Aksi Pembaruan Terpisah:</h3>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
 
                 <!-- 1. Pull Only -->
                 <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-3">
                     <div>
-                        <h4 class="text-xs font-bold text-white">1. Tarik Kodingan GitHub Saja</h4>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Hanya mengunduh / pull file terbaru tanpa migrasi database.</p>
+                        <h4 class="text-xs font-bold text-white">1. Git Pull Repo Saja</h4>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Hanya mengunduh / pull file terbaru dari repo Frhstaaa/leaves.</p>
                     </div>
                     <form method="POST">
                         <input type="hidden" name="action" value="github_pull_only">
@@ -540,7 +648,7 @@ $webhookUrl = "$protocol://$currentHost/update.php?webhook=1&secret=" . DEFAULT_
                 <!-- 2. Migrate Only -->
                 <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-3">
                     <div>
-                        <h4 class="text-xs font-bold text-white">2. Jalankan Migrasi Database</h4>
+                        <h4 class="text-xs font-bold text-white">2. Migrasi Database</h4>
                         <p class="text-[11px] text-slate-400 mt-0.5">Terapkan perubahan tabel / kolom baru ke database server.</p>
                     </div>
                     <form method="POST">
@@ -551,11 +659,25 @@ $webhookUrl = "$protocol://$currentHost/update.php?webhook=1&secret=" . DEFAULT_
                     </form>
                 </div>
 
-                <!-- 3. Clear Cache -->
+                <!-- 3. Composer Install -->
                 <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-3">
                     <div>
-                        <h4 class="text-xs font-bold text-white">3. Bersihkan Seluruh Cache</h4>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Hapus cache config, route, dan views agar perubahan langsung aktif.</p>
+                        <h4 class="text-xs font-bold text-white">3. Composer Install</h4>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Update dependensi PHP backend jika ada package baru.</p>
+                    </div>
+                    <form method="POST">
+                        <input type="hidden" name="action" value="composer_install">
+                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
+                            Composer Install
+                        </button>
+                    </form>
+                </div>
+
+                <!-- 4. Clear Cache -->
+                <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-3">
+                    <div>
+                        <h4 class="text-xs font-bold text-white">4. Clear Seluruh Cache</h4>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Hapus cache config, route, view, dan PHP OPcache.</p>
                     </div>
                     <form method="POST">
                         <input type="hidden" name="action" value="clear_cache">
@@ -565,20 +687,49 @@ $webhookUrl = "$protocol://$currentHost/update.php?webhook=1&secret=" . DEFAULT_
                     </form>
                 </div>
 
-                <!-- 4. Storage Link -->
+                <!-- 5. Optimize Cache -->
                 <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-3">
                     <div>
-                        <h4 class="text-xs font-bold text-white">4. Perbaiki Storage Symlink</h4>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Hubungkan ulang public/storage agar file lampiran tidak 404.</p>
+                        <h4 class="text-xs font-bold text-white">5. Optimize Cache</h4>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Build cache config, route, dan view untuk performa maksimal.</p>
                     </div>
                     <form method="POST">
-                        <input type="hidden" name="action" value="storage_link">
+                        <input type="hidden" name="action" value="optimize">
                         <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
-                            Perbaiki Storage Link
+                            Optimize Cache
                         </button>
                     </form>
                 </div>
 
+                <!-- 6. Storage Link -->
+                <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-3">
+                    <div>
+                        <h4 class="text-xs font-bold text-white">6. Perbaiki Storage Symlink</h4>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Hubungkan ulang public/storage agar lampiran tidak 404.</p>
+                    </div>
+                    <form method="POST">
+                        <input type="hidden" name="action" value="storage_link">
+                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
+                            Storage Link
+                        </button>
+                    </form>
+                </div>
+
+            </div>
+
+            <!-- Custom Artisan Command Runner -->
+            <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                <h4 class="text-xs font-bold text-white">Eksekusi Perintah Artisan Bebas:</h4>
+                <form method="POST" class="flex flex-col sm:flex-row gap-2">
+                    <input type="hidden" name="action" value="run_custom_artisan">
+                    <div class="relative flex-1">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-xs font-mono text-slate-500">php artisan</span>
+                        <input type="text" name="custom_artisan" placeholder="db:seed, route:list, key:generate, dll" class="w-full pl-24 pr-4 py-2.5 rounded-xl bg-black/50 border border-slate-700 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs shrink-0 transition-colors">
+                        Jalankan Command
+                    </button>
+                </form>
             </div>
         </div>
 
@@ -601,7 +752,7 @@ $webhookUrl = "$protocol://$currentHost/update.php?webhook=1&secret=" . DEFAULT_
             <div class="space-y-1">
                 <h4 class="text-xs font-extrabold text-rose-300 uppercase tracking-wider">🔒 Tindakan Keamanan</h4>
                 <p class="text-[11px] text-rose-200/80 leading-relaxed">
-                    Jika tidak menggunakan webhook otomatis, Anda dapat menghapus file <code>update.php</code> demi keamanan server.
+                    Jika proses update selesai dan tidak menggunakan webhook otomatis, Anda dapat menghapus file <code>update.php</code> demi keamanan server.
                 </p>
             </div>
             <form method="POST">

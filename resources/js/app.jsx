@@ -11,6 +11,16 @@ window.addEventListener('error', (event) => {
 
 // Application Route Helper for Form SGIN
 window.route = function (name, params) {
+  // Auto-detect base path if hosted on subdirectory (e.g. domain.com/leaves-application)
+  const getBasePath = () => {
+    const path = window.location.pathname;
+    if (path.startsWith('/leaves-application')) {
+      return '/leaves-application';
+    }
+    return '';
+  };
+  const basePath = getBasePath();
+
   const routes = {
     'login': '/login',
     'quick-login': '/quick-login',
@@ -46,11 +56,13 @@ window.route = function (name, params) {
     'payslips.index': '/payslips',
     'payslips.download': (id) => `/payslips/${id}/download`,
     'payslips.preview': (id) => `/payslips/${id}/preview`,
+    'payslips.mark-viewed': (id) => `/payslips/${id}/viewed`,
     'hrd.payslips': '/hrd/payslips',
     'hrd.payslips.bulk-upload': '/hrd/payslips/bulk-upload',
     'hrd.payslips.single-upload': '/hrd/payslips/single-upload',
     'hrd.payslips.destroy': (id) => `/hrd/payslips/${id}`,
     'profile.avatar': '/profile/avatar',
+    'profile.password': '/profile/password',
     'superadmin.roles.index': '/superadmin/roles',
     'superadmin.roles.store': '/superadmin/roles',
     'superadmin.roles.update': (id) => `/superadmin/roles/${id}`,
@@ -65,24 +77,32 @@ window.route = function (name, params) {
       current: (routeName) => {
         const currentPath = window.location.pathname;
         const targetPath = typeof routes[routeName] === 'function' ? routes[routeName]('') : routes[routeName];
-        return currentPath === targetPath || currentPath.startsWith(targetPath);
+        if (!targetPath) return false;
+        const fullTarget = basePath ? `${basePath}${targetPath}` : targetPath;
+        return currentPath === fullTarget || currentPath.startsWith(fullTarget);
       }
     };
   }
 
   const target = routes[name];
+  let resolved = '';
   if (typeof target === 'function') {
-    return target(params);
+    resolved = target(params);
+  } else if (target) {
+    resolved = target;
+  } else {
+    // Smart fallback for dot-separated route names if missing from dict
+    let fallbackPath = '/' + name.replace(/\./g, '/').replace('/index', '');
+    if (params) {
+      fallbackPath += `/${params}`;
+    }
+    resolved = fallbackPath;
   }
 
-  if (target) return target;
-
-  // Smart fallback for dot-separated route names if missing from dict
-  let fallbackPath = '/' + name.replace(/\./g, '/').replace('/index', '');
-  if (params) {
-    fallbackPath += `/${params}`;
+  if (basePath && resolved && resolved.startsWith('/')) {
+    return `${basePath}${resolved}`;
   }
-  return fallbackPath;
+  return resolved;
 };
 
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';

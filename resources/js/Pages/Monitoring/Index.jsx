@@ -53,9 +53,16 @@ export default function MonitoringIndex({ metrics, statusDistribution, monthlyTr
                 <option value={currentYear - 2}>{currentYear - 2}</option>
               </select>
             </div>
+            <Link
+              href={route('monitoring.annual-report', { year: selectedYear })}
+              className="px-4 py-2 bg-emerald-600 text-white text-xs font-black rounded-xl shadow-md shadow-emerald-600/20 hover:bg-emerald-700 transition-colors flex items-center gap-2"
+            >
+              <CalendarIcon size={14} />
+              <span>Laporan Matrix Cuti 1 Tahun</span>
+            </Link>
             <a href={route('hrd.export')} className="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-sm hover:bg-slate-800 transition-colors flex items-center gap-2">
               <Download size={14} />
-              Export
+              Export Rekap
             </a>
           </div>
         </div>

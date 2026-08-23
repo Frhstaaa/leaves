@@ -125,6 +125,24 @@ class PayslipController extends Controller
     }
 
     /**
+     * Mark Payslip as viewed explicitly by employee.
+     */
+    public function markViewed($id)
+    {
+        $payslip = Payslip::findOrFail($id);
+        $user = Auth::user();
+
+        if ($payslip->user_id === $user->id && is_null($payslip->viewed_at)) {
+            $payslip->update(['viewed_at' => now()]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'viewed_at' => $payslip->viewed_at,
+        ]);
+    }
+
+    /**
      * HRD Payslip Management Dashboard.
      */
     public function manage(Request $request)
@@ -134,16 +152,20 @@ class PayslipController extends Controller
             return redirect()->route('dashboard')->with('error', 'Akses khusus HRD.');
         }
 
-        $month = (int) $request->query('month', date('n'));
+        $monthParam = $request->query('month');
+        $month = ($monthParam === 'all' || $monthParam === '' || is_null($monthParam)) ? null : (int) $monthParam;
         $year = (int) $request->query('year', date('Y'));
         $deptId = $request->query('department_id');
         $search = $request->query('search');
 
         $query = Payslip::with(['user.department', 'uploader'])
-            ->where('month', $month)
             ->where('year', $year);
 
-        if ($deptId) {
+        if ($month) {
+            $query->where('month', $month);
+        }
+
+        if ($deptId && $deptId !== 'all') {
             $query->whereHas('user', function ($q) use ($deptId) {
                 $q->where('department_id', $deptId);
             });
@@ -157,7 +179,7 @@ class PayslipController extends Controller
             });
         }
 
-        $payslips = $query->orderBy('created_at', 'desc')->get();
+        $payslips = $query->orderBy('month', 'desc')->orderBy('created_at', 'desc')->get();
 
         $allEmployees = User::with('department')
             ->orderBy('name', 'asc')
@@ -183,10 +205,10 @@ class PayslipController extends Controller
             'departments' => $departments,
             'stats' => $stats,
             'filters' => [
-                'month' => $month,
+                'month' => is_null($month) ? 'all' : (int) $month,
                 'year' => $year,
-                'department_id' => $deptId,
-                'search' => $search,
+                'department_id' => $deptId ?: 'all',
+                'search' => $search ?: '',
             ],
         ]);
     }
@@ -205,8 +227,10 @@ class PayslipController extends Controller
             'month' => 'required|integer|between:1,12',
             'year' => 'required|integer|between:2020,2050',
             'files' => 'nullable|array',
-            'files.*' => 'file|mimes:pdf|max:10240', // Max 10MB per PDF
-            'zip_file' => 'nullable|file|mimes:zip|max:51200', // Max 50MB ZIP
+            'files.*' => 'nullable|file|max:15360', // Max 15MB per file
+            'user_ids' => 'nullable|array',
+            'user_ids.*' => 'nullable',
+            'zip_file' => 'nullable|file|max:61440', // Max 60MB ZIP
         ]);
 
         $month = (int) $request->input('month');
@@ -215,6 +239,7 @@ class PayslipController extends Controller
         $periodLabel = "{$monthName} {$year}";
 
         $allUsers = User::all();
+        $userMap = $allUsers->keyBy('id');
         $matched = [];
         $unmatched = [];
 
@@ -224,9 +249,30 @@ class PayslipController extends Controller
 
         // 1. Process Direct PDF Files
         if ($request->hasFile('files')) {
-            foreach ($request->file('files') as $file) {
+            $uploadedFiles = $request->file('files');
+            $providedUserIds = $request->input('user_ids', []);
+
+            foreach ($uploadedFiles as $index => $file) {
+                if (!$file || !$file->isValid()) {
+                    continue;
+                }
+
                 $origName = $file->getClientOriginalName();
-                $matchedUser = $this->matchEmployee($origName, $allUsers);
+                $ext = strtolower($file->getClientOriginalExtension());
+                if ($ext !== 'pdf' && !str_contains($file->getMimeType(), 'pdf')) {
+                    $unmatched[] = "{$origName} (Bukan file PDF)";
+                    continue;
+                }
+
+                // Match via explicit user_id or smart scoring matcher
+                $matchedUser = null;
+                $targetUserId = $providedUserIds[$index] ?? null;
+
+                if (!empty($targetUserId) && isset($userMap[$targetUserId])) {
+                    $matchedUser = $userMap[$targetUserId];
+                } else {
+                    $matchedUser = $this->matchEmployee($origName, $allUsers);
+                }
 
                 if ($matchedUser) {
                     $savedPath = $this->storePayslipFile($file, $matchedUser, $month, $year, $targetDir);
@@ -262,61 +308,67 @@ class PayslipController extends Controller
 
         // 2. Process ZIP File
         if ($request->hasFile('zip_file')) {
-            $zip = new ZipArchive();
             $zipFile = $request->file('zip_file');
+            if ($zipFile && $zipFile->isValid()) {
+                $zip = new ZipArchive();
+                $realZipPath = $zipFile->getRealPath();
 
-            if ($zip->open($zipFile->getRealPath()) === true) {
-                $tempExtractPath = storage_path('app/temp_zip_' . time() . '_' . Str::random(6));
-                File::makeDirectory($tempExtractPath, 0755, true);
-                $zip->extractTo($tempExtractPath);
-                $zip->close();
+                if ($zip->open($realZipPath) === true) {
+                    $tempExtractPath = storage_path('app/temp_zip_' . time() . '_' . Str::random(6));
+                    File::makeDirectory($tempExtractPath, 0755, true);
+                    $zip->extractTo($tempExtractPath);
+                    $zip->close();
 
-                // Scan all PDF files in extracted folder
-                $extractedFiles = File::allFiles($tempExtractPath);
+                    // Scan all PDF files in extracted folder (including subfolders)
+                    $extractedFiles = File::allFiles($tempExtractPath);
 
-                foreach ($extractedFiles as $extractedFile) {
-                    if (strtolower($extractedFile->getExtension()) !== 'pdf') {
-                        continue;
+                    foreach ($extractedFiles as $extractedFile) {
+                        if (strtolower($extractedFile->getExtension()) !== 'pdf') {
+                            continue;
+                        }
+
+                        $origName = $extractedFile->getFilename();
+                        $matchedUser = $this->matchEmployee($origName, $allUsers);
+
+                        if ($matchedUser) {
+                            $cleanNik = preg_replace('/[^a-zA-Z0-9]/', '_', $matchedUser->nik ?: 'EMP_' . $matchedUser->id);
+                            $storedFileName = "payslip_{$cleanNik}_{$year}_" . str_pad($month, 2, '0', STR_PAD_LEFT) . '_' . time() . '_' . Str::random(4) . '.pdf';
+                            $relativeStoredPath = MediaOptimizer::optimizePdfAndStore($extractedFile->getRealPath(), $targetDir, $storedFileName);
+                            $fullStoredPath = storage_path('app/public/' . $relativeStoredPath);
+                            $finalSize = file_exists($fullStoredPath) ? filesize($fullStoredPath) : $extractedFile->getSize();
+
+                            Payslip::updateOrCreate(
+                                [
+                                    'user_id' => $matchedUser->id,
+                                    'month' => $month,
+                                    'year' => $year,
+                                ],
+                                [
+                                    'period_label' => $periodLabel,
+                                    'file_path' => $relativeStoredPath,
+                                    'original_filename' => $origName,
+                                    'file_size' => $finalSize,
+                                    'status' => 'published',
+                                    'uploaded_by' => $user->id,
+                                    'viewed_at' => null,
+                                ]
+                            );
+
+                            $matched[] = [
+                                'filename' => $origName,
+                                'employee_name' => $matchedUser->name,
+                                'nik' => $matchedUser->nik,
+                            ];
+                        } else {
+                            $unmatched[] = $origName;
+                        }
                     }
 
-                    $origName = $extractedFile->getFilename();
-                    $matchedUser = $this->matchEmployee($origName, $allUsers);
-
-                    if ($matchedUser) {
-                        $storedFileName = 'payslip_' . $matchedUser->nik . '_' . $year . '_' . $month . '_' . time() . '.pdf';
-                        $relativeStoredPath = MediaOptimizer::optimizePdfAndStore($extractedFile->getRealPath(), $targetDir, $storedFileName);
-                        $fullStoredPath = storage_path('app/public/' . $relativeStoredPath);
-                        $finalSize = file_exists($fullStoredPath) ? filesize($fullStoredPath) : $extractedFile->getSize();
-
-                        Payslip::updateOrCreate(
-                            [
-                                'user_id' => $matchedUser->id,
-                                'month' => $month,
-                                'year' => $year,
-                            ],
-                            [
-                                'period_label' => $periodLabel,
-                                'file_path' => $relativeStoredPath,
-                                'original_filename' => $origName,
-                                'file_size' => $finalSize,
-                                'status' => 'published',
-                                'uploaded_by' => $user->id,
-                                'viewed_at' => null,
-                            ]
-                        );
-
-                        $matched[] = [
-                            'filename' => $origName,
-                            'employee_name' => $matchedUser->name,
-                            'nik' => $matchedUser->nik,
-                        ];
-                    } else {
-                        $unmatched[] = $origName;
-                    }
+                    // Cleanup temp folder
+                    File::deleteDirectory($tempExtractPath);
+                } else {
+                    return back()->with('error', 'Gagal membuka file ZIP. Pastikan file ZIP tidak corrupt atau terproteksi password.');
                 }
-
-                // Cleanup temp folder
-                File::deleteDirectory($tempExtractPath);
             }
         }
 
@@ -330,7 +382,7 @@ class PayslipController extends Controller
             if ($unmatchedCount > 5) $unmatchedList .= '...';
             return back()->with('success', "{$matchedCount} slip gaji berhasil terdistribusi. Namun ada {$unmatchedCount} file yang tidak cocok dengan NIK/Nama karyawan ({$unmatchedList}).");
         } elseif ($unmatchedCount > 0) {
-            return back()->with('error', "Gagal mendistribusikan: {$unmatchedCount} file tidak ditemukan kecocokan dengan NIK atau Nama karyawan di sistem. Pastikan nama file memuat NIK karyawan (contoh: EMP-2026-001.pdf).");
+            return back()->with('error', "Gagal mendistribusikan: {$unmatchedCount} file tidak ditemukan kecocokan dengan NIK atau Nama karyawan di sistem. Pastikan nama file memuat NIK karyawan (contoh: EMP-201.pdf atau nama karyawan).");
         }
 
         return back()->with('error', 'Tidak ada file PDF yang valid ditemukan untuk diunggah.');
@@ -350,7 +402,7 @@ class PayslipController extends Controller
             'user_id' => 'required|exists:users,id',
             'month' => 'required|integer|between:1,12',
             'year' => 'required|integer|between:2020,2050',
-            'file' => 'required|file|mimes:pdf|max:10240',
+            'file' => 'required|file|max:15360',
             'notes' => 'nullable|string|max:500',
         ]);
 
@@ -411,67 +463,71 @@ class PayslipController extends Controller
     }
 
     /**
-     * Helper: Match filename against employees (by NIK, Email, or Name).
+     * Helper: Match filename against employees (by NIK, Email, or Name with smart scoring).
      */
     private function matchEmployee(string $filename, $employees): ?User
     {
-        $cleanFilename = pathinfo($filename, PATHINFO_FILENAME);
-        $normalizedFilename = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $cleanFilename));
+        $cleanFilename = strtolower(pathinfo($filename, PATHINFO_FILENAME));
+        $normFilename = preg_replace('/[^a-z0-9]/', '', $cleanFilename);
 
-        // 1. Match by exact or normalized NIK (Highest Priority)
+        $bestEmp = null;
+        $bestScore = 0;
+
         foreach ($employees as $emp) {
-            if (!empty($emp->nik)) {
-                // Exact NIK in filename
-                if (stripos($cleanFilename, $emp->nik) !== false) {
-                    return $emp;
-                }
+            $score = 0;
+            $cleanNik = strtolower($emp->nik ?? '');
+            $normNik = preg_replace('/[^a-z0-9]/', '', $cleanNik);
 
-                // Normalized NIK (without dashes/spaces)
-                $normalizedNik = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $emp->nik));
-                if (!empty($normalizedNik) && strpos($normalizedFilename, $normalizedNik) !== false) {
-                    return $emp;
+            $cleanName = strtolower($emp->name ?? '');
+            $normName = preg_replace('/[^a-z0-9]/', '', $cleanName);
+
+            $emailPrefix = strtolower(strstr($emp->email ?? '', '@', true) ?: '');
+
+            // 1. Exact NIK in filename (100 pts)
+            if (!empty($cleanNik) && strpos($cleanFilename, $cleanNik) !== false) {
+                $score = max($score, 100);
+            }
+
+            // 2. Normalized NIK in filename (90 pts)
+            if (!empty($normNik) && strpos($normFilename, $normNik) !== false) {
+                $score = max($score, 90);
+            }
+
+            // 3. Exact Full Name (80 pts)
+            if (!empty($normName) && strlen($normName) >= 3 && strpos($normFilename, $normName) !== false) {
+                $score = max($score, 80);
+            }
+
+            // 4. Name parts matching (50-75 pts)
+            $nameWords = array_filter(explode(' ', preg_replace('/[^a-z0-9\s]/', '', $cleanName)), fn($w) => strlen($w) >= 3);
+            if (!empty($nameWords)) {
+                $matchedWords = 0;
+                foreach ($nameWords as $w) {
+                    if (strpos($cleanFilename, $w) !== false || strpos($normFilename, $w) !== false) {
+                        $matchedWords++;
+                    }
                 }
+                if ($matchedWords === count($nameWords) && count($nameWords) > 1) {
+                    $score = max($score, 75);
+                } elseif ($matchedWords > 0) {
+                    $score = max($score, 50 + ($matchedWords * 5));
+                }
+            }
+
+            // 5. Email Prefix match (40 pts)
+            if (!empty($emailPrefix) && strlen($emailPrefix) >= 3) {
+                if (strpos($cleanFilename, $emailPrefix) !== false || strpos($normFilename, $emailPrefix) !== false) {
+                    $score = max($score, 40);
+                }
+            }
+
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestEmp = $emp;
             }
         }
 
-        // 2. Match by Email prefix
-        foreach ($employees as $emp) {
-            if (!empty($emp->email)) {
-                $emailPrefix = strstr($emp->email, '@', true);
-                if ($emailPrefix && strlen($emailPrefix) >= 3) {
-                    if (stripos($cleanFilename, $emailPrefix) !== false) {
-                        return $emp;
-                    }
-                }
-            }
-        }
-
-        // 3. Match by Full Name
-        foreach ($employees as $emp) {
-            if (!empty($emp->name) && strlen($emp->name) >= 3) {
-                $normalizedName = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $emp->name));
-                if (!empty($normalizedName) && strpos($normalizedFilename, $normalizedName) !== false) {
-                    return $emp;
-                }
-
-                // Match name parts if multi-word name
-                $nameParts = explode(' ', strtolower($emp->name));
-                if (count($nameParts) >= 2) {
-                    $allPartsFound = true;
-                    foreach ($nameParts as $part) {
-                        if (strlen($part) >= 3 && strpos(strtolower($cleanFilename), $part) === false) {
-                            $allPartsFound = false;
-                            break;
-                        }
-                    }
-                    if ($allPartsFound) {
-                        return $emp;
-                    }
-                }
-            }
-        }
-
-        return null;
+        return $bestScore >= 40 ? $bestEmp : null;
     }
 
     /**
@@ -480,7 +536,7 @@ class PayslipController extends Controller
     private function storePayslipFile($file, User $employee, int $month, int $year, string $targetDir): string
     {
         $cleanNik = preg_replace('/[^a-zA-Z0-9]/', '_', $employee->nik ?: 'EMP_' . $employee->id);
-        $fileName = "payslip_{$cleanNik}_{$year}_" . str_pad($month, 2, '0', STR_PAD_LEFT) . '_' . time() . '.pdf';
+        $fileName = "payslip_{$cleanNik}_{$year}_" . str_pad($month, 2, '0', STR_PAD_LEFT) . '_' . time() . '_' . Str::random(4) . '.pdf';
         
         return MediaOptimizer::optimizePdfAndStore($file, $targetDir, $fileName);
     }

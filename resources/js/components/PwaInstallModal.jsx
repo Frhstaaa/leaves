@@ -7,7 +7,12 @@ export default function PwaInstallModal() {
   const { app_settings } = usePage().props;
   const appName = app_settings?.app_name || 'Form SGIN';
   const appSubname = app_settings?.app_subname || 'Cuti & Ketidakhadiran';
-  const appLogo = app_settings?.app_logo ? (app_settings.app_logo.startsWith('http') ? app_settings.app_logo : `/storage/${app_settings.app_logo}`) : null;
+  const appLogo = app_settings?.app_logo_url
+    || (app_settings?.app_logo
+      ? (app_settings.app_logo.startsWith('http')
+          ? app_settings.app_logo
+          : `/storage/${app_settings.app_logo.replace(/^\/?storage\//, '')}`)
+      : null);
 
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isOpen, setIsOpen] = useState(false);

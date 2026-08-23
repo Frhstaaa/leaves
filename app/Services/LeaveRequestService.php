@@ -31,7 +31,8 @@ class LeaveRequestService
         return DB::transaction(function () use ($user, $data, $attachmentFile) {
             $user->loadMissing(['department.manager', 'department.approver1', 'department.approver2', 'manager', 'approver1', 'approver2']);
 
-            $category = LeaveCategory::findOrFail($data['category_id']);
+            $categoryId = $data['leave_category_id'] ?? $data['category_id'] ?? null;
+            $category = LeaveCategory::findOrFail($categoryId);
             $currentYear = (int) date('Y', strtotime($data['start_date']));
 
             // Validate attachment if required
@@ -58,8 +59,10 @@ class LeaveRequestService
 
             // Handle Attachment Upload
             $attachmentPath = null;
+            $attachmentName = null;
             if ($attachmentFile) {
                 $attachmentPath = $attachmentFile->store('attachments/leave_requests', 'public');
+                $attachmentName = $attachmentFile->getClientOriginalName();
             }
 
             // Multi-Tier Effective Approvers
@@ -77,19 +80,18 @@ class LeaveRequestService
             return $this->leaveRequestRepo->create([
                 'user_id' => $user->id,
                 'request_number' => $requestNumber,
-                'category_id' => $category->id,
+                'leave_category_id' => $category->id,
                 'start_date' => $data['start_date'],
                 'end_date' => $data['end_date'],
                 'amount' => $data['amount'],
                 'unit' => $data['unit'] ?? 'hari',
-                'submission_type' => $data['submission_type'] ?? 'terencana',
+                'submission_type' => $data['submission_type'] ?? 'PERMOHONAN',
+                'approval_agreed' => in_array($data['approval_agreed'] ?? 'Ya', ['Ya', '1', true, 1], true),
                 'reason' => $data['reason'],
                 'attachment_path' => $attachmentPath,
+                'attachment_name' => $attachmentName,
                 'status' => 'pending',
                 'current_stage' => $initialStage,
-                'approver_1_id' => $effApprover1 ? $effApprover1->id : null,
-                'approver_2_id' => $effApprover2 ? $effApprover2->id : null,
-                'manager_id' => $effApprover2 ? $effApprover2->id : ($effApprover1 ? $effApprover1->id : null),
             ]);
         });
     }
@@ -100,56 +102,74 @@ class LeaveRequestService
     public function approveRequest(LeaveRequest $leaveRequest, User $approver, ?string $note = null): array
     {
         return DB::transaction(function () use ($leaveRequest, $approver, $note) {
-            $isApprover1 = ($leaveRequest->approver_1_id && $leaveRequest->approver_1_id == $approver->id);
-            $isApprover2 = ($leaveRequest->approver_2_id && $leaveRequest->approver_2_id == $approver->id);
-            $isAdmin = $approver->isAdmin();
+            $applicant = $leaveRequest->user()->with(['department.approver1', 'department.approver2', 'department.manager', 'manager', 'approver1', 'approver2'])->first();
+
+            $effApprover1 = $applicant?->getEffectiveApprover1();
+            $effApprover2 = $applicant?->getEffectiveApprover2();
+
+            $isApprover1 = ($effApprover1 && (int)$effApprover1->id === (int)$approver->id);
+            $isApprover2 = ($effApprover2 && (int)$effApprover2->id === (int)$approver->id);
+            $isAdmin = $approver->isAdmin() || $approver->isSuperadmin();
+
+            // Direct Manager Check (if applicant's manager is the approver, or department manager is the approver)
+            $isDirectManager = ($applicant && ((int)$applicant->manager_id === (int)$approver->id || (int)$applicant->department?->manager_id === (int)$approver->id));
+            if ($isDirectManager) {
+                $isApprover2 = true;
+            }
 
             if (!$isApprover1 && !$isApprover2 && !$isAdmin) {
                 throw new \Exception('Anda tidak memiliki otoritas untuk menyetujui pengajuan ini.');
             }
 
+            $currentStage = $leaveRequest->current_stage ?: 'approval_1';
+
             // TIER 1: Atasan 1 Approval
-            if ($leaveRequest->current_stage === 'approval_1' && ($isApprover1 || $isAdmin)) {
-                $nextStage = $leaveRequest->approver_2_id ? 'approval_2' : 'hrd';
+            if ($currentStage === 'approval_1') {
+                $nextStage = $effApprover2 ? 'approval_2' : 'hrd';
 
                 $this->leaveRequestRepo->update($leaveRequest, [
-                    'approved_by_1' => true,
+                    'approved_by_1' => $approver->id,
                     'approval_1_note' => $note,
+                    'approved_1_at' => now(),
                     'current_stage' => $nextStage,
-                    'approver_id' => $approver->id,
+                    'approved_by' => $approver->id,
                 ]);
 
                 return [
                     'success' => true,
                     'message' => $nextStage === 'approval_2'
-                        ? 'Persetujuan Tingkat 1 berhasil. Pengajuan diteruskan ke Atasan Tingkat 2.'
+                        ? 'Persetujuan Tingkat 1 (Atasan 1) berhasil. Pengajuan diteruskan ke Tingkat 2.'
                         : 'Persetujuan Tingkat 1 berhasil. Pengajuan diteruskan ke HRD untuk persetujuan akhir.',
                 ];
             }
 
-            // TIER 2: Atasan 2 Approval
-            if ($leaveRequest->current_stage === 'approval_2' && ($isApprover2 || $isAdmin)) {
+            // TIER 2: Atasan 2 / Manager Approval
+            if ($currentStage === 'approval_2') {
                 $this->leaveRequestRepo->update($leaveRequest, [
-                    'approved_by_2' => true,
+                    'approved_by_2' => $approver->id,
                     'approval_2_note' => $note,
+                    'approved_2_at' => now(),
                     'current_stage' => 'hrd',
-                    'approver_id' => $approver->id,
+                    'approved_by' => $approver->id,
                 ]);
 
                 return [
                     'success' => true,
-                    'message' => 'Persetujuan Tingkat 2 berhasil. Pengajuan diteruskan ke HRD untuk persetujuan akhir.',
+                    'message' => 'Persetujuan Tingkat 2 (Manager) berhasil. Pengajuan diteruskan ke HRD untuk persetujuan akhir.',
                 ];
             }
 
-            // TIER 3: HRD / PGA Admin Final Approval
-            if (($leaveRequest->current_stage === 'hrd' || $isAdmin) && $isAdmin) {
+            // TIER 3 / HRD Approval (Or if Admin performs full final approval)
+            if ($currentStage === 'hrd' || $isAdmin) {
                 $this->leaveRequestRepo->update($leaveRequest, [
                     'status' => 'approved',
                     'current_stage' => 'completed',
-                    'approved_by_hrd' => true,
+                    'approved_by_hrd' => $approver->id,
+                    'approval_hrd_note' => $note,
+                    'approved_hrd_at' => now(),
+                    'approved_by' => $approver->id,
                     'approval_note' => $note,
-                    'approver_id' => $approver->id,
+                    'approved_at' => now(),
                 ]);
 
                 // Deduct quota
@@ -171,35 +191,34 @@ class LeaveRequestService
     public function rejectRequest(LeaveRequest $leaveRequest, User $approver, ?string $note = null): array
     {
         return DB::transaction(function () use ($leaveRequest, $approver, $note) {
-            $isApprover1 = ($leaveRequest->approver_1_id && $leaveRequest->approver_1_id == $approver->id);
-            $isApprover2 = ($leaveRequest->approver_2_id && $leaveRequest->approver_2_id == $approver->id);
-            $isAdmin = $approver->isAdmin();
+            $applicant = $leaveRequest->user()->with(['department.approver1', 'department.approver2', 'department.manager', 'manager', 'approver1', 'approver2'])->first();
+
+            $effApprover1 = $applicant?->getEffectiveApprover1();
+            $effApprover2 = $applicant?->getEffectiveApprover2();
+
+            $isApprover1 = ($effApprover1 && (int)$effApprover1->id === (int)$approver->id);
+            $isApprover2 = ($effApprover2 && (int)$effApprover2->id === (int)$approver->id);
+            $isAdmin = $approver->isAdmin() || $approver->isSuperadmin();
+            $isDirectManager = ($applicant && ((int)$applicant->manager_id === (int)$approver->id || (int)$applicant->department?->manager_id === (int)$approver->id));
+            if ($isDirectManager) {
+                $isApprover2 = true;
+            }
 
             if (!$isApprover1 && !$isApprover2 && !$isAdmin) {
                 throw new \Exception('Anda tidak memiliki otoritas untuk menolak pengajuan ini.');
             }
 
-            $updateData = [
+            $this->leaveRequestRepo->update($leaveRequest, [
                 'status' => 'rejected',
-                'approver_id' => $approver->id,
-            ];
-
-            if ($leaveRequest->current_stage === 'approval_1') {
-                $updateData['approval_1_note'] = $note;
-            } elseif ($leaveRequest->current_stage === 'approval_2') {
-                $updateData['approval_2_note'] = $note;
-            } else {
-                $updateData['approval_note'] = $note;
-            }
-
-            $this->leaveRequestRepo->update($leaveRequest, $updateData);
-
-            // Restore quota if it was previously approved
-            $this->quotaService->restoreQuota($leaveRequest);
+                'current_stage' => 'completed',
+                'approved_by' => $approver->id,
+                'approval_note' => $note,
+                'approved_at' => now(),
+            ]);
 
             return [
                 'success' => true,
-                'message' => 'Pengajuan cuti telah ditolak dan alur persetujuan dihentikan.',
+                'message' => 'Pengajuan telah berhasil ditolak.',
             ];
         });
     }

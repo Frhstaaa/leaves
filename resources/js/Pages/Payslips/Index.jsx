@@ -67,6 +67,21 @@ export default function PayslipsIndex({ payslips = [], selectedYear = new Date()
 
   const handleOpenPreview = (payslip) => {
     setPreviewPayslip(payslip);
+    if (!payslip.viewed_at) {
+      window.axios?.post(route('payslips.mark-viewed', payslip.id)).then(() => {
+        payslip.viewed_at = new Date().toISOString();
+        payslip.is_viewed = true;
+      }).catch(() => {});
+    }
+  };
+
+  const handleDownload = (payslip) => {
+    if (!payslip.viewed_at) {
+      window.axios?.post(route('payslips.mark-viewed', payslip.id)).then(() => {
+        payslip.viewed_at = new Date().toISOString();
+        payslip.is_viewed = true;
+      }).catch(() => {});
+    }
   };
 
   // Map payslips by month number (1 - 12) for the 12-month calendar view
@@ -109,22 +124,18 @@ export default function PayslipsIndex({ payslips = [], selectedYear = new Date()
             </div>
 
             {/* Year Selector */}
-            <div className="w-[150px] shrink-0">
-              <Select
-                value={String(activeYear)}
-                onValueChange={(val) => handleYearChange(val)}
+            <div className="w-[160px] shrink-0">
+              <select
+                value={activeYear}
+                onChange={(e) => handleYearChange(parseInt(e.target.value))}
+                className="w-full bg-white/20 border border-white/30 text-white font-black text-xs rounded-2xl px-3.5 py-2.5 backdrop-blur-md hover:bg-white/30 focus:bg-white focus:text-slate-900 transition-colors outline-none cursor-pointer"
               >
-                <SelectTrigger className="bg-white/20 border-white/30 text-white font-black text-xs rounded-2xl backdrop-blur-md hover:bg-white/30 focus:bg-white focus:text-slate-900 transition-colors">
-                  <SelectValue placeholder={`Tahun ${activeYear}`} />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableYears.map((yr) => (
-                    <SelectItem key={yr} value={String(yr)}>
-                      Tahun {yr}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                {(availableYears.length > 0 ? availableYears : [selectedYear - 1, selectedYear, selectedYear + 1]).map((yr) => (
+                  <option key={yr} value={yr} className="text-slate-900 font-bold">
+                    Tahun {yr}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </motion.div>
@@ -254,6 +265,7 @@ export default function PayslipsIndex({ payslips = [], selectedYear = new Date()
                           href={route('payslips.download', payslip.id)}
                           className="flex-1"
                           download
+                          onClick={() => handleDownload(payslip)}
                         >
                           <Button
                             variant="emerald"

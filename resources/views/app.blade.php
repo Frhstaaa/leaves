@@ -2,6 +2,7 @@
 <html lang="id" class="h-full bg-[#F5FAF7] text-slate-900">
 <head>
     <meta charset="utf-8" />
+    <meta name="csrf-token" content="{{ csrf_token() }}" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="Sistem Informasi Form SGIN - Pengajuan Cuti, Izin, Sakit, Lembur, dan Distribusi Slip Gaji Karyawan Real-time." />
     <meta name="theme-color" content="#F5FAF7" />
@@ -17,8 +18,8 @@
     @php
         $manifestPath = public_path('build/manifest.json');
         $manifest = file_exists($manifestPath) ? json_decode(file_get_contents($manifestPath), true) : [];
-        $cssFile = isset($manifest['resources/js/app.jsx']['css'][0]) ? '/build/' . $manifest['resources/js/app.jsx']['css'][0] : (isset($manifest['resources/css/app.css']['file']) ? '/build/' . $manifest['resources/css/app.css']['file'] : '');
-        $jsFile = isset($manifest['resources/js/app.jsx']['file']) ? '/build/' . $manifest['resources/js/app.jsx']['file'] : '';
+        $cssFile = isset($manifest['resources/js/app.jsx']['css'][0]) ? 'build/' . $manifest['resources/js/app.jsx']['css'][0] : (isset($manifest['resources/css/app.css']['file']) ? 'build/' . $manifest['resources/css/app.css']['file'] : '');
+        $jsFile = isset($manifest['resources/js/app.jsx']['file']) ? 'build/' . $manifest['resources/js/app.jsx']['file'] : '';
         $imports = isset($manifest['resources/js/app.jsx']['imports']) ? $manifest['resources/js/app.jsx']['imports'] : [];
     @endphp
 
@@ -29,11 +30,11 @@
         $pwaVersion = substr(md5(($settings['app_logo'] ?? '') . ($settings['app_name'] ?? '')), 0, 8);
     @endphp
 
-    <link rel="manifest" href="/manifest.webmanifest?v={{ $pwaVersion }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="/app-icon/180?v={{ $pwaVersion }}">
-    <link rel="icon" type="image/png" sizes="192x192" href="/app-icon/192?v={{ $pwaVersion }}">
-    <link rel="icon" type="image/png" sizes="512x512" href="/app-icon/512?v={{ $pwaVersion }}">
-    <link rel="shortcut icon" href="/app-icon/192?v={{ $pwaVersion }}">
+    <link rel="manifest" href="{{ url('manifest.webmanifest') }}?v={{ $pwaVersion }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url('app-icon/180') }}?v={{ $pwaVersion }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url('app-icon/192') }}?v={{ $pwaVersion }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ url('app-icon/512') }}?v={{ $pwaVersion }}">
+    <link rel="shortcut icon" href="{{ url('app-icon/192') }}?v={{ $pwaVersion }}">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="{{ $appName }}">
@@ -50,10 +51,11 @@
 
     @foreach($imports as $importKey)
         @if(isset($manifest[$importKey]['file']))
-            <link rel="modulepreload" href="{{ asset('/build/' . $manifest[$importKey]['file']) }}">
+            <link rel="modulepreload" href="{{ asset('build/' . $manifest[$importKey]['file']) }}">
         @endif
     @endforeach
 
+    @routes
     @inertiaHead
 </head>
 <body class="h-full bg-[#F5FAF7] font-sans antialiased text-slate-900 selection:bg-emerald-600 selection:text-white">
@@ -109,7 +111,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                navigator.serviceWorker.register('{{ url("sw.js") }}').then(function(registration) {
                     console.log('PWA ServiceWorker registered with scope: ', registration.scope);
                 }, function(err) {
                     console.log('PWA ServiceWorker registration failed: ', err);

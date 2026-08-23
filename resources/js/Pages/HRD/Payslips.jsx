@@ -88,18 +88,23 @@ export default function HrdPayslips({
   stats = {},
   filters = {}
 }) {
-  const currentMonth = filters.month ? parseInt(filters.month) : new Date().getMonth() + 1;
+  const currentMonth = filters.month === 'all' ? 'all' : (filters.month ? parseInt(filters.month) : 'all');
   const currentYear = filters.year ? parseInt(filters.year) : new Date().getFullYear();
 
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [selectedDept, setSelectedDept] = useState(filters.department_id || '');
+  const [selectedDept, setSelectedDept] = useState(filters.department_id || 'all');
   const [search, setSearch] = useState(filters.search || '');
 
   // Modals
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [isSingleOpen, setIsSingleOpen] = useState(false);
   const [previewPayslip, setPreviewPayslip] = useState(null);
+
+  // Bulk Upload Local State for Instant UI Rendering
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [selectedZip, setSelectedZip] = useState(null);
+  const [isSubmittingBulk, setIsSubmittingBulk] = useState(false);
 
   // Bulk Upload Form
   const bulkForm = useForm({
@@ -118,6 +123,71 @@ export default function HrdPayslips({
     notes: '',
   });
 
+  // Client-side Scored Matcher for Instant Preview
+  const findMatchingEmployee = (filename) => {
+    const cleanFilename = filename.toLowerCase();
+    const normFilename = cleanFilename.replace(/[^a-z0-9]/g, '');
+
+    let bestEmp = null;
+    let bestScore = 0;
+
+    for (const emp of employees) {
+      let score = 0;
+      const cleanNik = (emp.nik || '').toLowerCase();
+      const normNik = cleanNik.replace(/[^a-z0-9]/g, '');
+
+      const cleanName = (emp.name || '').toLowerCase();
+      const normName = cleanName.replace(/[^a-z0-9]/g, '');
+
+      const emailPrefix = (emp.email || '').split('@')[0].toLowerCase();
+
+      // 1. Exact NIK (100 pts)
+      if (cleanNik && cleanFilename.includes(cleanNik)) {
+        score = Math.max(score, 100);
+      }
+
+      // 2. Normalized NIK (90 pts)
+      if (normNik && normFilename.includes(normNik)) {
+        score = Math.max(score, 90);
+      }
+
+      // 3. Exact Full Name (80 pts)
+      if (normName && normName.length >= 3 && normFilename.includes(normName)) {
+        score = Math.max(score, 80);
+      }
+
+      // 4. Name parts matching (50-75 pts)
+      const nameWords = cleanName.replace(/[^a-z0-9\s]/g, '').split(' ').filter(w => w.length >= 3);
+      if (nameWords.length > 0) {
+        let matchedWords = 0;
+        for (const w of nameWords) {
+          if (cleanFilename.includes(w) || normFilename.includes(w)) {
+            matchedWords++;
+          }
+        }
+        if (matchedWords === nameWords.length && nameWords.length > 1) {
+          score = Math.max(score, 75);
+        } else if (matchedWords > 0) {
+          score = Math.max(score, 50 + (matchedWords * 5));
+        }
+      }
+
+      // 5. Email Prefix match (40 pts)
+      if (emailPrefix && emailPrefix.length >= 3) {
+        if (cleanFilename.includes(emailPrefix) || normFilename.includes(emailPrefix)) {
+          score = Math.max(score, 40);
+        }
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestEmp = emp;
+      }
+    }
+
+    return bestScore >= 40 ? bestEmp : null;
+  };
+
   const handleFilterSubmit = (e) => {
     e?.preventDefault();
     router.get(route('hrd.payslips'), {
@@ -129,6 +199,8 @@ export default function HrdPayslips({
   };
 
   const handleOpenBulkModal = () => {
+    setSelectedFiles([]);
+    setSelectedZip(null);
     bulkForm.reset();
     bulkForm.setData({
       month: selectedMonth,
@@ -137,6 +209,52 @@ export default function HrdPayslips({
       zip_file: null,
     });
     setIsBulkOpen(true);
+  };
+
+  const handlePdfFilesChange = (newFiles) => {
+    const fileArray = Array.from(newFiles);
+    setSelectedFiles((prev) => {
+      const existingNames = new Set(prev.map(item => item.file.name));
+      const newItems = fileArray
+        .filter(f => !existingNames.has(f.name))
+        .map(f => {
+          const matched = findMatchingEmployee(f.name);
+          return {
+            id: `${f.name}-${Date.now()}-${Math.random()}`,
+            file: f,
+            userId: matched ? String(matched.id) : '',
+          };
+        });
+
+      return [...prev, ...newItems];
+    });
+    setSelectedZip(null);
+  };
+
+  const handleFileUserChange = (index, newUserId) => {
+    setSelectedFiles((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], userId: newUserId };
+      return copy;
+    });
+  };
+
+  const handleRemoveFile = (indexToRemove) => {
+    setSelectedFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const handleZipChange = (file) => {
+    if (file) {
+      setSelectedZip(file);
+      setSelectedFiles([]);
+      bulkForm.setData('zip_file', file);
+      bulkForm.setData('files', []);
+    }
+  };
+
+  const handleRemoveZip = () => {
+    setSelectedZip(null);
+    bulkForm.setData('zip_file', null);
   };
 
   const handleOpenSingleModal = () => {
@@ -154,27 +272,52 @@ export default function HrdPayslips({
   const handleBulkSubmit = (e) => {
     e.preventDefault();
 
-    if ((!bulkForm.data.files || bulkForm.data.files.length === 0) && !bulkForm.data.zip_file) {
+    if (selectedFiles.length === 0 && !selectedZip) {
       showAlert({
         title: 'File Belum Dipilih',
-        text: 'Silakan pilih beberapa file PDF atau 1 file ZIP slip gaji.',
+        text: 'Silakan pilih beberapa file PDF atau 1 file ZIP slip gaji terlebih dahulu.',
         icon: 'warning'
       });
       return;
     }
 
-    bulkForm.post(route('hrd.payslips.bulk-upload'), {
+    setIsSubmittingBulk(true);
+
+    const formData = new FormData();
+    formData.append('month', String(bulkForm.data.month));
+    formData.append('year', String(bulkForm.data.year));
+
+    if (selectedZip) {
+      formData.append('zip_file', selectedZip);
+    } else {
+      selectedFiles.forEach((item, idx) => {
+        formData.append(`files[${idx}]`, item.file);
+        if (item.userId) {
+          formData.append(`user_ids[${idx}]`, item.userId);
+        }
+      });
+    }
+
+    router.post(route('hrd.payslips.bulk-upload'), formData, {
       forceFormData: true,
+      preserveScroll: true,
       onSuccess: () => {
+        setIsSubmittingBulk(false);
         setIsBulkOpen(false);
+        setSelectedFiles([]);
+        setSelectedZip(null);
         bulkForm.reset();
       },
       onError: (errs) => {
+        setIsSubmittingBulk(false);
         showAlert({
           title: 'Gagal Upload Slip Gaji',
           text: Object.values(errs)[0] || 'Terjadi kesalahan saat memproses file.',
           icon: 'error'
         });
+      },
+      onFinish: () => {
+        setIsSubmittingBulk(false);
       }
     });
   };
@@ -344,21 +487,18 @@ export default function HrdPayslips({
               <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
                 Bulan Periode
               </label>
-              <Select
+              <select
                 value={String(selectedMonth)}
-                onValueChange={(val) => setSelectedMonth(parseInt(val))}
+                onChange={(e) => setSelectedMonth(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
+                className="w-full bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
               >
-                <SelectTrigger className="w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900 rounded-xl">
-                  <SelectValue placeholder="Pilih Bulan" />
-                </SelectTrigger>
-                <SelectContent>
-                  {MONTHS.map((m) => (
-                    <SelectItem key={m.value} value={String(m.value)}>
-                      {m.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="all">Semua Bulan (Januari - Desember)</option>
+                {MONTHS.map((m) => (
+                  <option key={m.value} value={String(m.value)}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Year Selector */}
@@ -366,21 +506,17 @@ export default function HrdPayslips({
               <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
                 Tahun Periode
               </label>
-              <Select
-                value={String(selectedYear)}
-                onValueChange={(val) => setSelectedYear(parseInt(val))}
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                className="w-full bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
               >
-                <SelectTrigger className="w-full bg-slate-50 border-slate-200 text-xs font-bold text-slate-900 rounded-xl">
-                  <SelectValue placeholder="Pilih Tahun" />
-                </SelectTrigger>
-                <SelectContent>
-                  {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map((yr) => (
-                    <SelectItem key={yr} value={String(yr)}>
-                      Tahun {yr}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1, currentYear + 2].map((yr) => (
+                  <option key={yr} value={yr}>
+                    Tahun {yr}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Department Filter */}
@@ -388,22 +524,18 @@ export default function HrdPayslips({
               <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
                 Departemen
               </label>
-              <Select
-                value={selectedDept ? String(selectedDept) : 'all'}
-                onValueChange={(val) => setSelectedDept(val === 'all' ? '' : val)}
+              <select
+                value={selectedDept || 'all'}
+                onChange={(e) => setSelectedDept(e.target.value === 'all' ? '' : e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-900 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
               >
-                <SelectTrigger className="w-full bg-slate-50 border-slate-200 text-xs font-semibold text-slate-900 rounded-xl">
-                  <SelectValue placeholder="Semua Departemen" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Departemen</SelectItem>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={String(dept.id)}>
-                      {dept.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="all">Semua Departemen</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={String(dept.id)}>
+                    {dept.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Search */}
@@ -418,7 +550,7 @@ export default function HrdPayslips({
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Ketik nama atau NIK..."
-                  className="w-full pl-8 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                  className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 focus:ring-2 focus:ring-emerald-500/20 outline-none"
                 />
               </div>
             </div>
@@ -428,7 +560,7 @@ export default function HrdPayslips({
               <Button
                 type="submit"
                 variant="emerald"
-                className="w-full rounded-xl text-xs font-bold space-x-1 py-2"
+                className="w-full rounded-xl text-xs font-bold space-x-1 py-2.5"
               >
                 <Filter size={14} />
                 <span>Terapkan Filter</span>
@@ -444,7 +576,9 @@ export default function HrdPayslips({
           <div className="flex items-center justify-between">
             <h2 className="text-base font-extrabold text-slate-900 flex items-center space-x-2">
               <Receipt size={18} className="text-emerald-600" />
-              <span>Daftar Slip Gaji Periode {currentMonthObj?.name} {selectedYear} ({payslips.length} Terdistribusi)</span>
+              <span>
+                Daftar Slip Gaji {selectedMonth === 'all' || !selectedMonth ? `Tahun ${selectedYear}` : `Periode ${currentMonthObj?.name} ${selectedYear}`} ({payslips.length} Terdistribusi)
+              </span>
             </h2>
           </div>
 
@@ -486,7 +620,9 @@ export default function HrdPayslips({
                           </td>
 
                           <td className="py-3.5 px-4 font-extrabold text-slate-900">
-                            {p.period_label || `${p.month_name} ${p.year}`}
+                            <span className="bg-slate-100 text-slate-800 px-2 py-1 rounded-md border border-slate-200 font-bold inline-block">
+                              {p.month_name} {p.year}
+                            </span>
                           </td>
 
                           <td className="py-3.5 px-4">
@@ -503,18 +639,18 @@ export default function HrdPayslips({
                           <td className="py-3.5 px-4">
                             {isViewed ? (
                               <div className="space-y-0.5">
-                                <Badge variant="success" className="text-[10px] font-bold space-x-1">
-                                  <CheckCircle2 size={11} />
-                                  <span>Sudah Dilihat</span>
+                                <Badge variant="success" className="text-[10px] font-bold space-x-1 bg-emerald-100 text-emerald-800 border-emerald-300">
+                                  <CheckCircle2 size={11} className="text-emerald-700" />
+                                  <span>Sudah Dibuka</span>
                                 </Badge>
                                 {p.viewed_at && (
-                                  <span className="text-[10px] text-slate-400 block">
-                                    {new Date(p.viewed_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                  <span className="text-[10px] text-slate-500 font-semibold block">
+                                    {new Date(p.viewed_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} WIB
                                   </span>
                                 )}
                               </div>
                             ) : (
-                              <Badge variant="secondary" className="text-[10px] font-semibold text-slate-500 bg-slate-100">
+                              <Badge variant="secondary" className="text-[10px] font-semibold text-slate-500 bg-slate-100 border border-slate-200">
                                 Belum Dibuka
                               </Badge>
                             )}
@@ -648,42 +784,34 @@ export default function HrdPayslips({
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                         Bulan Penggajian <span className="text-rose-600">*</span>
                       </label>
-                      <Select
-                        value={String(bulkForm.data.month)}
-                        onValueChange={(val) => bulkForm.setData('month', parseInt(val))}
+                      <select
+                        value={bulkForm.data.month}
+                        onChange={(e) => bulkForm.setData('month', parseInt(e.target.value))}
+                        className="w-full bg-slate-50 border border-slate-300 text-slate-900 font-bold text-xs rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer"
                       >
-                        <SelectTrigger className="w-full bg-slate-50 border-slate-300 text-slate-900 font-bold text-xs rounded-xl">
-                          <SelectValue placeholder="Pilih Bulan" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {MONTHS.map((m) => (
-                            <SelectItem key={m.value} value={String(m.value)}>
-                              {m.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        {MONTHS.map((m) => (
+                          <option key={m.value} value={m.value}>
+                            {m.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                         Tahun Penggajian <span className="text-rose-600">*</span>
                       </label>
-                      <Select
-                        value={String(bulkForm.data.year)}
-                        onValueChange={(val) => bulkForm.setData('year', parseInt(val))}
+                      <select
+                        value={bulkForm.data.year}
+                        onChange={(e) => bulkForm.setData('year', parseInt(e.target.value))}
+                        className="w-full bg-slate-50 border border-slate-300 text-slate-900 font-bold text-xs rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer"
                       >
-                        <SelectTrigger className="w-full bg-slate-50 border-slate-300 text-slate-900 font-bold text-xs rounded-xl">
-                          <SelectValue placeholder="Pilih Tahun" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[currentYear - 1, currentYear, currentYear + 1].map((yr) => (
-                            <SelectItem key={yr} value={String(yr)}>
-                              Tahun {yr}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1, currentYear + 2].map((yr) => (
+                          <option key={yr} value={yr}>
+                            Tahun {yr}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 
@@ -702,61 +830,201 @@ export default function HrdPayslips({
 
                   {/* Multiple PDF File Dropzone */}
                   <div className="space-y-2">
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Pilihan 1: Pilih Banyak File PDF Sekaligus
-                    </label>
-                    <div className="p-4 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100/80 transition-colors text-center cursor-pointer relative">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Pilihan 1: Pilih Banyak File PDF Sekaligus
+                      </label>
+                      {selectedFiles.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedFiles([]);
+                            bulkForm.setData('files', []);
+                          }}
+                          className="text-[11px] text-rose-600 hover:text-rose-700 font-bold"
+                        >
+                          Hapus Semua ({selectedFiles.length})
+                        </button>
+                      )}
+                    </div>
+
+                    <div className={`p-4 rounded-2xl border-2 border-dashed transition-all text-center relative ${
+                      selectedFiles.length > 0
+                        ? 'border-emerald-500 bg-emerald-50/40'
+                        : 'border-slate-300 bg-slate-50 hover:bg-slate-100/80'
+                    }`}>
                       <input
                         type="file"
                         multiple
-                        accept="application/pdf"
+                        accept=".pdf,application/pdf"
                         onChange={(e) => {
-                          const fileList = Array.from(e.target.files);
-                          bulkForm.setData('files', fileList);
-                          bulkForm.setData('zip_file', null);
+                          if (e.target.files && e.target.files.length > 0) {
+                            handlePdfFilesChange(e.target.files);
+                            e.target.value = ''; // Reset input so same file can be re-selected if removed
+                          }
                         }}
-                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
                       />
-                      <FileText size={32} className="mx-auto text-slate-400 mb-2" />
+                      <FileText size={32} className={`mx-auto mb-2 ${
+                        selectedFiles.length > 0 ? 'text-emerald-600' : 'text-slate-400'
+                      }`} />
                       <p className="text-xs font-bold text-slate-800">
-                        {bulkForm.data.files && bulkForm.data.files.length > 0
-                          ? `✅ ${bulkForm.data.files.length} file PDF telah dipilih`
-                          : 'Klik untuk memilih banyak file PDF slip gaji (Multi-select)'}
+                        {selectedFiles.length > 0
+                          ? `✅ ${selectedFiles.length} file PDF siap dikirim (Klik untuk tambah lagi)`
+                          : 'Klik atau Tarik (Drag & Drop) banyak file PDF slip gaji di sini'}
                       </p>
                       <p className="text-[10px] text-slate-400 mt-0.5">
-                        Maksimal 10MB per file PDF
+                        Bisa pilih sekaligus banyak file PDF (Ctrl + A / Blok Semua File)
                       </p>
                     </div>
+
+                    {/* LIVE LIST OF SELECTED PDF FILES */}
+                    {selectedFiles.length > 0 && (
+                      <div className="mt-3 p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                          <span className="text-[11px] font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <FileText size={14} className="text-emerald-600" />
+                            Daftar File PDF Terpilih ({selectedFiles.length})
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-500">
+                            Total: {(selectedFiles.reduce((acc, f) => acc + f.size, 0) / 1024 / 1024).toFixed(2)} MB
+                          </span>
+                        </div>
+
+                        <div className="max-h-60 overflow-y-auto space-y-2 pr-1 divide-y divide-slate-100">
+                          {selectedFiles.map((item, idx) => {
+                            const matchedEmp = item.userId ? employees.find(e => String(e.id) === String(item.userId)) : null;
+                            return (
+                              <div key={item.id || `${item.file.name}-${idx}`} className="pt-2 first:pt-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center space-x-1.5">
+                                    <span className="text-[10px] font-mono font-black text-slate-400">#{idx + 1}</span>
+                                    <span className="font-bold text-slate-900 truncate block max-w-[200px] sm:max-w-[260px]" title={item.file.name}>
+                                      {item.file.name}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 font-medium shrink-0">
+                                      ({(item.file.size / 1024).toFixed(1)} KB)
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5 mt-1">
+                                    <span className="text-[10px] font-extrabold text-slate-400 uppercase">Tujuan:</span>
+                                    <select
+                                      value={item.userId || ''}
+                                      onChange={(e) => handleFileUserChange(idx, e.target.value)}
+                                      className={`text-[11px] font-bold rounded-lg px-2 py-1 border transition-colors outline-none max-w-[260px] truncate ${
+                                        item.userId
+                                          ? 'bg-emerald-50 text-emerald-900 border-emerald-300 focus:ring-1 focus:ring-emerald-500'
+                                          : 'bg-amber-50 text-amber-900 border-amber-300 focus:ring-1 focus:ring-amber-500'
+                                      }`}
+                                    >
+                                      <option value="">-- Pilih Karyawan Manual --</option>
+                                      {employees.map((emp) => (
+                                        <option key={emp.id} value={String(emp.id)}>
+                                          {emp.name} ({emp.nik || 'No NIK'})
+                                        </option>
+                                      ))}
+                                    </select>
+                                    {matchedEmp && (
+                                      <span className="text-[10px] font-bold text-emerald-600 hidden md:inline">
+                                        ✓ Siap
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveFile(idx)}
+                                  className="self-end sm:self-center p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0"
+                                  title="Hapus file ini"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Or Single ZIP File */}
                   <div className="space-y-2">
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Pilihan 2: Atau Upload 1 File ZIP (Isi PDF)
-                    </label>
-                    <div className="p-4 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100/80 transition-colors text-center cursor-pointer relative">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Pilihan 2: Atau Upload 1 File ZIP (Isi PDF)
+                      </label>
+                      {selectedZip && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveZip}
+                          className="text-[11px] text-rose-600 hover:text-rose-700 font-bold"
+                        >
+                          Hapus ZIP
+                        </button>
+                      )}
+                    </div>
+
+                    <div className={`p-4 rounded-2xl border-2 border-dashed transition-all text-center relative ${
+                      selectedZip
+                        ? 'border-emerald-500 bg-emerald-50/40'
+                        : 'border-slate-300 bg-slate-50 hover:bg-slate-100/80'
+                    }`}>
                       <input
                         type="file"
-                        accept=".zip,application/zip"
+                        accept=".zip,application/zip,application/x-zip-compressed,application/octet-stream,multipart/x-zip"
                         onChange={(e) => {
                           const file = e.target.files[0];
                           if (file) {
-                            bulkForm.setData('zip_file', file);
-                            bulkForm.setData('files', []);
+                            handleZipChange(file);
+                            e.target.value = '';
                           }
                         }}
-                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
                       />
-                      <Archive size={32} className="mx-auto text-slate-400 mb-2" />
+                      <Archive size={32} className={`mx-auto mb-2 ${
+                        selectedZip ? 'text-emerald-600' : 'text-slate-400'
+                      }`} />
                       <p className="text-xs font-bold text-slate-800">
-                        {bulkForm.data.zip_file
-                          ? `✅ File ZIP dipilih: ${bulkForm.data.zip_file.name}`
-                          : 'Klik untuk memilih file .ZIP yang berisi file-file PDF'}
+                        {selectedZip
+                          ? `✅ File ZIP terpilih: ${selectedZip.name}`
+                          : 'Klik atau Tarik file .ZIP yang berisi slip gaji PDF'}
                       </p>
                       <p className="text-[10px] text-slate-400 mt-0.5">
-                        Maksimal 50MB per file ZIP
+                        {selectedZip
+                          ? `${(selectedZip.size / 1024 / 1024).toFixed(2)} MB • Klik lagi jika ingin mengganti`
+                          : 'Sistem akan otomatis mengekstrak & mencocokkan PDF di dalam ZIP ke karyawan'}
                       </p>
                     </div>
+
+                    {/* ZIP PREVIEW CARD */}
+                    {selectedZip && (
+                      <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-center justify-between">
+                        <div className="flex items-center space-x-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0">
+                            <Archive size={16} />
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-xs font-bold text-slate-900 block truncate max-w-[240px]" title={selectedZip.name}>
+                              {selectedZip.name}
+                            </span>
+                            <span className="text-[10px] text-emerald-800 font-bold">
+                              {(selectedZip.size / 1024 / 1024).toFixed(2)} MB • Siap diekstrak otomatis
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleRemoveZip}
+                          className="p-1.5 rounded-xl text-rose-600 hover:bg-rose-100 transition-colors"
+                          title="Batal pilih ZIP"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -767,17 +1035,18 @@ export default function HrdPayslips({
                     variant="secondary"
                     className="rounded-xl px-4"
                     onClick={() => setIsBulkOpen(false)}
+                    disabled={isSubmittingBulk}
                   >
                     Batal
                   </Button>
                   <Button
                     type="submit"
                     variant="emerald"
-                    className="rounded-xl px-5 font-extrabold space-x-1.5"
-                    disabled={bulkForm.processing}
+                    className="rounded-xl px-5 font-extrabold space-x-1.5 shadow-md shadow-emerald-600/20"
+                    disabled={isSubmittingBulk || (selectedFiles.length === 0 && !selectedZip)}
                   >
                     <Send size={15} />
-                    <span>{bulkForm.processing ? 'Memproses Auto-Match...' : 'Kirim & Distribusikan Otomatis'}</span>
+                    <span>{isSubmittingBulk ? "Memproses & Mengirim..." : `Kirim & Distribusikan (${selectedFiles.length > 0 ? `${selectedFiles.length} PDF` : selectedZip ? '1 ZIP' : 'Otomatis'})`}</span>
                   </Button>
                 </div>
               </form>
@@ -836,21 +1105,18 @@ export default function HrdPayslips({
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                       Pilih Karyawan <span className="text-rose-600">*</span>
                     </label>
-                    <Select
+                    <select
                       value={singleForm.data.user_id ? String(singleForm.data.user_id) : ''}
-                      onValueChange={(val) => singleForm.setData('user_id', val)}
+                      onChange={(e) => singleForm.setData('user_id', e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-300 text-slate-900 font-bold text-xs rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer"
                     >
-                      <SelectTrigger className="w-full bg-slate-50 border-slate-300 text-slate-900 font-bold text-xs rounded-xl">
-                        <SelectValue placeholder="-- Pilih Karyawan --" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {employees.map((emp) => (
-                          <SelectItem key={emp.id} value={String(emp.id)}>
-                            {emp.name} ({emp.nik}) - {emp.department?.name || 'General'}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <option value="">-- Pilih Karyawan --</option>
+                      {employees.map((emp) => (
+                        <option key={emp.id} value={String(emp.id)}>
+                          {emp.name} ({emp.nik || 'No NIK'}) - {emp.department?.name || 'General'}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Period */}
@@ -859,42 +1125,34 @@ export default function HrdPayslips({
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                         Bulan <span className="text-rose-600">*</span>
                       </label>
-                      <Select
-                        value={String(singleForm.data.month)}
-                        onValueChange={(val) => singleForm.setData('month', parseInt(val))}
+                      <select
+                        value={singleForm.data.month}
+                        onChange={(e) => singleForm.setData('month', parseInt(e.target.value))}
+                        className="w-full bg-slate-50 border border-slate-300 text-slate-900 font-bold text-xs rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer"
                       >
-                        <SelectTrigger className="w-full bg-slate-50 border-slate-300 text-slate-900 font-bold text-xs rounded-xl">
-                          <SelectValue placeholder="Pilih Bulan" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {MONTHS.map((m) => (
-                            <SelectItem key={m.value} value={String(m.value)}>
-                              {m.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        {MONTHS.map((m) => (
+                          <option key={m.value} value={m.value}>
+                            {m.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                         Tahun <span className="text-rose-600">*</span>
                       </label>
-                      <Select
-                        value={String(singleForm.data.year)}
-                        onValueChange={(val) => singleForm.setData('year', parseInt(val))}
+                      <select
+                        value={singleForm.data.year}
+                        onChange={(e) => singleForm.setData('year', parseInt(e.target.value))}
+                        className="w-full bg-slate-50 border border-slate-300 text-slate-900 font-bold text-xs rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer"
                       >
-                        <SelectTrigger className="w-full bg-slate-50 border-slate-300 text-slate-900 font-bold text-xs rounded-xl">
-                          <SelectValue placeholder="Pilih Tahun" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[currentYear - 1, currentYear, currentYear + 1].map((yr) => (
-                            <SelectItem key={yr} value={String(yr)}>
-                              Tahun {yr}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1, currentYear + 2].map((yr) => (
+                          <option key={yr} value={yr}>
+                            Tahun {yr}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 

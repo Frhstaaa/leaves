@@ -40,9 +40,12 @@ export default function Settings({ settings = {} }) {
   });
 
   const [logoPreview, setLogoPreview] = useState(
-    currentSettings.app_logo
-      ? (currentSettings.app_logo.startsWith('http') ? currentSettings.app_logo : `/storage/${currentSettings.app_logo}`)
-      : null
+    currentSettings.app_logo_url ||
+    (currentSettings.app_logo
+      ? (currentSettings.app_logo.startsWith('http')
+          ? currentSettings.app_logo
+          : `${typeof window !== 'undefined' && window.Ziggy?.url ? window.Ziggy.url : ''}/storage/${currentSettings.app_logo.replace(/^\/?storage\//, '')}`)
+      : null)
   );
 
   const handleLogoChange = (e) => {

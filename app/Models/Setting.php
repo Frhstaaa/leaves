@@ -45,7 +45,17 @@ class Setting extends Model
 
             try {
                 $dbSettings = self::pluck('value', 'key')->toArray();
-                return array_merge($defaults, $dbSettings);
+                $merged = array_merge($defaults, $dbSettings);
+                
+                $logo = $merged['app_logo'] ?? null;
+                if ($logo) {
+                    $clean = preg_replace('/^\/?storage\//', '', $logo);
+                    $merged['app_logo_url'] = str_starts_with($logo, 'http') ? $logo : url('storage/' . $clean);
+                } else {
+                    $merged['app_logo_url'] = null;
+                }
+
+                return $merged;
             } catch (\Throwable $e) {
                 return $defaults;
             }
