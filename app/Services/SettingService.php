@@ -47,38 +47,39 @@ class SettingService
         $themeColor = $settings['theme_color'] ?? '#059669';
         $description = $settings['app_description'] ?? 'Sistem Informasi Pengajuan Cuti & Slip Gaji Karyawan';
         $version = substr(md5(($settings['app_logo'] ?? '') . ($settings['app_name'] ?? '')), 0, 8);
+        $root = app()->runningInConsole() ? url('/') : rtrim(request()->root(), '/');
 
         return [
             'name' => $appName . ' - Absence & Leave Management',
             'short_name' => $shortName,
             'description' => $description,
-            'start_url' => url('login'),
-            'scope' => url('/'),
+            'start_url' => $root . '/login',
+            'scope' => $root . '/',
             'display' => 'standalone',
             'background_color' => '#F5FAF7',
             'theme_color' => $themeColor,
             'orientation' => 'portrait',
             'icons' => [
                 [
-                    'src' => url("app-icon/192") . "?v={$version}",
+                    'src' => $root . "/app-icon/192?v={$version}",
                     'sizes' => '192x192',
                     'type' => 'image/png',
                     'purpose' => 'any',
                 ],
                 [
-                    'src' => url("app-icon/192") . "?v={$version}&maskable=1",
+                    'src' => $root . "/app-icon/192?v={$version}&maskable=1",
                     'sizes' => '192x192',
                     'type' => 'image/png',
                     'purpose' => 'maskable',
                 ],
                 [
-                    'src' => url("app-icon/512") . "?v={$version}",
+                    'src' => $root . "/app-icon/512?v={$version}",
                     'sizes' => '512x512',
                     'type' => 'image/png',
                     'purpose' => 'any',
                 ],
                 [
-                    'src' => url("app-icon/512") . "?v={$version}&maskable=1",
+                    'src' => $root . "/app-icon/512?v={$version}&maskable=1",
                     'sizes' => '512x512',
                     'type' => 'image/png',
                     'purpose' => 'maskable',

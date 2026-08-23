@@ -295,6 +295,19 @@ if ($actionExecuted) {
                 echo $syncLog . "\n\n";
 
                 if ($success) {
+                    // 1.5 Auto-Fix .env APP_URL if missing subfolder
+                    $envFile = $basePath . '/.env';
+                    if (file_exists($envFile)) {
+                        $envContent = file_get_contents($envFile);
+                        $expectedUrl = "$protocol://$currentHost/leaves-application";
+                        if (!str_contains($envContent, 'leaves-application') || str_contains($envContent, 'http://localhost')) {
+                            echo "[1.5/6] Menyesuaikan APP_URL di .env agar presisi ke subfolder ($expectedUrl)...\n";
+                            $envContent = preg_replace('/^APP_URL=.*/m', "APP_URL=" . $expectedUrl, $envContent);
+                            file_put_contents($envFile, $envContent);
+                            echo "✓ APP_URL di file .env berhasil disinkronkan!\n\n";
+                        }
+                    }
+
                     // 2. Composer Check
                     echo "[2/6] Memeriksa dependensi Composer (PHP Backend)...\n";
                     if (function_exists('shell_exec')) {

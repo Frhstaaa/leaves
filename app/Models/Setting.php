@@ -50,7 +50,8 @@ class Setting extends Model
                 $logo = $merged['app_logo'] ?? null;
                 if ($logo) {
                     $clean = preg_replace('/^\/?storage\//', '', $logo);
-                    $merged['app_logo_url'] = str_starts_with($logo, 'http') ? $logo : url('storage/' . $clean);
+                    $root = app()->runningInConsole() ? url('/') : rtrim(request()->root(), '/');
+                    $merged['app_logo_url'] = str_starts_with($logo, 'http') ? $logo : $root . '/storage/' . $clean;
                 } else {
                     $merged['app_logo_url'] = null;
                 }
