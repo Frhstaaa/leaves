@@ -14,14 +14,56 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+    <script src="https://cdn.tailwindcss.com"></script>
 
     @php
         $appBaseUrl = rtrim(request()->root(), '/');
-        $manifestPath = public_path('build/manifest.json');
-        $manifest = file_exists($manifestPath) ? json_decode(file_get_contents($manifestPath), true) : [];
-        $cssFile = isset($manifest['resources/js/app.jsx']['css'][0]) ? 'build/' . $manifest['resources/js/app.jsx']['css'][0] : (isset($manifest['resources/css/app.css']['file']) ? 'build/' . $manifest['resources/css/app.css']['file'] : '');
+        
+        // Multi-candidate search for manifest.json
+        $manifestCandidates = [
+            public_path('build/manifest.json'),
+            base_path('public/build/manifest.json'),
+            base_path('build/manifest.json'),
+            __DIR__ . '/../../public/build/manifest.json',
+            __DIR__ . '/../../../public/build/manifest.json',
+        ];
+
+        $manifest = [];
+        foreach ($manifestCandidates as $candidate) {
+            if (file_exists($candidate)) {
+                $manifest = json_decode(file_get_contents($candidate), true) ?: [];
+                if (!empty($manifest)) break;
+            }
+        }
+
+        $cssFile = '';
+        if (isset($manifest['resources/js/app.jsx']['css'][0])) {
+            $cssFile = 'build/' . $manifest['resources/js/app.jsx']['css'][0];
+        } elseif (isset($manifest['resources/css/app.css']['file'])) {
+            $cssFile = 'build/' . $manifest['resources/css/app.css']['file'];
+        }
+
         $jsFile = isset($manifest['resources/js/app.jsx']['file']) ? 'build/' . $manifest['resources/js/app.jsx']['file'] : '';
         $imports = isset($manifest['resources/js/app.jsx']['imports']) ? $manifest['resources/js/app.jsx']['imports'] : [];
+
+        // Automatic directory scan fallback if manifest is missing or files not resolved
+        if (empty($cssFile) || empty($jsFile)) {
+            $assetsDir = public_path('build/assets');
+            if (!is_dir($assetsDir)) {
+                $assetsDir = base_path('public/build/assets');
+            }
+            if (is_dir($assetsDir)) {
+                $scanned = scandir($assetsDir);
+                foreach ($scanned as $f) {
+                    if (str_starts_with($f, 'app-') && str_ends_with($f, '.css') && empty($cssFile)) {
+                        $cssFile = 'build/assets/' . $f;
+                    }
+                    if (str_starts_with($f, 'app-') && str_ends_with($f, '.js') && empty($jsFile)) {
+                        $jsFile = 'build/assets/' . $f;
+                    }
+                }
+            }
+        }
 
         $settings = \App\Models\Setting::getAll();
         $appName = $settings['app_name'] ?? 'Form SGIN';
