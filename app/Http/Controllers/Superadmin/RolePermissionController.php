@@ -60,20 +60,59 @@ class RolePermissionController extends Controller
         $rolePresets = [
             'employee' => [
                 'name' => 'Karyawan Biasa',
-                'description' => 'Akses standar untuk mengajukan dan melihat riwayat cuti',
-                'permissions' => ['view-dashboard', 'create-leave-request', 'view-leave-history'],
+                'description' => 'Akses standar untuk mengajukan cuti, cek riwayat, dan melihat slip gaji pribadi',
+                'permissions' => [
+                    'view-dashboard',
+                    'create-leave-request',
+                    'view-leave-history',
+                    'delete-leave-request',
+                    'view-payslips',
+                    'download-payslips',
+                ],
             ],
             'manager' => [
                 'name' => 'Atasan / Manager',
-                'description' => 'Akses karyawan ditambah wewenang persetujuan cuti bawahan',
-                'permissions' => ['view-dashboard', 'create-leave-request', 'view-leave-history', 'manage-approvals'],
+                'description' => 'Akses karyawan + persetujuan cuti bawahan & monitoring matrix tahunan',
+                'permissions' => [
+                    'view-dashboard',
+                    'create-leave-request',
+                    'view-leave-history',
+                    'delete-leave-request',
+                    'view-payslips',
+                    'download-payslips',
+                    'manage-approvals',
+                    'view-monitoring-annual',
+                    'view-monitoring-analytics',
+                ],
             ],
             'admin' => [
                 'name' => 'HRD / PGA Admin',
-                'description' => 'Akses manajerial HRD, data karyawan, rekapitulasi, dan ekspor laporan',
+                'description' => 'Akses manajerial HRD lengkap: data karyawan, kuota, departemen, distribusi slip gaji, rekapitulasi, & ekspor',
                 'permissions' => [
-                    'view-dashboard', 'create-leave-request', 'view-leave-history',
-                    'manage-approvals', 'manage-employees', 'view-hrd-rekap', 'export-hrd-reports'
+                    'view-dashboard',
+                    'create-leave-request',
+                    'view-leave-history',
+                    'delete-leave-request',
+                    'view-payslips',
+                    'download-payslips',
+                    'manage-approvals',
+                    'view-monitoring-annual',
+                    'view-monitoring-analytics',
+                    'manage-employees',
+                    'create-employee',
+                    'edit-employee',
+                    'delete-employee',
+                    'import-employees',
+                    'manage-leave-quotas',
+                    'view-hrd-rekap',
+                    'export-hrd-reports',
+                    'manage-departments',
+                    'manage-hrd-payslips',
+                    'upload-hrd-payslips',
+                    'delete-hrd-payslips',
+                    'manage-system-settings',
+                    'manage-roles',
+                    'assign-user-roles',
                 ],
             ],
             'superadmin' => [
@@ -127,6 +166,30 @@ class RolePermissionController extends Controller
                         'label' => 'Lihat Riwayat Cuti Pribadi',
                         'description' => 'Melihat status approval, detail alasan, dan timeline permohonan sendiri',
                     ],
+                    [
+                        'name' => 'delete-leave-request',
+                        'label' => 'Batalkan Pengajuan Cuti',
+                        'description' => 'Membatalkan / menghapus pengajuan cuti sendiri yang masih menunggu persetujuan',
+                    ],
+                ],
+            ],
+            'payslips' => [
+                'category_name' => 'Slip Gaji Saya',
+                'category_desc' => 'Akses karyawan untuk melihat dan mengunduh slip gaji bulanan pribadi',
+                'icon' => 'Receipt',
+                'color' => 'cyan',
+                'badge_color' => 'bg-cyan-100 text-cyan-800 border-cyan-200',
+                'permissions' => [
+                    [
+                        'name' => 'view-payslips',
+                        'label' => 'Lihat Slip Gaji Pribadi',
+                        'description' => 'Melihat daftar rincian komponen penerimaan dan potongan gaji pribadi',
+                    ],
+                    [
+                        'name' => 'download-payslips',
+                        'label' => 'Download PDF Slip Gaji',
+                        'description' => 'Mengunduh dan mencetak file PDF slip gaji bulanan pribadi',
+                    ],
                 ],
             ],
             'approval' => [
@@ -143,9 +206,28 @@ class RolePermissionController extends Controller
                     ],
                 ],
             ],
+            'monitoring' => [
+                'category_name' => 'Laporan & Monitoring Eksekutif',
+                'category_desc' => 'Visualisasi analitik, tren absensi, dan matrix rekapitulasi cuti tahunan',
+                'icon' => 'Activity',
+                'color' => 'sky',
+                'badge_color' => 'bg-sky-100 text-sky-800 border-sky-200',
+                'permissions' => [
+                    [
+                        'name' => 'view-monitoring-annual',
+                        'label' => 'Matrix Laporan Cuti 1 Tahun',
+                        'description' => 'Melihat matrix rekapitulasi cuti seluruh karyawan selama 12 bulan (Jan - Des)',
+                    ],
+                    [
+                        'name' => 'view-monitoring-analytics',
+                        'label' => 'Executive Analytics & Trends',
+                        'description' => 'Melihat grafik statistik tren cuti, pemanfaatan kuota, dan monitoring departemen',
+                    ],
+                ],
+            ],
             'hrd' => [
                 'category_name' => 'HRD & Manajemen Karyawan',
-                'category_desc' => 'Pengelolaan data master karyawan, rekapitulasi, dan ekspor laporan',
+                'category_desc' => 'Pengelolaan data master karyawan, kuota, rekapitulasi, dan ekspor laporan',
                 'icon' => 'Users',
                 'color' => 'purple',
                 'badge_color' => 'bg-purple-100 text-purple-800 border-purple-200',
@@ -153,7 +235,32 @@ class RolePermissionController extends Controller
                     [
                         'name' => 'manage-employees',
                         'label' => 'Kelola Data Karyawan',
-                        'description' => 'Menambah, mengedit NIK/departemen/atasan 1 & 2, import Excel, dan kelola kuota',
+                        'description' => 'Melihat direktori dan profil lengkap seluruh karyawan perusahaan',
+                    ],
+                    [
+                        'name' => 'create-employee',
+                        'label' => 'Tambah Karyawan Baru',
+                        'description' => 'Mendaftarkan karyawan baru dan membuat akun login sistem',
+                    ],
+                    [
+                        'name' => 'edit-employee',
+                        'label' => 'Edit Data Karyawan',
+                        'description' => 'Mengubah data NIK, email, jabatan, departemen, serta atasan 1 & 2',
+                    ],
+                    [
+                        'name' => 'delete-employee',
+                        'label' => 'Hapus Karyawan',
+                        'description' => 'Menghapus data karyawan dan hak aksesnya dari sistem',
+                    ],
+                    [
+                        'name' => 'import-employees',
+                        'label' => 'Import Excel / CSV Karyawan',
+                        'description' => 'Mengimpor data karyawan dan kuota cuti secara massal dari file spreadsheet',
+                    ],
+                    [
+                        'name' => 'manage-leave-quotas',
+                        'label' => 'Atur Kuota Cuti Karyawan',
+                        'description' => 'Menyesuaikan dan menambah/mengurangi saldo cuti tahunan karyawan',
                     ],
                     [
                         'name' => 'view-hrd-rekap',
@@ -163,13 +270,51 @@ class RolePermissionController extends Controller
                     [
                         'name' => 'export-hrd-reports',
                         'label' => 'Export Laporan (Excel/PDF)',
-                        'description' => 'Mengunduh rekap cuti & absensi karyawan dalam format Excel / cetak',
+                        'description' => 'Mengunduh rekap cuti & absensi karyawan dalam format Excel / PDF',
+                    ],
+                ],
+            ],
+            'departments' => [
+                'category_name' => 'Setup Departemen & Organisasi',
+                'category_desc' => 'Pengelolaan struktur departemen dan pejabat penanggung jawab approval',
+                'icon' => 'Building',
+                'color' => 'indigo',
+                'badge_color' => 'bg-indigo-100 text-indigo-800 border-indigo-200',
+                'permissions' => [
+                    [
+                        'name' => 'manage-departments',
+                        'label' => 'Kelola Master Departemen',
+                        'description' => 'Membuat, mengedit, dan menghapus departemen serta struktur atasan penanggung jawab',
+                    ],
+                ],
+            ],
+            'hrd_payslips' => [
+                'category_name' => 'Distribusi Slip Gaji HRD',
+                'category_desc' => 'Manajemen distribusi slip gaji seluruh karyawan oleh HRD',
+                'icon' => 'Receipt',
+                'color' => 'emerald',
+                'badge_color' => 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                'permissions' => [
+                    [
+                        'name' => 'manage-hrd-payslips',
+                        'label' => 'Kelola Distribusi Slip Gaji',
+                        'description' => 'Melihat status pengiriman dan tracking pembacaan slip gaji karyawan',
+                    ],
+                    [
+                        'name' => 'upload-hrd-payslips',
+                        'label' => 'Upload Slip Gaji (Single & Bulk Zip)',
+                        'description' => 'Mengunggah file PDF slip gaji satuan atau upload massal zip per periode',
+                    ],
+                    [
+                        'name' => 'delete-hrd-payslips',
+                        'label' => 'Hapus Arsip Slip Gaji',
+                        'description' => 'Menghapus arsip slip gaji yang salah unggah dari server',
                     ],
                 ],
             ],
             'superadmin' => [
-                'category_name' => 'Superadmin & Konfigurasi',
-                'category_desc' => 'Kontrol hak akses tingkat tinggi, Spatie role permissions, dan konfigurasi',
+                'category_name' => 'Superadmin & Sistem',
+                'category_desc' => 'Kontrol hak akses tingkat tinggi, Spatie role permissions, dan konfigurasi aplikasi',
                 'icon' => 'ShieldCheck',
                 'color' => 'amber',
                 'badge_color' => 'bg-amber-100 text-amber-800 border-amber-200',
@@ -177,12 +322,17 @@ class RolePermissionController extends Controller
                     [
                         'name' => 'manage-roles',
                         'label' => 'Kelola Role & Permissions',
-                        'description' => 'Membuat role custom, mengatur matriks permission, dan assignment ke karyawan',
+                        'description' => 'Membuat role custom, mengatur matriks permission, dan kontrol hak akses',
+                    ],
+                    [
+                        'name' => 'assign-user-roles',
+                        'label' => 'Assign Role ke Karyawan',
+                        'description' => 'Menetapkan atau mengubah role hak akses pada data karyawan',
                     ],
                     [
                         'name' => 'manage-system-settings',
-                        'label' => 'Pengaturan Sistem & Master Data',
-                        'description' => 'Mengatur setting global aplikasi, master kategori cuti, dan konfigurasi kuota',
+                        'label' => 'Pengaturan Sistem & Branding',
+                        'description' => 'Mengatur nama aplikasi, logo, warna tema, favicon, dan PWA webmanifest',
                     ],
                 ],
             ],
@@ -219,12 +369,13 @@ class RolePermissionController extends Controller
             'permissions' => 'nullable|array',
         ]);
 
-        // Protect system core roles from renaming
-        $systemRoles = ['superadmin', 'admin', 'manager', 'employee'];
-        if (!in_array($role->name, $systemRoles)) {
-            $role->name = strtolower(trim($request->name));
-            $role->save();
+        // Prevent renaming system superadmin role to something else
+        if ($role->name === 'superadmin' && strtolower(trim($request->name)) !== 'superadmin') {
+            return redirect()->back()->with('error', "Role 'superadmin' sistem tidak boleh diubah namanya.");
         }
+
+        $role->name = strtolower(trim($request->name));
+        $role->save();
 
         if ($request->has('permissions')) {
             $role->syncPermissions($request->permissions);
@@ -232,24 +383,25 @@ class RolePermissionController extends Controller
 
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        return redirect()->back()->with('success', "Hak akses role '{$role->name}' berhasil diperbarui.");
+        return redirect()->back()->with('success', "Role '{$role->name}' berhasil diperbarui.");
     }
 
     public function destroyRole($id)
     {
         $role = Role::findOrFail($id);
 
-        $systemRoles = ['superadmin', 'admin', 'manager', 'employee'];
-        if (in_array($role->name, $systemRoles)) {
-            return redirect()->back()->with('error', "Role sistem bawaan ('{$role->name}') tidak boleh dihapus.");
+        if (in_array($role->name, ['superadmin', 'admin', 'manager', 'employee'])) {
+            return redirect()->back()->with('error', "Role sistem bawaan '{$role->name}' tidak boleh dihapus.");
         }
 
-        $roleName = $role->name;
-        $role->delete();
+        if (User::role($role->name)->count() > 0) {
+            return redirect()->back()->with('error', "Role '{$role->name}' masih digunakan oleh beberapa karyawan.");
+        }
 
+        $role->delete();
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        return redirect()->back()->with('success', "Role '{$roleName}' berhasil dihapus.");
+        return redirect()->back()->with('success', "Role '{$role->name}' berhasil dihapus.");
     }
 
     public function storePermission(Request $request)
@@ -258,16 +410,14 @@ class RolePermissionController extends Controller
             'name' => 'required|string|max:255|unique:permissions,name',
         ]);
 
-        $permName = strtolower(str_replace(' ', '-', trim($request->name)));
-
         Permission::create([
-            'name' => $permName,
+            'name' => strtolower(trim($request->name)),
             'guard_name' => 'web',
         ]);
 
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        return redirect()->back()->with('success', "Permission '{$permName}' berhasil ditambahkan.");
+        return redirect()->back()->with('success', 'Permission baru berhasil ditambahkan.');
     }
 
     public function assignUserRole(Request $request, $userId)
@@ -279,19 +429,20 @@ class RolePermissionController extends Controller
             'permissions' => 'nullable|array',
         ]);
 
-        // Sync Spatie role
+        // Sync Spatie Role
         $user->syncRoles([$request->role]);
 
-        // Sync string column for backward compatibility
-        $user->update(['role' => $request->role]);
-
-        // Direct permissions override/sync if provided
+        // Sync additional direct user permissions if provided
         if ($request->has('permissions')) {
             $user->syncPermissions($request->permissions);
         }
 
+        // Sync legacy string 'role' column on users table
+        $user->role = $request->role;
+        $user->save();
+
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        return redirect()->back()->with('success', "Role & Hak Akses untuk '{$user->name}' berhasil diperbarui ke role '{$request->role}'.");
+        return redirect()->back()->with('success', "Hak akses role karyawan '{$user->name}' berhasil disinkronkan ke '{$request->role}'.");
     }
 }

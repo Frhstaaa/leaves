@@ -29,32 +29,23 @@ import {
   Grid,
   AlertTriangle,
   User,
-  MoreVertical
+  MoreVertical,
+  Receipt,
+  Activity,
+  Building,
+  FileSpreadsheet
 } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { motion, AnimatePresence } from 'framer-motion';
-import { showAlert, showConfirm, showToast } from '@/Utils/swal';
 
 // Icon mapper for categories
 const categoryIcons = {
   general: LayoutDashboard,
   leave: FileText,
+  payslips: Receipt,
   approval: CheckSquare,
+  monitoring: Activity,
   hrd: Users,
+  departments: Building,
+  hrd_payslips: Receipt,
   superadmin: ShieldCheck,
 };
 

@@ -140,10 +140,6 @@ export default function AuthenticatedLayout({ children, title }) {
   const [isNavigating, setIsNavigating] = useState(false);
   const [showSkeleton, setShowSkeleton] = useState(false);
 
-  const isSuperadmin = user.is_superadmin || user.role === 'superadmin';
-  const isAdmin = user.is_admin || user.role === 'admin' || isSuperadmin;
-  const isManager = user.is_manager || user.role === 'manager';
-
   // Navigation transition listener with 120ms debounce for smooth skeleton loading
   useEffect(() => {
     let timer = null;
@@ -244,6 +240,14 @@ export default function AuthenticatedLayout({ children, title }) {
   const pendingApprovalsList = user?.pending_approvals_list || [];
   const myRecentRequests = user?.my_recent_requests || [];
 
+  // Granular Permission & Role Helpers
+  const userPermissions = user?.permissions || [];
+  const isSuperadmin = Boolean(user?.is_superadmin || user?.role === 'superadmin' || user?.roles?.includes('superadmin'));
+  const isAdmin = Boolean(user?.is_admin || user?.role === 'admin' || user?.roles?.includes('admin') || isSuperadmin);
+  const isManager = Boolean(user?.is_manager || user?.role === 'manager' || user?.roles?.includes('manager') || isAdmin);
+
+  const can = (perm) => isSuperadmin || userPermissions.includes(perm);
+
   const navSections = [
     {
       title: 'MENU UTAMA',
@@ -254,7 +258,7 @@ export default function AuthenticatedLayout({ children, title }) {
           href: route('dashboard'),
           icon: LayoutDashboard,
           active: isDashboard,
-          show: true,
+          show: can('view-dashboard') || true,
         },
         {
           name: 'Buat Pengajuan',
@@ -262,7 +266,7 @@ export default function AuthenticatedLayout({ children, title }) {
           href: route('leave-requests.create'),
           icon: FilePlus,
           active: isCreateRequest,
-          show: true,
+          show: can('create-leave-request') || true,
         },
         {
           name: 'Riwayat Cuti',
@@ -270,7 +274,7 @@ export default function AuthenticatedLayout({ children, title }) {
           href: route('leave-requests.index'),
           icon: History,
           active: isHistoryRequest,
-          show: true,
+          show: can('view-leave-history') || true,
         },
         {
           name: 'Slip Gaji Saya',
@@ -278,13 +282,13 @@ export default function AuthenticatedLayout({ children, title }) {
           href: route('payslips.index'),
           icon: Receipt,
           active: isPayslipsPage,
-          show: true,
+          show: can('view-payslips') || true,
         },
       ],
     },
     {
       title: 'TIM & PERSETUJUAN',
-      show: isManager || isAdmin,
+      show: can('manage-approvals') || isManager || isAdmin,
       items: [
         {
           name: 'Persetujuan Team',
@@ -292,14 +296,14 @@ export default function AuthenticatedLayout({ children, title }) {
           href: route('approvals.index'),
           icon: CheckSquare,
           active: isApproval,
-          show: isManager || isAdmin,
+          show: can('manage-approvals') || isManager || isAdmin,
           badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : null,
         },
       ],
     },
     {
       title: 'LAPORAN & MONITORING',
-      show: isManager || isAdmin,
+      show: can('view-monitoring-annual') || can('view-monitoring-analytics') || isManager || isAdmin,
       items: [
         {
           name: 'Laporan Cuti 1 Tahun',
@@ -307,7 +311,7 @@ export default function AuthenticatedLayout({ children, title }) {
           href: route('monitoring.annual-report'),
           icon: CalendarRange,
           active: url.startsWith('/monitoring/annual-report'),
-          show: isManager || isAdmin,
+          show: can('view-monitoring-annual') || isManager || isAdmin,
         },
         {
           name: 'Executive Analytics',
@@ -315,13 +319,13 @@ export default function AuthenticatedLayout({ children, title }) {
           href: route('monitoring.index'),
           icon: Activity,
           active: url === '/monitoring',
-          show: isManager || isAdmin,
+          show: can('view-monitoring-analytics') || isManager || isAdmin,
         },
       ],
     },
     {
       title: 'MANAJEMEN HRD',
-      show: isAdmin,
+      show: can('manage-employees') || can('manage-departments') || can('view-hrd-rekap') || can('manage-hrd-payslips') || can('manage-system-settings') || isAdmin,
       items: [
         {
           name: 'Data Karyawan',
@@ -329,7 +333,7 @@ export default function AuthenticatedLayout({ children, title }) {
           href: route('hrd.employees'),
           icon: Users,
           active: isHrdEmployees,
-          show: isAdmin,
+          show: can('manage-employees') || can('create-employee') || isAdmin,
         },
         {
           name: 'Setup Departemen',
@@ -337,7 +341,7 @@ export default function AuthenticatedLayout({ children, title }) {
           href: route('hrd.departments'),
           icon: Building,
           active: isHrdDepartments,
-          show: isAdmin,
+          show: can('manage-departments') || isAdmin,
         },
         {
           name: 'Rekapitulasi HRD',
@@ -345,7 +349,7 @@ export default function AuthenticatedLayout({ children, title }) {
           href: route('hrd.index'),
           icon: FileSpreadsheet,
           active: isHrdIndex,
-          show: isAdmin,
+          show: can('view-hrd-rekap') || isAdmin,
         },
         {
           name: 'Distribusi Slip Gaji',
@@ -353,7 +357,7 @@ export default function AuthenticatedLayout({ children, title }) {
           href: route('hrd.payslips'),
           icon: Receipt,
           active: isHrdPayslips,
-          show: isAdmin,
+          show: can('manage-hrd-payslips') || isAdmin,
         },
         {
           name: 'Pengaturan Aplikasi',
@@ -361,13 +365,13 @@ export default function AuthenticatedLayout({ children, title }) {
           href: route('hrd.settings'),
           icon: SettingsIcon,
           active: url.startsWith('/hrd/settings'),
-          show: isAdmin,
+          show: can('manage-system-settings') || isAdmin,
         },
       ],
     },
     {
       title: 'SISTEM & HAK AKSES',
-      show: isSuperadmin || isAdmin,
+      show: can('manage-roles') || isSuperadmin || isAdmin,
       items: [
         {
           name: 'Hak Akses & Role',
@@ -375,7 +379,7 @@ export default function AuthenticatedLayout({ children, title }) {
           href: route('superadmin.roles.index'),
           icon: ShieldCheck,
           active: isRolesPage,
-          show: isSuperadmin || isAdmin,
+          show: can('manage-roles') || isSuperadmin || isAdmin,
         },
       ],
     },

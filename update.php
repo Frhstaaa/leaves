@@ -414,11 +414,21 @@ if ($actionExecuted) {
                         echo "✓ NodeJS tidak ada di server hosting. Frontend menggunakan aset build yang sudah ter-compile otomatis dari GitHub (public/build/).\n\n";
                     }
 
-                    // 4. Database Migrations
-                    echo "[4/6] Menjalankan migrasi database baru (php artisan migrate)...\n";
+                    // 4. Database Migrations & Sync Role Permissions
+                    echo "[4/6] Menjalankan migrasi database & sinkronisasi role permissions...\n";
                     if ($app) {
                         \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
                         echo \Illuminate\Support\Facades\Artisan::output() . "\n";
+
+                        try {
+                            \Illuminate\Support\Facades\Artisan::call('db:seed', [
+                                '--class' => 'Database\\Seeders\\RolePermissionSeeder',
+                                '--force' => true,
+                            ]);
+                            echo "✓ Role & Permissions untuk semua menu baru berhasil disinkronkan ke database!\n\n";
+                        } catch (\Throwable $e) {
+                            echo "ℹ️ Seeder status: " . $e->getMessage() . "\n\n";
+                        }
                     }
 
                     // 5. Storage Link
@@ -535,6 +545,24 @@ if ($actionExecuted) {
                 if ($app) {
                     \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
                     echo \Illuminate\Support\Facades\Artisan::output();
+                    $actionStatus = 'success';
+                } else {
+                    echo "✗ Laravel kernel belum terhubung.";
+                    $actionStatus = 'error';
+                }
+                break;
+
+            case 'seed_role_permissions':
+                $actionTitle = 'Artisan: Sync Role Permissions';
+                echo "=== SINKRONISASI ROLE & PERMISSIONS MENU LENGKAP ===\n";
+                if ($app) {
+                    \Illuminate\Support\Facades\Artisan::call('db:seed', [
+                        '--class' => 'Database\\Seeders\\RolePermissionSeeder',
+                        '--force' => true,
+                    ]);
+                    echo \Illuminate\Support\Facades\Artisan::output();
+                    \Illuminate\Support\Facades\Artisan::call('optimize:clear');
+                    echo "✓ Role & Permissions untuk semua menu baru berhasil disinkronkan ke database!\n";
                     $actionStatus = 'success';
                 } else {
                     echo "✗ Laravel kernel belum terhubung.";
@@ -943,12 +971,18 @@ if ($app) {
 
             <!-- Group A: Database & Migrations -->
             <div class="space-y-2">
-                <span class="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block">🗄️ Database & Migrasi</span>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <span class="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block">🗄️ Database, Migrasi & Role Permissions</span>
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
                     <form method="POST" onsubmit="handleFormSubmit(event, this, 'Artisan: Migrate')">
                         <input type="hidden" name="action" value="migrate_only">
                         <button type="submit" class="w-full py-3 px-3 rounded-xl bg-slate-800 hover:bg-indigo-600/20 border border-indigo-500/40 text-indigo-200 font-bold text-xs text-center transition-colors">
-                            🗄️ <code>migrate --force</code>
+                            🗄️ <code>migrate</code>
+                        </button>
+                    </form>
+                    <form method="POST" onsubmit="handleFormSubmit(event, this, 'Artisan: Sync Role Permissions')">
+                        <input type="hidden" name="action" value="seed_role_permissions">
+                        <button type="submit" class="w-full py-3 px-3 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/50 text-emerald-300 font-black text-xs text-center transition-colors shadow-sm">
+                            🛡️ <code>sync permissions</code>
                         </button>
                     </form>
                     <form method="POST" onsubmit="handleFormSubmit(event, this, 'Artisan: Migrate Status')">
@@ -960,13 +994,13 @@ if ($app) {
                     <form method="POST" onsubmit="handleFormSubmit(event, this, 'Artisan: DB Seed')">
                         <input type="hidden" name="action" value="db_seed">
                         <button type="submit" class="w-full py-3 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs text-center transition-colors">
-                            🌱 <code>db:seed --force</code>
+                            🌱 <code>db:seed</code>
                         </button>
                     </form>
                     <form method="POST" onsubmit="handleFormSubmit(event, this, 'Artisan: Migrate Rollback')">
                         <input type="hidden" name="action" value="migrate_rollback">
                         <button type="submit" onclick="return confirm('Apakah Anda yakin ingin rollback 1 step migrasi terakhir?')" class="w-full py-3 px-3 rounded-xl bg-slate-800 hover:bg-amber-600/20 border border-amber-500/40 text-amber-200 font-bold text-xs text-center transition-colors">
-                            ⏪ <code>migrate:rollback</code>
+                            ⏪ <code>rollback</code>
                         </button>
                     </form>
                 </div>
