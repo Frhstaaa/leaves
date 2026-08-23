@@ -16,6 +16,56 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [AuthController::class, 'showLogin']);
 
+// Service Worker Route (Ensures sw.js is always reachable in subfolders)
+Route::get('/sw.js', function () {
+    $path = public_path('sw.js');
+    if (!file_exists($path)) {
+        $path = base_path('public/sw.js');
+    }
+    if (file_exists($path)) {
+        return response(file_get_contents($path), 200, [
+            'Content-Type' => 'application/javascript; charset=utf-8',
+            'Service-Worker-Allowed' => '/',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+        ]);
+    }
+    return response('// sw.js not found', 404);
+});
+
+// Vite Build Assets Direct Route (Guarantees JS/CSS are served with 200 OK & CORS)
+Route::get('/build/{path}', function ($path) {
+    $filePath = public_path('build/' . $path);
+    if (!file_exists($filePath)) {
+        $filePath = base_path('public/build/' . $path);
+    }
+    if (file_exists($filePath) && is_file($filePath)) {
+        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        $mimes = [
+            'js' => 'application/javascript; charset=utf-8',
+            'mjs' => 'application/javascript; charset=utf-8',
+            'css' => 'text/css; charset=utf-8',
+            'json' => 'application/json; charset=utf-8',
+            'webmanifest' => 'application/manifest+json; charset=utf-8',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'svg' => 'image/svg+xml',
+            'ico' => 'image/x-icon',
+            'woff2' => 'font/woff2',
+            'woff' => 'font/woff',
+            'ttf' => 'font/ttf',
+        ];
+        $contentType = $mimes[$ext] ?? 'application/octet-stream';
+        return response(file_get_contents($filePath), 200, [
+            'Content-Type' => $contentType,
+            'Access-Control-Allow-Origin' => '*',
+            'Cache-Control' => 'public, max-age=31536000, immutable',
+        ]);
+    }
+    return response('File not found', 404);
+})->where('path', '.*');
+
 // PWA Manifest & Dynamic App Icon Routes
 Route::get('/manifest.webmanifest', [\App\Http\Controllers\SettingController::class, 'manifest'])->name('pwa.manifest');
 Route::get('/manifest.json', [\App\Http\Controllers\SettingController::class, 'manifest']);
