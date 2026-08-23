@@ -24,42 +24,48 @@ class Setting extends Model
     public static function set(string $key, $value): void
     {
         self::updateOrCreate(['key' => $key], ['value' => $value]);
+        Cache::forget('app_settings_raw');
         Cache::forget('app_settings_all');
     }
 
     public static function getAll(): array
     {
-        return Cache::remember('app_settings_all', 3600, function () {
-            $defaults = [
-                'app_name' => 'Form SGIN',
-                'app_subname' => 'Cuti & Ketidakhadiran',
-                'company_name' => 'PT. SGIN Indonesia',
-                'company_address' => 'Jl. Industri Raya No. 123, Kawasan Industri',
-                'company_phone' => '+62 21 8901234',
-                'company_email' => 'hrd@sgin.co.id',
-                'app_logo' => null,
-                'app_favicon' => null,
-                'theme_color' => '#059669',
-                'app_description' => 'Sistem Informasi Manajemen Cuti, Ketidakhadiran, Izin, Sakit, Lembur, dan Distribusi Slip Gaji Karyawan Real-time.',
-            ];
+        $defaults = [
+            'app_name' => 'Form SGIN',
+            'app_subname' => 'Cuti & Ketidakhadiran',
+            'company_name' => 'PT. SGIN Indonesia',
+            'company_address' => 'Jl. Industri Raya No. 123, Kawasan Industri',
+            'company_phone' => '+62 21 8901234',
+            'company_email' => 'hrd@sgin.co.id',
+            'app_logo' => null,
+            'app_favicon' => null,
+            'theme_color' => '#059669',
+            'app_description' => 'Sistem Informasi Manajemen Cuti, Ketidakhadiran, Izin, Sakit, Lembur, dan Distribusi Slip Gaji Karyawan Real-time.',
+        ];
 
+        $raw = Cache::remember('app_settings_raw', 3600, function () use ($defaults) {
             try {
                 $dbSettings = self::pluck('value', 'key')->toArray();
-                $merged = array_merge($defaults, $dbSettings);
-                
-                $logo = $merged['app_logo'] ?? null;
-                if ($logo) {
-                    $clean = preg_replace('/^\/?storage\//', '', $logo);
-                    $root = app()->runningInConsole() ? url('/') : rtrim(request()->root(), '/');
-                    $merged['app_logo_url'] = str_starts_with($logo, 'http') ? $logo : $root . '/storage/' . $clean;
-                } else {
-                    $merged['app_logo_url'] = null;
-                }
-
-                return $merged;
+                return array_merge($defaults, $dbSettings);
             } catch (\Throwable $e) {
                 return $defaults;
             }
         });
+
+        // Compute dynamic absolute URL with subfolder awareness on each request
+        $logo = $raw['app_logo'] ?? null;
+        if ($logo) {
+            $clean = preg_replace('/^\/?storage\//', '', $logo);
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : (request()->isSecure() ? 'https' : 'http');
+            $host = $_SERVER['HTTP_HOST'] ?? request()->getHost();
+            $uri = $_SERVER['REQUEST_URI'] ?? '';
+            $subfolder = str_contains($uri, 'leaves-application') ? '/leaves-application' : '';
+            $root = $scheme . '://' . $host . $subfolder;
+            $raw['app_logo_url'] = str_starts_with($logo, 'http') ? $logo : $root . '/storage/' . $clean;
+        } else {
+            $raw['app_logo_url'] = null;
+        }
+
+        return $raw;
     }
 }
