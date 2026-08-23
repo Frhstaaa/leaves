@@ -111,7 +111,9 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('{{ url("sw.js") }}').then(function(registration) {
+                var swUrl = '{{ url("sw.js") }}';
+                var swScope = '{{ url("/") }}/';
+                navigator.serviceWorker.register(swUrl, { scope: swScope }).then(function(registration) {
                     console.log('PWA ServiceWorker registered with scope: ', registration.scope);
                 }, function(err) {
                     console.log('PWA ServiceWorker registration failed: ', err);
