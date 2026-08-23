@@ -220,7 +220,7 @@
     "src": "resources/js/Pages/Payslips/Index.jsx"
   },
   "resources/js/Pages/Superadmin/RolePermission/Index.jsx": {
-    "file": "assets/Index-095c2fd0.js",
+    "file": "assets/Index-4202308f.js",
     "imports": [
       "_vendor-core-1535fb2a.js",
       "_AuthenticatedLayout-8b394c22.js",
@@ -254,7 +254,7 @@
       "resources/js/Pages/Payslips/Index.jsx",
       "resources/js/Pages/Superadmin/RolePermission/Index.jsx"
     ],
-    "file": "assets/app-fe26b3e4.js",
+    "file": "assets/app-3ad61da6.js",
     "imports": [
       "_vendor-core-1535fb2a.js"
     ],
