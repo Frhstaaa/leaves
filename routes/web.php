@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', [AuthController::class, 'showLogin']);
+Route::get('/leaves-application', [AuthController::class, 'showLogin']);
+Route::get('/leaves-application/login', [AuthController::class, 'showLogin']);
 
 // PWA Manifest & Dynamic App Icon Routes
 Route::get('/manifest.webmanifest', [\App\Http\Controllers\SettingController::class, 'manifest'])->name('pwa.manifest');
@@ -24,6 +26,7 @@ Route::get('/app-icon/{size?}', [\App\Http\Controllers\SettingController::class,
 // Authentication Routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/leaves-application/login', [AuthController::class, 'login']);
 Route::post('/quick-login', [AuthController::class, 'quickLogin'])->name('quick-login');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 

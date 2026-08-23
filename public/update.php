@@ -1,12 +1,12 @@
 <?php
 /**
- * SGIN / Leaves Management System - Web Application Update Center (GitHub Connected)
- * Menghubungkan aplikasi langsung ke GitHub: Auto-Pull, Webhook, dan One-Click Update.
+ * SGIN / Leaves Management System - Web Application Update & Server Management Center
+ * Menghubungkan aplikasi langsung ke GitHub (Frhstaaa/leaves): Auto-Pull, NPM Build, Composer, Artisan Suite & Webhook.
  */
 
 // Disable execution time limit for migrations, git pulls & builds
-@set_time_limit(600);
-@ini_set('max_execution_time', 600);
+@set_time_limit(900);
+@ini_set('max_execution_time', 900);
 @ini_set('memory_limit', '512M');
 
 // Default GitHub Configuration for Leaves Repository
@@ -54,6 +54,7 @@ if ($hasVendor && $hasBootstrap) {
     try {
         require_once $basePath . '/vendor/autoload.php';
         $app = require_once $basePath . '/bootstrap/app.php';
+        $app->usePublicPath($basePath . '/public');
         $kernel = $app->make(\Illuminate\Contracts\Console\Kernel::class);
         $kernel->bootstrap();
     } catch (\Throwable $e) {
@@ -118,7 +119,7 @@ function syncFromGithub($basePath, $repo, $branch, $token = '') {
     }
 
     // Method 2: Fallback to GitHub ZIP Archive Download
-    $logs[] = "Metode Git CLI tidak aktif / mengalami kendala, beralih ke unduhan ZIP dari GitHub API...";
+    $logs[] = "Metode Git CLI tidak aktif / dibatasi, beralih ke unduhan ZIP dari GitHub API...";
     $zipUrl = "https://github.com/$repo/archive/refs/heads/$branch.zip";
     if ($token) {
         $zipUrl = "https://api.github.com/repos/$repo/zipball/$branch";
@@ -283,45 +284,51 @@ if ($actionExecuted) {
     ob_start();
     try {
         switch ($actionExecuted) {
-            case 'github_pull_update':
+            case 'full_setup_update':
                 echo "=================================================================\n";
-                echo "       1-CLICK GITHUB PULL & AUTO-UPDATE LEAVES SYSTEM           \n";
+                echo "  🚀 1-CLICK COMPLETE SETUP & UPDATE LEAVES SYSTEM (ALL IN ONE)  \n";
                 echo "=================================================================\n\n";
 
-                // 1. Pull / Download from GitHub
-                echo "[1/5] Mengambil pembaruan kodingan dari GitHub ($repoName:$branchName)...\n";
+                // 1. Pull from GitHub
+                echo "[1/6] Mengambil kodingan terbaru dari GitHub ($repoName:$branchName)...\n";
                 list($success, $syncLog) = syncFromGithub($basePath, $repoName, $branchName, $githubToken);
                 echo $syncLog . "\n\n";
 
                 if ($success) {
                     // 2. Composer Check
-                    echo "[2/5] Memeriksa dependensi Composer...\n";
+                    echo "[2/6] Memeriksa dependensi Composer (PHP Backend)...\n";
                     if (function_exists('shell_exec')) {
                         $composerVer = @shell_exec('composer --version 2>&1');
                         if ($composerVer && str_contains(strtolower($composerVer), 'composer')) {
-                            echo "Menjalankan composer install...\n";
-                            $composerOut = executeCommand("composer install --no-dev --optimize-autoloader --no-interaction", $basePath);
-                            echo ($composerOut ?: "Composer selesai.\n") . "\n";
+                            echo executeCommand("composer install --no-dev --optimize-autoloader --no-interaction", $basePath) . "\n";
                         } elseif (file_exists($basePath . '/composer.phar')) {
-                            echo "Menjalankan php composer.phar install...\n";
-                            $composerOut = executeCommand("php composer.phar install --no-dev --optimize-autoloader --no-interaction", $basePath);
-                            echo ($composerOut ?: "Composer selesai.\n") . "\n";
+                            echo executeCommand("php composer.phar install --no-dev --optimize-autoloader --no-interaction", $basePath) . "\n";
                         } else {
-                            echo "✓ Folder vendor siap (menggunakan vendor yang terpasang).\n\n";
+                            echo "✓ Folder vendor siap (menggunakan dependensi terpasang).\n\n";
                         }
                     }
 
-                    // 3. Database Migration
-                    echo "[3/5] Menjalankan migrasi database baru...\n";
+                    // 3. NPM Build Check (NodeJS Frontend)
+                    echo "[3/6] Memeriksa build frontend Vite (NPM)...\n";
+                    if (function_exists('shell_exec')) {
+                        $nodeVer = @shell_exec('node --version 2>&1');
+                        if ($nodeVer && str_contains($nodeVer, 'v')) {
+                            echo "NodeJS terdeteksi ($nodeVer). Menjalankan npm run build...\n";
+                            echo executeCommand("npm run build", $basePath) . "\n";
+                        } else {
+                            echo "✓ NodeJS tidak ada di server hosting. Frontend menggunakan aset build yang sudah ter-compile otomatis dari GitHub (public/build/).\n\n";
+                        }
+                    }
+
+                    // 4. Database Migrations
+                    echo "[4/6] Menjalankan migrasi database baru (php artisan migrate)...\n";
                     if ($app) {
                         \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
                         echo \Illuminate\Support\Facades\Artisan::output() . "\n";
-                    } else {
-                        echo "⚠️ Bootstrap Laravel belum aktif, lewati migrasi via kernel.\n\n";
                     }
 
-                    // 4. Storage Link
-                    echo "[4/5] Memeriksa tautan storage...\n";
+                    // 5. Storage Link
+                    echo "[5/6] Menghubungkan storage symlink (php artisan storage:link)...\n";
                     $publicStorage = $basePath . '/public/storage';
                     $appStorage = $basePath . '/storage/app/public';
                     if (!file_exists($publicStorage) && !is_link($publicStorage)) {
@@ -333,8 +340,8 @@ if ($actionExecuted) {
                     }
                     echo "✓ Storage link siap.\n\n";
 
-                    // 5. Optimize & Cache
-                    echo "[5/5] Membersihkan dan merefresh cache aplikasi...\n";
+                    // 6. Cache Clear & Optimize
+                    echo "[6/6] Membersihkan dan merefresh seluruh cache aplikasi...\n";
                     if (function_exists('opcache_reset')) {
                         @opcache_reset();
                         echo "✓ PHP OPcache di-reset.\n";
@@ -348,7 +355,7 @@ if ($actionExecuted) {
                     }
 
                     echo "=================================================================\n";
-                    echo "  ✓ KODINGAN REPO LEAVES & UPDATE BERHASIL DITERAPKAN KE SERVER! \n";
+                    echo "  ✓ SELURUH SETUP & UPDATE BERHASIL DITERAPKAN KE SERVER!        \n";
                     echo "=================================================================\n";
                 }
                 break;
@@ -360,6 +367,32 @@ if ($actionExecuted) {
                 if ($success && $app) {
                     \Illuminate\Support\Facades\Artisan::call('optimize:clear');
                     echo "✓ Cache aplikasi dibersihkan.\n";
+                }
+                break;
+
+            case 'npm_install':
+                echo "=== MENJALANKAN NPM INSTALL ===\n";
+                if (function_exists('shell_exec')) {
+                    echo executeCommand("npm install", $basePath);
+                } else {
+                    echo "✗ shell_exec dinonaktifkan di server.";
+                }
+                break;
+
+            case 'npm_build':
+                echo "=== MENJALANKAN NPM RUN BUILD (COMPILE FRONTEND VITE) ===\n";
+                if (function_exists('shell_exec')) {
+                    $nodeVer = @shell_exec('node --version 2>&1');
+                    $npmVer = @shell_exec('npm --version 2>&1');
+                    echo "Node Version: " . ($nodeVer ?: 'Tidak ditemukan') . "\n";
+                    echo "NPM Version: " . ($npmVer ?: 'Tidak ditemukan') . "\n\n";
+                    if ($nodeVer && str_contains($nodeVer, 'v')) {
+                        echo executeCommand("npm run build", $basePath);
+                    } else {
+                        echo "ℹ️ NodeJS/NPM tidak terpasang di hosting. Frontend sudah otomatis menggunakan file build yang ter-sync dari GitHub (public/build/).\n";
+                    }
+                } else {
+                    echo "✗ shell_exec dinonaktifkan di server.";
                 }
                 break;
 
@@ -379,25 +412,15 @@ if ($actionExecuted) {
                 }
                 break;
 
-            case 'npm_build':
-                echo "=== MENJALANKAN NPM BUILD (COMPILE FRONTEND) ===\n";
+            case 'composer_dump':
+                echo "=== MENJALANKAN COMPOSER DUMP-AUTOLOAD ===\n";
                 if (function_exists('shell_exec')) {
-                    $nodeVer = @shell_exec('node --version 2>&1');
-                    $npmVer = @shell_exec('npm --version 2>&1');
-                    echo "Node Version: " . ($nodeVer ?: 'Tidak ditemukan') . "\n";
-                    echo "NPM Version: " . ($npmVer ?: 'Tidak ditemukan') . "\n\n";
-                    if ($nodeVer && str_contains($nodeVer, 'v')) {
-                        echo executeCommand("npm run build", $basePath);
-                    } else {
-                        echo "ℹ️ NodeJS/NPM tidak terpasang di hosting. Frontend sudah otomatis menggunakan file build yang ter-sync dari GitHub (public/build/).\n";
-                    }
-                } else {
-                    echo "✗ shell_exec dinonaktifkan di server.";
+                    echo executeCommand("composer dump-autoload -o", $basePath);
                 }
                 break;
 
             case 'migrate_only':
-                echo "=== MENJALANKAN MIGRASI DATABASE BARU ===\n";
+                echo "=== MENJALANKAN PHP ARTISAN MIGRATE ===\n";
                 if ($app) {
                     \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
                     echo \Illuminate\Support\Facades\Artisan::output();
@@ -406,8 +429,16 @@ if ($actionExecuted) {
                 }
                 break;
 
+            case 'migrate_status':
+                echo "=== CEK STATUS MIGRASI DATABASE ===\n";
+                if ($app) {
+                    \Illuminate\Support\Facades\Artisan::call('migrate:status');
+                    echo \Illuminate\Support\Facades\Artisan::output();
+                }
+                break;
+
             case 'db_seed':
-                echo "=== MENJALANKAN DATABASE SEEDER ===\n";
+                echo "=== MENJALANKAN PHP ARTISAN DB:SEED ===\n";
                 if ($app) {
                     \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
                     echo \Illuminate\Support\Facades\Artisan::output();
@@ -416,8 +447,16 @@ if ($actionExecuted) {
                 }
                 break;
 
+            case 'key_generate':
+                echo "=== GENERATE APP KEY (PHP ARTISAN KEY:GENERATE) ===\n";
+                if ($app) {
+                    \Illuminate\Support\Facades\Artisan::call('key:generate', ['--force' => true]);
+                    echo \Illuminate\Support\Facades\Artisan::output();
+                }
+                break;
+
             case 'clear_cache':
-                echo "=== MEMBERSIHKAN SELURUH CACHE APLIKASI ===\n";
+                echo "=== MEMBERSIHKAN SELURUH CACHE APLIKASI (OPTIMIZE:CLEAR) ===\n";
                 if (function_exists('opcache_reset')) {
                     @opcache_reset();
                     echo "✓ OPcache di-reset.\n";
@@ -429,7 +468,7 @@ if ($actionExecuted) {
                 break;
 
             case 'optimize':
-                echo "=== MEMPERBARUI CACHE PRODUCTION ===\n";
+                echo "=== MEMPERBARUI CACHE PRODUCTION (CONFIG, ROUTE, VIEW) ===\n";
                 if ($app) {
                     \Illuminate\Support\Facades\Artisan::call('config:cache');
                     echo \Illuminate\Support\Facades\Artisan::output();
@@ -456,7 +495,7 @@ if ($actionExecuted) {
                 break;
 
             case 'run_custom_artisan':
-                echo "=== EKSEKUSI ARTISAN COMMAND: " . htmlspecialchars($customCommand) . " ===\n";
+                echo "=== EKSEKUSI ARTISAN COMMAND: php artisan " . htmlspecialchars($customCommand) . " ===\n";
                 if ($app && !empty($customCommand)) {
                     $parts = explode(' ', trim($customCommand));
                     $cmdName = array_shift($parts);
@@ -464,10 +503,19 @@ if ($actionExecuted) {
                     foreach ($parts as $part) {
                         if (str_starts_with($part, '--')) {
                             $args[$part] = true;
+                        } elseif (str_contains($part, '=')) {
+                            list($k, $v) = explode('=', $part, 2);
+                            $args[$k] = $v;
+                        } else {
+                            $args[] = $part;
                         }
                     }
-                    \Illuminate\Support\Facades\Artisan::call($cmdName, $args);
-                    echo \Illuminate\Support\Facades\Artisan::output();
+                    try {
+                        \Illuminate\Support\Facades\Artisan::call($cmdName, $args);
+                        echo \Illuminate\Support\Facades\Artisan::output();
+                    } catch (\Throwable $e) {
+                        echo "Error executing command: " . $e->getMessage() . "\n";
+                    }
                 } else {
                     echo "✗ Perintah kosong atau kernel tidak terhubung.";
                 }
@@ -488,7 +536,7 @@ if ($actionExecuted) {
     $outputLog = ob_get_clean();
 }
 
-// Check Git Status if .git is available
+// Server Diagnostic Data
 $lastCommitInfo = 'Belum terhubung ke Git';
 if (is_dir($basePath . '/.git') && function_exists('shell_exec')) {
     $commitLog = @shell_exec("cd " . escapeshellarg($basePath) . " && git log -1 --pretty=format:'%h - %s (%cr) <%an>' 2>&1");
@@ -510,6 +558,11 @@ if ($app) {
     }
 }
 
+// Environment Versions
+$nodeVersion = function_exists('shell_exec') ? trim(@shell_exec('node -v 2>&1') ?: '') : '';
+$npmVersion = function_exists('shell_exec') ? trim(@shell_exec('npm -v 2>&1') ?: '') : '';
+$composerVersion = function_exists('shell_exec') ? trim(@shell_exec('composer --version 2>&1') ?: '') : '';
+
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
 $currentHost = $_SERVER['HTTP_HOST'] ?? 'sgin.co.id';
 $currentUri = $_SERVER['REQUEST_URI'] ?? '/update.php';
@@ -521,7 +574,7 @@ $webhookUrl = "$protocol://$currentHost$cleanUri?webhook=1&secret=" . DEFAULT_WE
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SGIN - GitHub Auto-Update & Maintenance (Leaves)</title>
+    <title>SGIN - Setup, Build & Update Center (Leaves)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -531,25 +584,25 @@ $webhookUrl = "$protocol://$currentHost$cleanUri?webhook=1&secret=" . DEFAULT_WE
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-4 sm:p-8">
 
-    <div class="max-w-4xl mx-auto space-y-6">
+    <div class="max-w-5xl mx-auto space-y-6">
 
         <!-- Header -->
-        <div class="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-emerald-950 border border-slate-700/80 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-emerald-950 border border-slate-700/80 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
                 <div class="flex items-center space-x-2">
-                    <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-extrabold uppercase border border-emerald-400/30">GitHub Sync (Leaves)</span>
-                    <span class="text-xs text-slate-300">Auto Pull & Deploy Center</span>
+                    <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-extrabold uppercase border border-emerald-400/30">Leaves Setup & Deploy Center</span>
+                    <span class="text-xs text-slate-300">GitHub • NPM • Composer • Artisan</span>
                 </div>
-                <h1 class="text-2xl font-black text-white mt-1">Leaves Application Update Center</h1>
-                <p class="text-xs text-slate-300 mt-0.5">Tarik kodingan terbaru dari repo <code>Frhstaaa/leaves</code> & terapkan migrasi otomatis ke server</p>
+                <h1 class="text-2xl sm:text-3xl font-black text-white mt-1.5">Leaves Application Control Center</h1>
+                <p class="text-xs text-slate-300 mt-1">Setup lengkap, jalankan NPM Build, Artisan migrate, Composer install, dan sinkronisasi repo GitHub <code>Frhstaaa/leaves</code></p>
             </div>
-            <a href="./" class="px-5 py-2.5 rounded-2xl bg-white text-slate-950 hover:bg-emerald-50 font-black text-xs shadow-lg transition-transform hover:scale-105 shrink-0 text-center">
-                &larr; Buka Website SGIN
+            <a href="./" class="px-5 py-3 rounded-2xl bg-white text-slate-950 hover:bg-emerald-50 font-black text-xs shadow-lg transition-transform hover:scale-105 shrink-0 text-center">
+                &larr; Buka Aplikasi SGIN
             </a>
         </div>
 
         <!-- Status Overview Cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
             <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800">
                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Repository</span>
                 <span class="text-xs font-black text-emerald-400 truncate block" title="<?= DEFAULT_GITHUB_REPO ?>"><?= DEFAULT_GITHUB_REPO ?></span>
@@ -559,200 +612,216 @@ $webhookUrl = "$protocol://$currentHost$cleanUri?webhook=1&secret=" . DEFAULT_WE
                 <span class="text-sm font-black text-blue-400"><?= DEFAULT_GITHUB_BRANCH ?></span>
             </div>
             <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800">
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Database</span>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Database Status</span>
                 <span class="text-xs font-bold <?= $dbConnected ? 'text-emerald-400' : 'text-amber-400' ?> truncate block">
                     <?= $dbConnected ? '✓ Terhubung' : '⚠️ ' . htmlspecialchars($dbStatus) ?>
                 </span>
             </div>
             <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800">
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Last Commit</span>
-                <span class="text-[11px] font-mono text-slate-300 truncate block" title="<?= htmlspecialchars($lastCommitInfo) ?>">
-                    <?= htmlspecialchars($lastCommitInfo) ?>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Server Tools</span>
+                <span class="text-[11px] text-slate-300 truncate block">
+                    PHP <?= PHP_VERSION ?> <?= $nodeVersion ? '• Node ' . $nodeVersion : '' ?>
                 </span>
             </div>
         </div>
 
-        <!-- 1-Click Pull from GitHub & Auto-Update -->
-        <div class="p-6 rounded-3xl bg-slate-900 border border-emerald-500/40 shadow-xl space-y-4">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h3 class="text-lg font-black text-white flex items-center space-x-2">
-                        <span>🚀 Tarik dari GitHub & Update Otomatis (1-Click)</span>
-                    </h3>
-                    <p class="text-xs text-slate-400 mt-0.5">
-                        Mengambil kodingan terbaru dari repo <code><?= DEFAULT_GITHUB_REPO ?>:<?= DEFAULT_GITHUB_BRANCH ?></code>, menjalankan migrasi database baru, memverifikasi dependensi, dan merefresh cache server.
+        <!-- 1-Click Complete Setup & Auto-Update -->
+        <div class="p-6 sm:p-7 rounded-3xl bg-slate-900 border border-emerald-500/40 shadow-2xl space-y-4">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+                <div class="space-y-1">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <h3 class="text-lg sm:text-xl font-black text-white">🚀 1-Click Complete Setup & Update (All-in-One)</h3>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed max-w-2xl">
+                        Menjalankan seluruh rangkaian: Tarik kodingan terbaru GitHub (<code><?= DEFAULT_GITHUB_REPO ?></code>) &rarr; Composer install &rarr; NPM build &rarr; Artisan migrate database &rarr; Storage link &rarr; Clear & Cache Optimize.
                     </p>
                 </div>
                 <form method="POST">
-                    <input type="hidden" name="action" value="github_pull_update">
+                    <input type="hidden" name="action" value="full_setup_update">
                     <input type="hidden" name="github_repo" value="<?= htmlspecialchars($repoName) ?>">
                     <input type="hidden" name="github_branch" value="<?= htmlspecialchars($branchName) ?>">
                     <input type="hidden" name="github_token" value="<?= htmlspecialchars($githubToken) ?>">
-                    <button type="submit" onclick="return confirm('Tarik kodingan terbaru dari repo Frhstaaa/leaves dan terapkan update sekarang?')" class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-lg shadow-emerald-600/30 flex items-center space-x-2 transition-all hover:scale-105 shrink-0">
-                        <span>Tarik dari GitHub & Update</span>
+                    <button type="submit" onclick="return confirm('Jalankan Complete Setup & Update dari repo Frhstaaa/leaves sekarang?')" class="w-full lg:w-auto px-7 py-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-xl shadow-emerald-600/30 flex items-center justify-center space-x-2 transition-all hover:scale-105 shrink-0">
+                        <span>Eksekusi Complete Update</span>
                         <span>&rarr;</span>
                     </button>
                 </form>
             </div>
         </div>
 
-        <!-- GitHub Webhook Info Card -->
-        <div class="p-6 rounded-3xl bg-slate-900/60 border border-indigo-500/30 space-y-3">
-            <div class="flex items-center space-x-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
-                <h3 class="text-sm font-black text-indigo-300 uppercase tracking-wider">⚡ Setup GitHub Webhook (Auto-Deploy Setiap 'git push')</h3>
+        <!-- SECTION: NPM & FRONTEND BUILD -->
+        <div class="p-6 rounded-3xl bg-slate-900/60 border border-amber-500/30 space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <span class="text-amber-400 text-lg">⚡</span>
+                    <h3 class="text-sm font-black text-amber-300 uppercase tracking-wider">Frontend & NPM Build Tools</h3>
+                </div>
+                <span class="text-[11px] text-slate-400"><?= $nodeVersion ? "Node: $nodeVersion | NPM: $npmVersion" : "Pre-built Assets Enabled" ?></span>
             </div>
-            <p class="text-xs text-slate-300 leading-relaxed">
-                Ingin server hosting Anda otomatis ter-update setiap kali Anda melakukan <code>git push</code> ke repo <strong>Frhstaaa/leaves</strong>?
-                Tambahkan Webhook ini di repository GitHub Anda:
+            <p class="text-xs text-slate-300">
+                Kompilasi ulang aset JavaScript / React / Vite di server Anda jika NodeJS terpasang di hosting.
             </p>
-            <div class="space-y-2 text-xs font-mono bg-black/60 p-4 rounded-2xl border border-slate-800">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                    <span class="text-slate-500">Payload URL:</span>
-                    <span class="text-indigo-400 select-all font-bold"><?= htmlspecialchars($webhookUrl) ?></span>
-                </div>
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                    <span class="text-slate-500">Content type:</span>
-                    <span class="text-emerald-400">application/json</span>
-                </div>
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                    <span class="text-slate-500">Secret:</span>
-                    <span class="text-amber-400"><?= DEFAULT_WEBHOOK_SECRET ?></span>
-                </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <form method="POST">
+                    <input type="hidden" name="action" value="npm_build">
+                    <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-amber-600/20 border border-amber-500/40 text-amber-200 font-bold text-xs transition-colors flex items-center justify-center space-x-2">
+                        <span>⚡ Jalankan <code>npm run build</code> (Vite)</span>
+                    </button>
+                </form>
+                <form method="POST">
+                    <input type="hidden" name="action" value="npm_install">
+                    <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors flex items-center justify-center space-x-2">
+                        <span>📦 Jalankan <code>npm install</code></span>
+                    </button>
+                </form>
             </div>
-            <p class="text-[11px] text-slate-400">
-                Cara pasang di GitHub: Buka repository <strong><?= DEFAULT_GITHUB_REPO ?></strong> &rarr; <strong>Settings</strong> &rarr; <strong>Webhooks</strong> &rarr; <strong>Add Webhook</strong> &rarr; Masukkan Payload URL di atas &rarr; Pilih <em>"Just the push event"</em> &rarr; <strong>Add webhook</strong>.
-            </p>
         </div>
 
-        <!-- Individual Control Actions Grid -->
-        <div class="p-6 rounded-3xl bg-slate-900/40 border border-slate-800 space-y-5">
-            <h3 class="text-sm font-extrabold uppercase tracking-wider text-slate-400">Aksi Pembaruan Terpisah:</h3>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-
-                <!-- 1. Pull Only -->
-                <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-3">
-                    <div>
-                        <h4 class="text-xs font-bold text-white">1. Git Pull Repo Saja</h4>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Hanya mengunduh / pull file terbaru dari repo Frhstaaa/leaves.</p>
-                    </div>
-                    <form method="POST">
-                        <input type="hidden" name="action" value="github_pull_only">
-                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
-                            Git Pull Saja
-                        </button>
-                    </form>
-                </div>
-
-                <!-- 2. Migrate Only -->
-                <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-3">
-                    <div>
-                        <h4 class="text-xs font-bold text-white">2. Migrasi Database</h4>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Terapkan perubahan tabel / kolom baru ke database server.</p>
-                    </div>
-                    <form method="POST">
-                        <input type="hidden" name="action" value="migrate_only">
-                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
-                            Jalankan Migrasi
-                        </button>
-                    </form>
-                </div>
-
-                <!-- 3. Composer Install -->
-                <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-3">
-                    <div>
-                        <h4 class="text-xs font-bold text-white">3. Composer Install</h4>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Update dependensi PHP backend jika ada package baru.</p>
-                    </div>
-                    <form method="POST">
-                        <input type="hidden" name="action" value="composer_install">
-                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
-                            Composer Install
-                        </button>
-                    </form>
-                </div>
-
-                <!-- 4. Clear Cache -->
-                <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-3">
-                    <div>
-                        <h4 class="text-xs font-bold text-white">4. Clear Seluruh Cache</h4>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Hapus cache config, route, view, dan PHP OPcache.</p>
-                    </div>
-                    <form method="POST">
-                        <input type="hidden" name="action" value="clear_cache">
-                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
-                            Clear Cache
-                        </button>
-                    </form>
-                </div>
-
-                <!-- 5. Optimize Cache -->
-                <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-3">
-                    <div>
-                        <h4 class="text-xs font-bold text-white">5. Optimize Cache</h4>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Build cache config, route, dan view untuk performa maksimal.</p>
-                    </div>
-                    <form method="POST">
-                        <input type="hidden" name="action" value="optimize">
-                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
-                            Optimize Cache
-                        </button>
-                    </form>
-                </div>
-
-                <!-- 6. Storage Link -->
-                <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-3">
-                    <div>
-                        <h4 class="text-xs font-bold text-white">6. Perbaiki Storage Symlink</h4>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Hubungkan ulang public/storage agar lampiran tidak 404.</p>
-                    </div>
-                    <form method="POST">
-                        <input type="hidden" name="action" value="storage_link">
-                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
-                            Storage Link
-                        </button>
-                    </form>
-                </div>
-
+        <!-- SECTION: PHP ARTISAN SUITE -->
+        <div class="p-6 rounded-3xl bg-slate-900/60 border border-indigo-500/30 space-y-4">
+            <div class="flex items-center space-x-2">
+                <span class="text-indigo-400 text-lg">🛠️</span>
+                <h3 class="text-sm font-black text-indigo-300 uppercase tracking-wider">PHP Artisan Suite (Backend & Database)</h3>
             </div>
 
-            <!-- Custom Artisan Command Runner -->
-            <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-                <h4 class="text-xs font-bold text-white">Eksekusi Perintah Artisan Bebas:</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <!-- Migrate -->
+                <form method="POST">
+                    <input type="hidden" name="action" value="migrate_only">
+                    <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-indigo-600/20 border border-indigo-500/40 text-indigo-200 font-bold text-xs transition-colors">
+                        🗄️ <code>artisan migrate --force</code>
+                    </button>
+                </form>
+                <!-- Migrate Status -->
+                <form method="POST">
+                    <input type="hidden" name="action" value="migrate_status">
+                    <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
+                        📊 <code>artisan migrate:status</code>
+                    </button>
+                </form>
+                <!-- DB Seed -->
+                <form method="POST">
+                    <input type="hidden" name="action" value="db_seed">
+                    <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
+                        🌱 <code>artisan db:seed --force</code>
+                    </button>
+                </form>
+                <!-- Storage Link -->
+                <form method="POST">
+                    <input type="hidden" name="action" value="storage_link">
+                    <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
+                        🔗 <code>artisan storage:link</code>
+                    </button>
+                </form>
+                <!-- Clear Cache -->
+                <form method="POST">
+                    <input type="hidden" name="action" value="clear_cache">
+                    <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
+                        🧹 <code>artisan optimize:clear</code>
+                    </button>
+                </form>
+                <!-- Optimize Production -->
+                <form method="POST">
+                    <input type="hidden" name="action" value="optimize">
+                    <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
+                        ⚡ <code>artisan config/route/view:cache</code>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Custom Artisan Interactive Input -->
+            <div class="pt-2">
                 <form method="POST" class="flex flex-col sm:flex-row gap-2">
                     <input type="hidden" name="action" value="run_custom_artisan">
                     <div class="relative flex-1">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-xs font-mono text-slate-500">php artisan</span>
-                        <input type="text" name="custom_artisan" placeholder="db:seed, route:list, key:generate, dll" class="w-full pl-24 pr-4 py-2.5 rounded-xl bg-black/50 border border-slate-700 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-mono text-indigo-400 font-bold">php artisan</span>
+                        <input type="text" name="custom_artisan" placeholder="about, key:generate, queue:restart, dll" class="w-full pl-28 pr-4 py-3 rounded-2xl bg-black/60 border border-indigo-500/40 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400">
                     </div>
-                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs shrink-0 transition-colors">
+                    <button type="submit" class="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shrink-0 transition-colors shadow-md">
                         Jalankan Command
                     </button>
                 </form>
             </div>
         </div>
 
+        <!-- SECTION: COMPOSER & GIT TOOLS -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Composer Card -->
+            <div class="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-3">
+                <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
+                    <span>🐘 Composer Backend Tools</span>
+                </h4>
+                <div class="grid grid-cols-2 gap-2">
+                    <form method="POST">
+                        <input type="hidden" name="action" value="composer_install">
+                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
+                            Composer Install
+                        </button>
+                    </form>
+                    <form method="POST">
+                        <input type="hidden" name="action" value="composer_dump">
+                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
+                            Dump Autoload
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Git Pull Card -->
+            <div class="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-3">
+                <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
+                    <span>📥 Git Repository Tools</span>
+                </h4>
+                <div class="grid grid-cols-1 gap-2">
+                    <form method="POST">
+                        <input type="hidden" name="action" value="github_pull_only">
+                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
+                            Tarik Kodingan Git Saja (Tanpa Migrasi)
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <!-- Terminal Execution Output Box -->
         <?php if (!empty($outputLog)): ?>
-        <div class="p-5 rounded-3xl bg-slate-950 border border-slate-800 shadow-2xl space-y-3 animate-fade-in">
+        <div class="p-6 rounded-3xl bg-slate-950 border border-emerald-500/50 shadow-2xl space-y-3 animate-fade-in">
             <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-                <span class="text-xs font-bold text-emerald-400 flex items-center space-x-1.5">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span>Hasil Eksekusi Perintah:</span>
+                <span class="text-xs font-bold text-emerald-400 flex items-center space-x-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Hasil Eksekusi Terminal:</span>
                 </span>
-                <span class="text-[10px] text-slate-500 font-mono"><?= date('H:i:s') ?> WIB</span>
+                <span class="text-[10px] text-slate-400 font-mono"><?= date('H:i:s') ?> WIB</span>
             </div>
-            <pre class="p-4 rounded-2xl bg-black/70 text-emerald-300 font-mono text-xs overflow-x-auto leading-relaxed whitespace-pre-wrap"><?= htmlspecialchars($outputLog) ?></pre>
+            <pre class="p-4 rounded-2xl bg-black/80 text-emerald-300 font-mono text-xs overflow-x-auto leading-relaxed whitespace-pre-wrap"><?= htmlspecialchars($outputLog) ?></pre>
         </div>
         <?php endif; ?>
 
+        <!-- GitHub Webhook Info Card -->
+        <div class="p-6 rounded-3xl bg-slate-900/40 border border-slate-800 space-y-3">
+            <div class="flex items-center space-x-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                <h3 class="text-sm font-black text-indigo-300 uppercase tracking-wider">⚡ GitHub Webhook (Auto-Deploy Setiap 'git push')</h3>
+            </div>
+            <div class="space-y-2 text-xs font-mono bg-black/60 p-4 rounded-2xl border border-slate-800">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <span class="text-slate-500">Payload URL:</span>
+                    <span class="text-indigo-400 select-all font-bold"><?= htmlspecialchars($webhookUrl) ?></span>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <span class="text-slate-500">Secret:</span>
+                    <span class="text-amber-400"><?= DEFAULT_WEBHOOK_SECRET ?></span>
+                </div>
+            </div>
+        </div>
+
         <!-- Security Warning & Delete Button -->
-        <div class="p-5 rounded-3xl bg-rose-950/40 border border-rose-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="p-5 rounded-3xl bg-rose-950/30 border border-rose-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div class="space-y-1">
                 <h4 class="text-xs font-extrabold text-rose-300 uppercase tracking-wider">🔒 Tindakan Keamanan</h4>
                 <p class="text-[11px] text-rose-200/80 leading-relaxed">
-                    Jika proses update selesai dan tidak menggunakan webhook otomatis, Anda dapat menghapus file <code>update.php</code> demi keamanan server.
+                    Jika proses setup selesai dan tidak menggunakan webhook otomatis, Anda dapat menghapus file <code>update.php</code> demi keamanan.
                 </p>
             </div>
             <form method="POST">
