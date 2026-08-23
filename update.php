@@ -225,6 +225,13 @@ function syncFromGithub($basePath, $repo, $branch, $token = '') {
     }
 }
 
+// Determine Host & URLs
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
+$currentHost = $_SERVER['HTTP_HOST'] ?? 'www.sgin.co.id';
+$currentUri = $_SERVER['REQUEST_URI'] ?? '/leaves-application/update.php';
+$cleanUri = strtok($currentUri, '?');
+$webhookUrl = "$protocol://$currentHost$cleanUri?webhook=1&secret=" . DEFAULT_WEBHOOK_SECRET;
+
 // -------------------------------------------------------------
 // WEBHOOK LISTENER (Automatic Deploy on 'git push')
 // -------------------------------------------------------------
@@ -274,17 +281,21 @@ if (isset($_GET['webhook']) || (isset($_SERVER['HTTP_X_GITHUB_EVENT']) && $_SERV
 // WEB INTERFACE ACTION HANDLER
 // -------------------------------------------------------------
 $outputLog = '';
+$actionStatus = null; // 'success' or 'error'
+$actionTitle = '';
 $actionExecuted = $_POST['action'] ?? null;
 $repoName = $_POST['github_repo'] ?? DEFAULT_GITHUB_REPO;
 $branchName = $_POST['github_branch'] ?? DEFAULT_GITHUB_BRANCH;
 $githubToken = $_POST['github_token'] ?? '';
 $customCommand = $_POST['custom_artisan'] ?? '';
+$isAjax = isset($_POST['ajax']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest');
 
 if ($actionExecuted) {
     ob_start();
     try {
         switch ($actionExecuted) {
             case 'full_setup_update':
+                $actionTitle = 'Complete Setup & Update (All-in-One)';
                 echo "=================================================================\n";
                 echo "  🚀 1-CLICK COMPLETE SETUP & UPDATE LEAVES SYSTEM (ALL IN ONE)  \n";
                 echo "=================================================================\n\n";
@@ -370,29 +381,42 @@ if ($actionExecuted) {
                     echo "=================================================================\n";
                     echo "  ✓ SELURUH SETUP & UPDATE BERHASIL DITERAPKAN KE SERVER!        \n";
                     echo "=================================================================\n";
+                    $actionStatus = 'success';
+                } else {
+                    $actionStatus = 'error';
                 }
                 break;
 
             case 'github_pull_only':
+                $actionTitle = 'Git Pull Saja';
                 echo "=== PULL / SYNC DARI GITHUB REPO LEAVES SAJA ===\n";
                 list($success, $syncLog) = syncFromGithub($basePath, $repoName, $branchName, $githubToken);
                 echo $syncLog . "\n";
-                if ($success && $app) {
-                    \Illuminate\Support\Facades\Artisan::call('optimize:clear');
-                    echo "✓ Cache aplikasi dibersihkan.\n";
+                if ($success) {
+                    if ($app) {
+                        \Illuminate\Support\Facades\Artisan::call('optimize:clear');
+                        echo "✓ Cache aplikasi dibersihkan.\n";
+                    }
+                    $actionStatus = 'success';
+                } else {
+                    $actionStatus = 'error';
                 }
                 break;
 
             case 'npm_install':
+                $actionTitle = 'NPM Install';
                 echo "=== MENJALANKAN NPM INSTALL ===\n";
                 if (function_exists('shell_exec')) {
                     echo executeCommand("npm install", $basePath);
+                    $actionStatus = 'success';
                 } else {
                     echo "✗ shell_exec dinonaktifkan di server.";
+                    $actionStatus = 'error';
                 }
                 break;
 
             case 'npm_build':
+                $actionTitle = 'NPM Run Build';
                 echo "=== MENJALANKAN NPM RUN BUILD (COMPILE FRONTEND VITE) ===\n";
                 if (function_exists('shell_exec')) {
                     $nodeVer = @shell_exec('node --version 2>&1');
@@ -401,74 +425,95 @@ if ($actionExecuted) {
                     echo "NPM Version: " . ($npmVer ?: 'Tidak ditemukan') . "\n\n";
                     if ($nodeVer && str_contains($nodeVer, 'v')) {
                         echo executeCommand("npm run build", $basePath);
+                        $actionStatus = 'success';
                     } else {
                         echo "ℹ️ NodeJS/NPM tidak terpasang di hosting. Frontend sudah otomatis menggunakan file build yang ter-sync dari GitHub (public/build/).\n";
+                        $actionStatus = 'success';
                     }
                 } else {
                     echo "✗ shell_exec dinonaktifkan di server.";
+                    $actionStatus = 'error';
                 }
                 break;
 
             case 'composer_install':
+                $actionTitle = 'Composer Install';
                 echo "=== MENJALANKAN COMPOSER INSTALL ===\n";
                 if (function_exists('shell_exec')) {
                     $composerVer = @shell_exec('composer --version 2>&1');
                     if ($composerVer && str_contains(strtolower($composerVer), 'composer')) {
                         echo executeCommand("composer install --no-dev --optimize-autoloader --no-interaction", $basePath);
+                        $actionStatus = 'success';
                     } elseif (file_exists($basePath . '/composer.phar')) {
                         echo executeCommand("php composer.phar install --no-dev --optimize-autoloader --no-interaction", $basePath);
+                        $actionStatus = 'success';
                     } else {
                         echo "✗ Composer CLI atau composer.phar tidak ditemukan di server.";
+                        $actionStatus = 'error';
                     }
                 } else {
                     echo "✗ shell_exec dinonaktifkan di server.";
+                    $actionStatus = 'error';
                 }
                 break;
 
             case 'composer_dump':
+                $actionTitle = 'Composer Dump Autoload';
                 echo "=== MENJALANKAN COMPOSER DUMP-AUTOLOAD ===\n";
                 if (function_exists('shell_exec')) {
                     echo executeCommand("composer dump-autoload -o", $basePath);
+                    $actionStatus = 'success';
                 }
                 break;
 
             case 'migrate_only':
+                $actionTitle = 'Migrasi Database';
                 echo "=== MENJALANKAN PHP ARTISAN MIGRATE ===\n";
                 if ($app) {
                     \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
                     echo \Illuminate\Support\Facades\Artisan::output();
+                    $actionStatus = 'success';
                 } else {
                     echo "✗ Laravel kernel belum terhubung.";
+                    $actionStatus = 'error';
                 }
                 break;
 
             case 'migrate_status':
+                $actionTitle = 'Status Migrasi Database';
                 echo "=== CEK STATUS MIGRASI DATABASE ===\n";
                 if ($app) {
                     \Illuminate\Support\Facades\Artisan::call('migrate:status');
                     echo \Illuminate\Support\Facades\Artisan::output();
+                    $actionStatus = 'success';
                 }
                 break;
 
             case 'db_seed':
+                $actionTitle = 'Database Seeder';
                 echo "=== MENJALANKAN PHP ARTISAN DB:SEED ===\n";
                 if ($app) {
                     \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
                     echo \Illuminate\Support\Facades\Artisan::output();
+                    $actionStatus = 'success';
                 } else {
                     echo "✗ Laravel kernel belum terhubung.";
+                    $actionStatus = 'error';
                 }
                 break;
 
             case 'key_generate':
+                $actionTitle = 'Generate App Key';
                 echo "=== GENERATE APP KEY (PHP ARTISAN KEY:GENERATE) ===\n";
                 if ($app) {
                     \Illuminate\Support\Facades\Artisan::call('key:generate', ['--force' => true]);
                     echo \Illuminate\Support\Facades\Artisan::output();
+                    $actionStatus = 'success';
                 }
                 break;
 
             case 'clear_cache':
+                $actionTitle = 'Clear Cache';
                 echo "=== MEMBERSIHKAN SELURUH CACHE APLIKASI (OPTIMIZE:CLEAR) ===\n";
                 if (function_exists('opcache_reset')) {
                     @opcache_reset();
@@ -477,10 +522,12 @@ if ($actionExecuted) {
                 if ($app) {
                     \Illuminate\Support\Facades\Artisan::call('optimize:clear');
                     echo \Illuminate\Support\Facades\Artisan::output();
+                    $actionStatus = 'success';
                 }
                 break;
 
             case 'optimize':
+                $actionTitle = 'Optimize Cache';
                 echo "=== MEMPERBARUI CACHE PRODUCTION (CONFIG, ROUTE, VIEW) ===\n";
                 if ($app) {
                     \Illuminate\Support\Facades\Artisan::call('config:cache');
@@ -489,10 +536,12 @@ if ($actionExecuted) {
                     echo \Illuminate\Support\Facades\Artisan::output();
                     \Illuminate\Support\Facades\Artisan::call('view:cache');
                     echo \Illuminate\Support\Facades\Artisan::output();
+                    $actionStatus = 'success';
                 }
                 break;
 
             case 'storage_link':
+                $actionTitle = 'Perbaiki Storage Link';
                 echo "=== MEMPERBAIKI STORAGE SYMLINK ===\n";
                 $publicStorage = $basePath . '/public/storage';
                 $appStorage = $basePath . '/storage/app/public';
@@ -501,13 +550,16 @@ if ($actionExecuted) {
                 }
                 if (@symlink($appStorage, $publicStorage)) {
                     echo "✓ Symlink berhasil: public/storage -> storage/app/public\n";
+                    $actionStatus = 'success';
                 } else if ($app) {
                     \Illuminate\Support\Facades\Artisan::call('storage:link');
                     echo \Illuminate\Support\Facades\Artisan::output();
+                    $actionStatus = 'success';
                 }
                 break;
 
             case 'run_custom_artisan':
+                $actionTitle = 'Artisan Command: ' . $customCommand;
                 echo "=== EKSEKUSI ARTISAN COMMAND: php artisan " . htmlspecialchars($customCommand) . " ===\n";
                 if ($app && !empty($customCommand)) {
                     $parts = explode(' ', trim($customCommand));
@@ -526,27 +578,43 @@ if ($actionExecuted) {
                     try {
                         \Illuminate\Support\Facades\Artisan::call($cmdName, $args);
                         echo \Illuminate\Support\Facades\Artisan::output();
+                        $actionStatus = 'success';
                     } catch (\Throwable $e) {
                         echo "Error executing command: " . $e->getMessage() . "\n";
+                        $actionStatus = 'error';
                     }
                 } else {
                     echo "✗ Perintah kosong atau kernel tidak terhubung.";
+                    $actionStatus = 'error';
                 }
                 break;
 
             case 'delete_self':
+                $actionTitle = 'Hapus update.php';
                 echo "=== MENGHAPUS UPDATE.PHP DARI SERVER ===\n";
                 @unlink($basePath . '/update.php');
                 @unlink($basePath . '/public/update.php');
                 @unlink(__FILE__);
                 echo "✓ File update.php berhasil dihapus demi keamanan server Anda!\n";
+                $actionStatus = 'success';
                 break;
         }
     } catch (\Throwable $e) {
         echo "✗ Terjadi Error: " . $e->getMessage() . "\n";
         echo "Trace:\n" . $e->getTraceAsString();
+        $actionStatus = 'error';
     }
     $outputLog = ob_get_clean();
+
+    if ($isAjax) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status' => $actionStatus ?? 'success',
+            'title' => $actionTitle,
+            'output' => $outputLog,
+        ]);
+        exit;
+    }
 }
 
 // Server Diagnostic Data
@@ -575,12 +643,6 @@ if ($app) {
 $nodeVersion = function_exists('shell_exec') ? trim(@shell_exec('node -v 2>&1') ?: '') : '';
 $npmVersion = function_exists('shell_exec') ? trim(@shell_exec('npm -v 2>&1') ?: '') : '';
 $composerVersion = function_exists('shell_exec') ? trim(@shell_exec('composer --version 2>&1') ?: '') : '';
-
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
-$currentHost = $_SERVER['HTTP_HOST'] ?? 'sgin.co.id';
-$currentUri = $_SERVER['REQUEST_URI'] ?? '/update.php';
-$cleanUri = strtok($currentUri, '?');
-$webhookUrl = "$protocol://$currentHost$cleanUri?webhook=1&secret=" . DEFAULT_WEBHOOK_SECRET;
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -613,6 +675,49 @@ $webhookUrl = "$protocol://$currentHost$cleanUri?webhook=1&secret=" . DEFAULT_WE
                 &larr; Buka Aplikasi SGIN
             </a>
         </div>
+
+        <!-- PROMINENT SUCCESS / ERROR NOTIFICATION BANNER AT TOP -->
+        <?php if (!empty($outputLog)): ?>
+        <div id="executionBanner" class="p-6 rounded-3xl <?= $actionStatus === 'success' ? 'bg-emerald-950/80 border-emerald-500/70 shadow-emerald-950/50' : 'bg-rose-950/80 border-rose-500/70 shadow-rose-950/50' ?> border shadow-2xl space-y-4 animate-fade-in">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b <?= $actionStatus === 'success' ? 'border-emerald-800/60' : 'border-rose-800/60' ?> pb-3">
+                <div class="flex items-center space-x-3">
+                    <?php if ($actionStatus === 'success'): ?>
+                    <div class="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 font-black text-lg shrink-0">
+                        ✓
+                    </div>
+                    <div>
+                        <h3 class="text-base font-black text-emerald-300">UPDATE BERHASIL! (<?= htmlspecialchars($actionTitle ?: 'Sukses') ?>)</h3>
+                        <p class="text-xs text-emerald-200/80">Kodingan, database, dan cache aplikasi telah berhasil diperbarui ke versi terbaru.</p>
+                    </div>
+                    <?php else: ?>
+                    <div class="w-10 h-10 rounded-2xl bg-rose-500/20 border border-rose-400/40 flex items-center justify-center text-rose-400 font-black text-lg shrink-0">
+                        ✗
+                    </div>
+                    <div>
+                        <h3 class="text-base font-black text-rose-300">UPDATE MENGALAMI KENDALA (<?= htmlspecialchars($actionTitle ?: 'Error') ?>)</h3>
+                        <p class="text-xs text-rose-200/80">Silakan periksa log terminal di bawah untuk rincian penyebabnya.</p>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <div class="flex items-center space-x-2 shrink-0">
+                    <a href="./" class="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs shadow-md transition-all">
+                        Buka Aplikasi &rarr;
+                    </a>
+                </div>
+            </div>
+            
+            <div class="space-y-1.5">
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Log Hasil Eksekusi:</span>
+                <pre class="p-4 rounded-2xl bg-black/80 <?= $actionStatus === 'success' ? 'text-emerald-300 border-emerald-800/40' : 'text-rose-300 border-rose-800/40' ?> border font-mono text-xs overflow-x-auto leading-relaxed whitespace-pre-wrap max-h-96"><?= htmlspecialchars($outputLog) ?></pre>
+            </div>
+        </div>
+        <script>
+            // Auto-scroll to top result banner on load
+            window.addEventListener('DOMContentLoaded', () => {
+                document.getElementById('executionBanner')?.scrollIntoView({ behavior: 'smooth' });
+            });
+        </script>
+        <?php endif; ?>
 
         <!-- Status Overview Cards -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
@@ -650,14 +755,13 @@ $webhookUrl = "$protocol://$currentHost$cleanUri?webhook=1&secret=" . DEFAULT_WE
                         Menjalankan seluruh rangkaian: Tarik kodingan terbaru GitHub (<code><?= DEFAULT_GITHUB_REPO ?></code>) &rarr; Composer install &rarr; NPM build &rarr; Artisan migrate database &rarr; Storage link &rarr; Clear & Cache Optimize.
                     </p>
                 </div>
-                <form method="POST">
+                <form method="POST" onsubmit="handleFormSubmit(event, this, 'Complete Setup & Update')">
                     <input type="hidden" name="action" value="full_setup_update">
                     <input type="hidden" name="github_repo" value="<?= htmlspecialchars($repoName) ?>">
                     <input type="hidden" name="github_branch" value="<?= htmlspecialchars($branchName) ?>">
                     <input type="hidden" name="github_token" value="<?= htmlspecialchars($githubToken) ?>">
-                    <button type="submit" onclick="return confirm('Jalankan Complete Setup & Update dari repo Frhstaaa/leaves sekarang?')" class="w-full lg:w-auto px-7 py-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-xl shadow-emerald-600/30 flex items-center justify-center space-x-2 transition-all hover:scale-105 shrink-0">
-                        <span>Eksekusi Complete Update</span>
-                        <span>&rarr;</span>
+                    <button type="submit" id="btnMainUpdate" class="w-full lg:w-auto px-7 py-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-xl shadow-emerald-600/30 flex items-center justify-center space-x-2 transition-all hover:scale-105 shrink-0">
+                        <span id="btnMainText">Eksekusi Complete Update &rarr;</span>
                     </button>
                 </form>
             </div>
@@ -676,13 +780,13 @@ $webhookUrl = "$protocol://$currentHost$cleanUri?webhook=1&secret=" . DEFAULT_WE
                 Kompilasi ulang aset JavaScript / React / Vite di server Anda jika NodeJS terpasang di hosting.
             </p>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <form method="POST">
+                <form method="POST" onsubmit="handleFormSubmit(event, this, 'NPM Run Build')">
                     <input type="hidden" name="action" value="npm_build">
                     <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-amber-600/20 border border-amber-500/40 text-amber-200 font-bold text-xs transition-colors flex items-center justify-center space-x-2">
                         <span>⚡ Jalankan <code>npm run build</code> (Vite)</span>
                     </button>
                 </form>
-                <form method="POST">
+                <form method="POST" onsubmit="handleFormSubmit(event, this, 'NPM Install')">
                     <input type="hidden" name="action" value="npm_install">
                     <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors flex items-center justify-center space-x-2">
                         <span>📦 Jalankan <code>npm install</code></span>
@@ -700,42 +804,42 @@ $webhookUrl = "$protocol://$currentHost$cleanUri?webhook=1&secret=" . DEFAULT_WE
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <!-- Migrate -->
-                <form method="POST">
+                <form method="POST" onsubmit="handleFormSubmit(event, this, 'Artisan Migrate')">
                     <input type="hidden" name="action" value="migrate_only">
                     <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-indigo-600/20 border border-indigo-500/40 text-indigo-200 font-bold text-xs transition-colors">
                         🗄️ <code>artisan migrate --force</code>
                     </button>
                 </form>
                 <!-- Migrate Status -->
-                <form method="POST">
+                <form method="POST" onsubmit="handleFormSubmit(event, this, 'Migrate Status')">
                     <input type="hidden" name="action" value="migrate_status">
                     <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
                         📊 <code>artisan migrate:status</code>
                     </button>
                 </form>
                 <!-- DB Seed -->
-                <form method="POST">
+                <form method="POST" onsubmit="handleFormSubmit(event, this, 'Database Seed')">
                     <input type="hidden" name="action" value="db_seed">
                     <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
                         🌱 <code>artisan db:seed --force</code>
                     </button>
                 </form>
                 <!-- Storage Link -->
-                <form method="POST">
+                <form method="POST" onsubmit="handleFormSubmit(event, this, 'Storage Link')">
                     <input type="hidden" name="action" value="storage_link">
                     <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
                         🔗 <code>artisan storage:link</code>
                     </button>
                 </form>
                 <!-- Clear Cache -->
-                <form method="POST">
+                <form method="POST" onsubmit="handleFormSubmit(event, this, 'Clear Cache')">
                     <input type="hidden" name="action" value="clear_cache">
                     <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
                         🧹 <code>artisan optimize:clear</code>
                     </button>
                 </form>
                 <!-- Optimize Production -->
-                <form method="POST">
+                <form method="POST" onsubmit="handleFormSubmit(event, this, 'Optimize Cache')">
                     <input type="hidden" name="action" value="optimize">
                     <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
                         ⚡ <code>artisan config/route/view:cache</code>
@@ -745,7 +849,7 @@ $webhookUrl = "$protocol://$currentHost$cleanUri?webhook=1&secret=" . DEFAULT_WE
 
             <!-- Custom Artisan Interactive Input -->
             <div class="pt-2">
-                <form method="POST" class="flex flex-col sm:flex-row gap-2">
+                <form method="POST" onsubmit="handleFormSubmit(event, this, 'Custom Artisan')" class="flex flex-col sm:flex-row gap-2">
                     <input type="hidden" name="action" value="run_custom_artisan">
                     <div class="relative flex-1">
                         <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-mono text-indigo-400 font-bold">php artisan</span>
@@ -766,13 +870,13 @@ $webhookUrl = "$protocol://$currentHost$cleanUri?webhook=1&secret=" . DEFAULT_WE
                     <span>🐘 Composer Backend Tools</span>
                 </h4>
                 <div class="grid grid-cols-2 gap-2">
-                    <form method="POST">
+                    <form method="POST" onsubmit="handleFormSubmit(event, this, 'Composer Install')">
                         <input type="hidden" name="action" value="composer_install">
                         <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
                             Composer Install
                         </button>
                     </form>
-                    <form method="POST">
+                    <form method="POST" onsubmit="handleFormSubmit(event, this, 'Composer Dump')">
                         <input type="hidden" name="action" value="composer_dump">
                         <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
                             Dump Autoload
@@ -787,7 +891,7 @@ $webhookUrl = "$protocol://$currentHost$cleanUri?webhook=1&secret=" . DEFAULT_WE
                     <span>📥 Git Repository Tools</span>
                 </h4>
                 <div class="grid grid-cols-1 gap-2">
-                    <form method="POST">
+                    <form method="POST" onsubmit="handleFormSubmit(event, this, 'Git Pull Saja')">
                         <input type="hidden" name="action" value="github_pull_only">
                         <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
                             Tarik Kodingan Git Saja (Tanpa Migrasi)
@@ -796,20 +900,6 @@ $webhookUrl = "$protocol://$currentHost$cleanUri?webhook=1&secret=" . DEFAULT_WE
                 </div>
             </div>
         </div>
-
-        <!-- Terminal Execution Output Box -->
-        <?php if (!empty($outputLog)): ?>
-        <div class="p-6 rounded-3xl bg-slate-950 border border-emerald-500/50 shadow-2xl space-y-3 animate-fade-in">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-                <span class="text-xs font-bold text-emerald-400 flex items-center space-x-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span>Hasil Eksekusi Terminal:</span>
-                </span>
-                <span class="text-[10px] text-slate-400 font-mono"><?= date('H:i:s') ?> WIB</span>
-            </div>
-            <pre class="p-4 rounded-2xl bg-black/80 text-emerald-300 font-mono text-xs overflow-x-auto leading-relaxed whitespace-pre-wrap"><?= htmlspecialchars($outputLog) ?></pre>
-        </div>
-        <?php endif; ?>
 
         <!-- GitHub Webhook Info Card -->
         <div class="p-6 rounded-3xl bg-slate-900/40 border border-slate-800 space-y-3">
@@ -847,5 +937,102 @@ $webhookUrl = "$protocol://$currentHost$cleanUri?webhook=1&secret=" . DEFAULT_WE
 
     </div>
 
+    <!-- REAL-TIME MODAL POPUP FOR AJAX EXECUTION -->
+    <div id="liveModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl p-6 space-y-4 animate-scale-in">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-3">
+                    <div id="modalSpinner" class="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                    <h3 id="modalTitle" class="text-base font-black text-white">Memproses Update...</h3>
+                </div>
+                <button id="modalCloseBtn" onclick="closeModal()" class="text-slate-400 hover:text-white font-bold text-lg hidden">&times;</button>
+            </div>
+            
+            <div id="modalStatusBadge" class="hidden"></div>
+            
+            <div class="space-y-1.5">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Terminal Log Output:</span>
+                <pre id="modalLogOutput" class="p-4 rounded-2xl bg-black/80 text-emerald-300 font-mono text-xs overflow-x-auto leading-relaxed whitespace-pre-wrap max-h-80 border border-slate-800">Sedang menghubungkan ke server...</pre>
+            </div>
+
+            <div id="modalFooter" class="flex items-center justify-end space-x-3 pt-2 hidden">
+                <button onclick="closeModal()" class="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs">
+                    Tutup
+                </button>
+                <a href="./" class="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg">
+                    Buka Aplikasi SGIN &rarr;
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- AJAX HANDLER JAVASCRIPT -->
+    <script>
+        function handleFormSubmit(e, form, title) {
+            e.preventDefault();
+            
+            // Show modal
+            const modal = document.getElementById('liveModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalSpinner = document.getElementById('modalSpinner');
+            const modalCloseBtn = document.getElementById('modalCloseBtn');
+            const modalStatusBadge = document.getElementById('modalStatusBadge');
+            const modalLogOutput = document.getElementById('modalLogOutput');
+            const modalFooter = document.getElementById('modalFooter');
+
+            modalTitle.innerText = `Menjalankan: ${title}...`;
+            modalSpinner.classList.remove('hidden');
+            modalCloseBtn.classList.add('hidden');
+            modalStatusBadge.classList.add('hidden');
+            modalFooter.classList.add('hidden');
+            modalLogOutput.innerText = 'Mengirim perintah ke server...\nMohon tunggu beberapa detik...';
+            modal.classList.remove('hidden');
+
+            const formData = new FormData(form);
+            formData.append('ajax', '1');
+
+            fetch(window.location.href, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                modalSpinner.classList.add('hidden');
+                modalCloseBtn.classList.remove('hidden');
+                modalFooter.classList.remove('hidden');
+                modalLogOutput.innerText = data.output || 'Proses selesai tanpa log output.';
+
+                modalStatusBadge.classList.remove('hidden');
+                if (data.status === 'success') {
+                    modalTitle.innerText = `✓ Selesai: ${title}`;
+                    modalStatusBadge.innerHTML = `
+                        <div class="p-3 rounded-2xl bg-emerald-950/80 border border-emerald-500/50 flex items-center space-x-2 text-emerald-300 font-extrabold text-xs">
+                            <span>✓</span>
+                            <span>PROSES BERHASIL! Aplikasi Anda telah diperbarui ke versi terbaru.</span>
+                        </div>
+                    `;
+                } else {
+                    modalTitle.innerText = `✗ Gagal: ${title}`;
+                    modalStatusBadge.innerHTML = `
+                        <div class="p-3 rounded-2xl bg-rose-950/80 border border-rose-500/50 flex items-center space-x-2 text-rose-300 font-extrabold text-xs">
+                            <span>✗</span>
+                            <span>PROSES MENGALAMI KENDALA. Silakan cek log di bawah.</span>
+                        </div>
+                    `;
+                }
+            })
+            .catch(err => {
+                // If AJAX fails, submit standard form
+                form.submit();
+            });
+        }
+
+        function closeModal() {
+            document.getElementById('liveModal').classList.add('hidden');
+        }
+    </script>
 </body>
 </html>
