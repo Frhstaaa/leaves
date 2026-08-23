@@ -1,7 +1,7 @@
 <?php
 /**
  * SGIN / Leaves Management System - Web Application Update & Server Management Center
- * Menghubungkan aplikasi langsung ke GitHub (Frhstaaa/leaves): Auto-Pull, NPM Build, Composer, Artisan Suite & Webhook.
+ * Menghubungkan aplikasi langsung ke GitHub (Frhstaaa/leaves): Auto-Pull, NPM Build Suite, Composer, Complete Artisan Suite & Webhook.
  */
 
 // Disable execution time limit for migrations, git pulls & builds
@@ -62,12 +62,92 @@ if ($hasVendor && $hasBootstrap) {
     }
 }
 
+// Helper Function: Multi-path NodeJS & NPM Detector for cPanel / Cloud Hosting
+function findNodeAndNpm() {
+    $nodePaths = [
+        'node',
+        '/usr/local/bin/node',
+        '/usr/bin/node',
+        '/bin/node',
+        '/opt/cpanel/ea-nodejs20/bin/node',
+        '/opt/cpanel/ea-nodejs18/bin/node',
+        '/opt/cpanel/ea-nodejs16/bin/node',
+        '/opt/cpanel/ea-nodejs14/bin/node',
+        '/opt/alt/alt-nodejs20/root/usr/bin/node',
+        '/opt/alt/alt-nodejs18/root/usr/bin/node',
+        '/opt/alt/alt-nodejs16/root/usr/bin/node',
+    ];
+
+    $foundNode = null;
+    $foundNpm = null;
+    $nodeDir = null;
+
+    if (!function_exists('shell_exec')) {
+        return [null, null, null, null];
+    }
+
+    foreach ($nodePaths as $path) {
+        $ver = @shell_exec("$path -v 2>/dev/null");
+        if ($ver && str_contains(trim($ver), 'v')) {
+            $foundNode = $path;
+            $nodeDir = dirname($path);
+            break;
+        }
+    }
+
+    // Scan user's home ~/.nvm directory if present
+    $home = $_SERVER['HOME'] ?? (getenv('HOME') ?: '');
+    if (!$foundNode && $home && is_dir("$home/.nvm/versions/node")) {
+        $nvmNodes = glob("$home/.nvm/versions/node/*/bin/node");
+        if (!empty($nvmNodes)) {
+            $foundNode = end($nvmNodes);
+            $nodeDir = dirname($foundNode);
+        }
+    }
+
+    if ($nodeDir) {
+        $npmCandidate = $nodeDir . '/npm';
+        if (file_exists($npmCandidate)) {
+            $foundNpm = $npmCandidate;
+        }
+    }
+
+    if (!$foundNpm) {
+        $npmVer = @shell_exec("npm -v 2>/dev/null");
+        if ($npmVer && preg_match('/^\d+\./', trim($npmVer))) {
+            $foundNpm = 'npm';
+        }
+    }
+
+    $nodeVersionStr = $foundNode ? trim(@shell_exec("$foundNode -v 2>&1") ?: '') : '';
+    $npmVersionStr = $foundNpm ? trim(@shell_exec("$foundNpm -v 2>&1") ?: '') : '';
+
+    return [$foundNode, $foundNpm, $nodeVersionStr, $npmVersionStr];
+}
+
 // Helper Function: Safe Command Execution
 function executeCommand($cmd, $workingDir) {
     if (!function_exists('shell_exec')) {
         return "Fungsi shell_exec dinonaktifkan di server PHP ini.";
     }
     $fullCmd = "cd " . escapeshellarg($workingDir) . " && " . $cmd . " 2>&1";
+    return @shell_exec($fullCmd);
+}
+
+// Helper Function: Execute NPM Command with Exported Node Path
+function executeNpmCommand($npmCmd, $workingDir) {
+    list($nodeBin, $npmBin, $nodeVer, $npmVer) = findNodeAndNpm();
+    if (!function_exists('shell_exec')) {
+        return "Fungsi shell_exec dinonaktifkan di server PHP ini.";
+    }
+
+    if (!$npmBin && !$nodeBin) {
+        return "NodeJS / NPM tidak terpasang di hosting. Frontend otomatis menggunakan aset build Vite yang sudah ter-compile dari GitHub repo (public/build/).";
+    }
+
+    $nodeDir = $nodeBin ? dirname($nodeBin) : '';
+    $pathExport = $nodeDir ? "export PATH=\"$nodeDir:\$PATH\" && " : "";
+    $fullCmd = "cd " . escapeshellarg($workingDir) . " && $pathExport " . ($npmBin ?: 'npm') . " " . $npmCmd . " 2>&1";
     return @shell_exec($fullCmd);
 }
 
@@ -88,7 +168,6 @@ function syncFromGithub($basePath, $repo, $branch, $token = '') {
     if ($gitAvailable) {
         $logs[] = "✓ Git CLI terdeteksi di server (" . trim($gitVersion) . ")";
         
-        // Check if .git exists in project root
         if (!is_dir($basePath . '/.git')) {
             $logs[] = "Inisialisasi git repository lokal di $basePath...";
             executeCommand("git init", $basePath);
@@ -97,14 +176,12 @@ function syncFromGithub($basePath, $repo, $branch, $token = '') {
                 : "https://github.com/$repo.git";
             executeCommand("git remote add origin " . escapeshellarg($remoteUrl), $basePath);
         } else {
-            // Update remote URL with token if provided or update repository target
             $remoteUrl = $token 
                 ? "https://$token@github.com/$repo.git"
                 : "https://github.com/$repo.git";
             executeCommand("git remote set-url origin " . escapeshellarg($remoteUrl), $basePath);
         }
 
-        // Fetch and hard-reset to avoid merge conflicts on production
         $logs[] = "Menjalankan git fetch & hard-reset branch '$branch'...";
         $fetchOutput = executeCommand("git fetch origin $branch", $basePath);
         $resetOutput = executeCommand("git reset --hard origin/$branch", $basePath);
@@ -144,9 +221,6 @@ function syncFromGithub($basePath, $repo, $branch, $token = '') {
 
     if ($httpCode !== 200 || empty($zipData)) {
         $logs[] = "✗ Gagal mengunduh file ZIP dari GitHub (HTTP Status: $httpCode).";
-        if ($httpCode === 404) {
-            $logs[] = "Pastikan nama repository ($repo) dan branch ($branch) sudah benar. Jika repository Private, masukkan GitHub Personal Access Token.";
-        }
         return [false, implode("\n", $logs)];
     }
 
@@ -171,7 +245,6 @@ function syncFromGithub($basePath, $repo, $branch, $token = '') {
         $zip->close();
         @unlink($tempZip);
 
-        // Find root folder inside zip (e.g. leaves-main or Frhstaaa-leaves-...)
         $extractedItems = scandir($extractPath);
         $sourceDir = '';
         foreach ($extractedItems as $item) {
@@ -185,7 +258,6 @@ function syncFromGithub($basePath, $repo, $branch, $token = '') {
             $sourceDir = $extractPath;
         }
 
-        // Copy files to project root, preserving .env, storage, etc.
         $ignoreList = ['.env', 'storage', 'public/storage', '.git', 'node_modules'];
         $copyCount = 0;
 
@@ -232,6 +304,9 @@ $currentUri = $_SERVER['REQUEST_URI'] ?? '/leaves-application/update.php';
 $cleanUri = strtok($currentUri, '?');
 $webhookUrl = "$protocol://$currentHost$cleanUri?webhook=1&secret=" . DEFAULT_WEBHOOK_SECRET;
 
+// Find detected Node & NPM on server
+list($detectedNodeBin, $detectedNpmBin, $nodeVersion, $npmVersion) = findNodeAndNpm();
+
 // -------------------------------------------------------------
 // WEBHOOK LISTENER (Automatic Deploy on 'git push')
 // -------------------------------------------------------------
@@ -239,7 +314,6 @@ if (isset($_GET['webhook']) || (isset($_SERVER['HTTP_X_GITHUB_EVENT']) && $_SERV
     header('Content-Type: application/json');
     $secret = $_GET['secret'] ?? DEFAULT_WEBHOOK_SECRET;
     
-    // Optional GitHub Signature verification
     $payload = file_get_contents('php://input');
     $githubSignature = $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? '';
     
@@ -252,7 +326,6 @@ if (isset($_GET['webhook']) || (isset($_SERVER['HTTP_X_GITHUB_EVENT']) && $_SERV
         }
     }
 
-    // Execute Auto-Update
     $repo = $_GET['repo'] ?? DEFAULT_GITHUB_REPO;
     $branch = $_GET['branch'] ?? DEFAULT_GITHUB_BRANCH;
     $token = $_GET['token'] ?? '';
@@ -334,14 +407,11 @@ if ($actionExecuted) {
 
                     // 3. NPM Build Check (NodeJS Frontend)
                     echo "[3/6] Memeriksa build frontend Vite (NPM)...\n";
-                    if (function_exists('shell_exec')) {
-                        $nodeVer = @shell_exec('node --version 2>&1');
-                        if ($nodeVer && str_contains($nodeVer, 'v')) {
-                            echo "NodeJS terdeteksi ($nodeVer). Menjalankan npm run build...\n";
-                            echo executeCommand("npm run build", $basePath) . "\n";
-                        } else {
-                            echo "✓ NodeJS tidak ada di server hosting. Frontend menggunakan aset build yang sudah ter-compile otomatis dari GitHub (public/build/).\n\n";
-                        }
+                    if ($detectedNodeBin) {
+                        echo "NodeJS terdeteksi ($detectedNodeBin - $nodeVersion). Menjalankan npm run build...\n";
+                        echo executeNpmCommand("run build", $basePath) . "\n";
+                    } else {
+                        echo "✓ NodeJS tidak ada di server hosting. Frontend menggunakan aset build yang sudah ter-compile otomatis dari GitHub (public/build/).\n\n";
                     }
 
                     // 4. Database Migrations
@@ -387,6 +457,235 @@ if ($actionExecuted) {
                 }
                 break;
 
+            // --- NPM & FRONTEND ACTIONS ---
+            case 'npm_build':
+                $actionTitle = 'NPM Run Build (Vite)';
+                echo "=== MENJALANKAN NPM RUN BUILD (COMPILE FRONTEND VITE) ===\n";
+                echo "Node Binary: " . ($detectedNodeBin ?: 'Tidak ditemukan di PATH standar') . " (" . ($nodeVersion ?: '-') . ")\n";
+                echo "NPM Binary: " . ($detectedNpmBin ?: 'Tidak ditemukan') . " (" . ($npmVersion ?: '-') . ")\n\n";
+                if ($detectedNodeBin) {
+                    echo executeNpmCommand("run build", $basePath);
+                    $actionStatus = 'success';
+                } else {
+                    echo "ℹ️ NodeJS tidak terpasang di sistem hosting ini.\n";
+                    echo "Frontend aplikasi Anda sudah menggunakan bundle aset terkompilasi siap pakai langsung dari GitHub repository (folder public/build/).\n";
+                    $actionStatus = 'success';
+                }
+                break;
+
+            case 'npm_install':
+                $actionTitle = 'NPM Install';
+                echo "=== MENJALANKAN NPM INSTALL ===\n";
+                if ($detectedNodeBin) {
+                    echo executeNpmCommand("install --legacy-peer-deps", $basePath);
+                    $actionStatus = 'success';
+                } else {
+                    echo "✗ NodeJS / NPM tidak terdeteksi di server.";
+                    $actionStatus = 'error';
+                }
+                break;
+
+            // --- PHP ARTISAN COMPLETE SUITE ---
+            case 'migrate_only':
+                $actionTitle = 'Artisan: Migrate';
+                echo "=== PHP ARTISAN MIGRATE --FORCE ===\n";
+                if ($app) {
+                    \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+                    echo \Illuminate\Support\Facades\Artisan::output();
+                    $actionStatus = 'success';
+                } else {
+                    echo "✗ Laravel kernel belum terhubung.";
+                    $actionStatus = 'error';
+                }
+                break;
+
+            case 'migrate_status':
+                $actionTitle = 'Artisan: Migrate Status';
+                echo "=== STATUS MIGRASI DATABASE (PHP ARTISAN MIGRATE:STATUS) ===\n";
+                if ($app) {
+                    \Illuminate\Support\Facades\Artisan::call('migrate:status');
+                    echo \Illuminate\Support\Facades\Artisan::output();
+                    $actionStatus = 'success';
+                }
+                break;
+
+            case 'migrate_rollback':
+                $actionTitle = 'Artisan: Migrate Rollback (Step 1)';
+                echo "=== ROLLBACK MIGRASI TERAKHIR (PHP ARTISAN MIGRATE:ROLLBACK --STEP=1) ===\n";
+                if ($app) {
+                    \Illuminate\Support\Facades\Artisan::call('migrate:rollback', ['--step' => 1, '--force' => true]);
+                    echo \Illuminate\Support\Facades\Artisan::output();
+                    $actionStatus = 'success';
+                }
+                break;
+
+            case 'migrate_fresh':
+                $actionTitle = 'Artisan: Migrate Fresh (Reset & Re-run DB)';
+                echo "=== RESET & RE-RUN DATABASE MIGRASI (PHP ARTISAN MIGRATE:FRESH --SEED) ===\n";
+                if ($app) {
+                    \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--seed' => true, '--force' => true]);
+                    echo \Illuminate\Support\Facades\Artisan::output();
+                    $actionStatus = 'success';
+                }
+                break;
+
+            case 'db_seed':
+                $actionTitle = 'Artisan: DB Seed';
+                echo "=== MENJALANKAN DATABASE SEEDER (PHP ARTISAN DB:SEED) ===\n";
+                if ($app) {
+                    \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
+                    echo \Illuminate\Support\Facades\Artisan::output();
+                    $actionStatus = 'success';
+                } else {
+                    echo "✗ Laravel kernel belum terhubung.";
+                    $actionStatus = 'error';
+                }
+                break;
+
+            case 'clear_cache':
+                $actionTitle = 'Artisan: Clear All Caches';
+                echo "=== MEMBERSIHKAN SELURUH CACHE APLIKASI (OPTIMIZE:CLEAR) ===\n";
+                if (function_exists('opcache_reset')) {
+                    @opcache_reset();
+                    echo "✓ OPcache di-reset.\n";
+                }
+                if ($app) {
+                    \Illuminate\Support\Facades\Artisan::call('optimize:clear');
+                    echo \Illuminate\Support\Facades\Artisan::output();
+                    $actionStatus = 'success';
+                }
+                break;
+
+            case 'optimize':
+                $actionTitle = 'Artisan: Optimize Production Cache';
+                echo "=== MEMPERBARUI CACHE PRODUCTION (CONFIG, ROUTE, VIEW, EVENT) ===\n";
+                if ($app) {
+                    \Illuminate\Support\Facades\Artisan::call('config:cache');
+                    echo "Config cache: OK\n";
+                    \Illuminate\Support\Facades\Artisan::call('route:cache');
+                    echo "Route cache: OK\n";
+                    \Illuminate\Support\Facades\Artisan::call('view:cache');
+                    echo "View cache: OK\n";
+                    \Illuminate\Support\Facades\Artisan::call('event:cache');
+                    echo "Event cache: OK\n";
+                    $actionStatus = 'success';
+                }
+                break;
+
+            case 'route_list':
+                $actionTitle = 'Artisan: Route List';
+                echo "=== DAFTAR RUTE AKTIF (PHP ARTISAN ROUTE:LIST) ===\n";
+                if ($app) {
+                    \Illuminate\Support\Facades\Artisan::call('route:list');
+                    echo \Illuminate\Support\Facades\Artisan::output();
+                    $actionStatus = 'success';
+                }
+                break;
+
+            case 'artisan_about':
+                $actionTitle = 'Artisan: About System Info';
+                echo "=== INFORMASI APLIKASI & ENVIRONMENT (PHP ARTISAN ABOUT) ===\n";
+                if ($app) {
+                    \Illuminate\Support\Facades\Artisan::call('about');
+                    echo \Illuminate\Support\Facades\Artisan::output();
+                    $actionStatus = 'success';
+                }
+                break;
+
+            case 'storage_link':
+                $actionTitle = 'Artisan: Storage Link';
+                echo "=== MEMPERBAIKI STORAGE SYMLINK ===\n";
+                $publicStorage = $basePath . '/public/storage';
+                $appStorage = $basePath . '/storage/app/public';
+                if (file_exists($publicStorage) || is_link($publicStorage)) {
+                    @unlink($publicStorage);
+                }
+                if (@symlink($appStorage, $publicStorage)) {
+                    echo "✓ Symlink berhasil dibuat: public/storage -> storage/app/public\n";
+                    $actionStatus = 'success';
+                } else if ($app) {
+                    \Illuminate\Support\Facades\Artisan::call('storage:link');
+                    echo \Illuminate\Support\Facades\Artisan::output();
+                    $actionStatus = 'success';
+                }
+                break;
+
+            case 'key_generate':
+                $actionTitle = 'Artisan: Key Generate';
+                echo "=== GENERATE APP KEY (PHP ARTISAN KEY:GENERATE) ===\n";
+                if ($app) {
+                    \Illuminate\Support\Facades\Artisan::call('key:generate', ['--force' => true]);
+                    echo \Illuminate\Support\Facades\Artisan::output();
+                    $actionStatus = 'success';
+                }
+                break;
+
+            case 'queue_work':
+                $actionTitle = 'Artisan: Queue Work';
+                echo "=== MEMPROSES ANTRIAN JOBS (PHP ARTISAN QUEUE:WORK --STOP-WHEN-EMPTY) ===\n";
+                if ($app) {
+                    \Illuminate\Support\Facades\Artisan::call('queue:work', ['--stop-when-empty' => true]);
+                    echo \Illuminate\Support\Facades\Artisan::output() ?: "Tidak ada antrian job pending.\n";
+                    $actionStatus = 'success';
+                }
+                break;
+
+            case 'queue_restart':
+                $actionTitle = 'Artisan: Queue Restart';
+                echo "=== RESTART QUEUE WORKER (PHP ARTISAN QUEUE:RESTART) ===\n";
+                if ($app) {
+                    \Illuminate\Support\Facades\Artisan::call('queue:restart');
+                    echo \Illuminate\Support\Facades\Artisan::output();
+                    $actionStatus = 'success';
+                }
+                break;
+
+            case 'schedule_run':
+                $actionTitle = 'Artisan: Schedule Run';
+                echo "=== MENJALANKAN CRON SCHEDULE (PHP ARTISAN SCHEDULE:RUN) ===\n";
+                if ($app) {
+                    \Illuminate\Support\Facades\Artisan::call('schedule:run');
+                    echo \Illuminate\Support\Facades\Artisan::output() ?: "Tidak ada task terjadwal saat ini.\n";
+                    $actionStatus = 'success';
+                }
+                break;
+
+            case 'run_custom_artisan':
+                $actionTitle = 'Custom Artisan: ' . $customCommand;
+                echo "=== EKSEKUSI ARTISAN COMMAND: php artisan " . htmlspecialchars($customCommand) . " ===\n";
+                if ($app && !empty($customCommand)) {
+                    $parts = explode(' ', trim($customCommand));
+                    $cmdName = array_shift($parts);
+                    $args = [];
+                    foreach ($parts as $part) {
+                        if (str_starts_with($part, '--')) {
+                            if (str_contains($part, '=')) {
+                                list($k, $v) = explode('=', $part, 2);
+                                $args[$k] = $v;
+                            } else {
+                                $args[$part] = true;
+                            }
+                        } elseif (str_contains($part, '=')) {
+                            list($k, $v) = explode('=', $part, 2);
+                            $args[$k] = $v;
+                        } else {
+                            $args[] = $part;
+                        }
+                    }
+                    try {
+                        \Illuminate\Support\Facades\Artisan::call($cmdName, $args);
+                        echo \Illuminate\Support\Facades\Artisan::output();
+                        $actionStatus = 'success';
+                    } catch (\Throwable $e) {
+                        echo "Error executing command: " . $e->getMessage() . "\n";
+                        $actionStatus = 'error';
+                    }
+                } else {
+                    echo "✗ Perintah kosong atau kernel tidak terhubung.";
+                    $actionStatus = 'error';
+                }
+                break;
+
             case 'github_pull_only':
                 $actionTitle = 'Git Pull Saja';
                 echo "=== PULL / SYNC DARI GITHUB REPO LEAVES SAJA ===\n";
@@ -399,39 +698,6 @@ if ($actionExecuted) {
                     }
                     $actionStatus = 'success';
                 } else {
-                    $actionStatus = 'error';
-                }
-                break;
-
-            case 'npm_install':
-                $actionTitle = 'NPM Install';
-                echo "=== MENJALANKAN NPM INSTALL ===\n";
-                if (function_exists('shell_exec')) {
-                    echo executeCommand("npm install", $basePath);
-                    $actionStatus = 'success';
-                } else {
-                    echo "✗ shell_exec dinonaktifkan di server.";
-                    $actionStatus = 'error';
-                }
-                break;
-
-            case 'npm_build':
-                $actionTitle = 'NPM Run Build';
-                echo "=== MENJALANKAN NPM RUN BUILD (COMPILE FRONTEND VITE) ===\n";
-                if (function_exists('shell_exec')) {
-                    $nodeVer = @shell_exec('node --version 2>&1');
-                    $npmVer = @shell_exec('npm --version 2>&1');
-                    echo "Node Version: " . ($nodeVer ?: 'Tidak ditemukan') . "\n";
-                    echo "NPM Version: " . ($npmVer ?: 'Tidak ditemukan') . "\n\n";
-                    if ($nodeVer && str_contains($nodeVer, 'v')) {
-                        echo executeCommand("npm run build", $basePath);
-                        $actionStatus = 'success';
-                    } else {
-                        echo "ℹ️ NodeJS/NPM tidak terpasang di hosting. Frontend sudah otomatis menggunakan file build yang ter-sync dari GitHub (public/build/).\n";
-                        $actionStatus = 'success';
-                    }
-                } else {
-                    echo "✗ shell_exec dinonaktifkan di server.";
                     $actionStatus = 'error';
                 }
                 break;
@@ -466,129 +732,6 @@ if ($actionExecuted) {
                 }
                 break;
 
-            case 'migrate_only':
-                $actionTitle = 'Migrasi Database';
-                echo "=== MENJALANKAN PHP ARTISAN MIGRATE ===\n";
-                if ($app) {
-                    \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-                    echo \Illuminate\Support\Facades\Artisan::output();
-                    $actionStatus = 'success';
-                } else {
-                    echo "✗ Laravel kernel belum terhubung.";
-                    $actionStatus = 'error';
-                }
-                break;
-
-            case 'migrate_status':
-                $actionTitle = 'Status Migrasi Database';
-                echo "=== CEK STATUS MIGRASI DATABASE ===\n";
-                if ($app) {
-                    \Illuminate\Support\Facades\Artisan::call('migrate:status');
-                    echo \Illuminate\Support\Facades\Artisan::output();
-                    $actionStatus = 'success';
-                }
-                break;
-
-            case 'db_seed':
-                $actionTitle = 'Database Seeder';
-                echo "=== MENJALANKAN PHP ARTISAN DB:SEED ===\n";
-                if ($app) {
-                    \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
-                    echo \Illuminate\Support\Facades\Artisan::output();
-                    $actionStatus = 'success';
-                } else {
-                    echo "✗ Laravel kernel belum terhubung.";
-                    $actionStatus = 'error';
-                }
-                break;
-
-            case 'key_generate':
-                $actionTitle = 'Generate App Key';
-                echo "=== GENERATE APP KEY (PHP ARTISAN KEY:GENERATE) ===\n";
-                if ($app) {
-                    \Illuminate\Support\Facades\Artisan::call('key:generate', ['--force' => true]);
-                    echo \Illuminate\Support\Facades\Artisan::output();
-                    $actionStatus = 'success';
-                }
-                break;
-
-            case 'clear_cache':
-                $actionTitle = 'Clear Cache';
-                echo "=== MEMBERSIHKAN SELURUH CACHE APLIKASI (OPTIMIZE:CLEAR) ===\n";
-                if (function_exists('opcache_reset')) {
-                    @opcache_reset();
-                    echo "✓ OPcache di-reset.\n";
-                }
-                if ($app) {
-                    \Illuminate\Support\Facades\Artisan::call('optimize:clear');
-                    echo \Illuminate\Support\Facades\Artisan::output();
-                    $actionStatus = 'success';
-                }
-                break;
-
-            case 'optimize':
-                $actionTitle = 'Optimize Cache';
-                echo "=== MEMPERBARUI CACHE PRODUCTION (CONFIG, ROUTE, VIEW) ===\n";
-                if ($app) {
-                    \Illuminate\Support\Facades\Artisan::call('config:cache');
-                    echo \Illuminate\Support\Facades\Artisan::output();
-                    \Illuminate\Support\Facades\Artisan::call('route:cache');
-                    echo \Illuminate\Support\Facades\Artisan::output();
-                    \Illuminate\Support\Facades\Artisan::call('view:cache');
-                    echo \Illuminate\Support\Facades\Artisan::output();
-                    $actionStatus = 'success';
-                }
-                break;
-
-            case 'storage_link':
-                $actionTitle = 'Perbaiki Storage Link';
-                echo "=== MEMPERBAIKI STORAGE SYMLINK ===\n";
-                $publicStorage = $basePath . '/public/storage';
-                $appStorage = $basePath . '/storage/app/public';
-                if (file_exists($publicStorage) || is_link($publicStorage)) {
-                    @unlink($publicStorage);
-                }
-                if (@symlink($appStorage, $publicStorage)) {
-                    echo "✓ Symlink berhasil: public/storage -> storage/app/public\n";
-                    $actionStatus = 'success';
-                } else if ($app) {
-                    \Illuminate\Support\Facades\Artisan::call('storage:link');
-                    echo \Illuminate\Support\Facades\Artisan::output();
-                    $actionStatus = 'success';
-                }
-                break;
-
-            case 'run_custom_artisan':
-                $actionTitle = 'Artisan Command: ' . $customCommand;
-                echo "=== EKSEKUSI ARTISAN COMMAND: php artisan " . htmlspecialchars($customCommand) . " ===\n";
-                if ($app && !empty($customCommand)) {
-                    $parts = explode(' ', trim($customCommand));
-                    $cmdName = array_shift($parts);
-                    $args = [];
-                    foreach ($parts as $part) {
-                        if (str_starts_with($part, '--')) {
-                            $args[$part] = true;
-                        } elseif (str_contains($part, '=')) {
-                            list($k, $v) = explode('=', $part, 2);
-                            $args[$k] = $v;
-                        } else {
-                            $args[] = $part;
-                        }
-                    }
-                    try {
-                        \Illuminate\Support\Facades\Artisan::call($cmdName, $args);
-                        echo \Illuminate\Support\Facades\Artisan::output();
-                        $actionStatus = 'success';
-                    } catch (\Throwable $e) {
-                        echo "Error executing command: " . $e->getMessage() . "\n";
-                        $actionStatus = 'error';
-                    }
-                } else {
-                    echo "✗ Perintah kosong atau kernel tidak terhubung.";
-                    $actionStatus = 'error';
-                }
-                break;
-
             case 'delete_self':
                 $actionTitle = 'Hapus update.php';
                 echo "=== MENGHAPUS UPDATE.PHP DARI SERVER ===\n";
@@ -617,15 +760,6 @@ if ($actionExecuted) {
     }
 }
 
-// Server Diagnostic Data
-$lastCommitInfo = 'Belum terhubung ke Git';
-if (is_dir($basePath . '/.git') && function_exists('shell_exec')) {
-    $commitLog = @shell_exec("cd " . escapeshellarg($basePath) . " && git log -1 --pretty=format:'%h - %s (%cr) <%an>' 2>&1");
-    if ($commitLog && !str_contains($commitLog, 'fatal:')) {
-        $lastCommitInfo = $commitLog;
-    }
-}
-
 // Database Connection Status
 $dbStatus = 'Belum terhubung';
 $dbConnected = false;
@@ -638,18 +772,13 @@ if ($app) {
         $dbStatus = 'Gagal: ' . $e->getMessage();
     }
 }
-
-// Environment Versions
-$nodeVersion = function_exists('shell_exec') ? trim(@shell_exec('node -v 2>&1') ?: '') : '';
-$npmVersion = function_exists('shell_exec') ? trim(@shell_exec('npm -v 2>&1') ?: '') : '';
-$composerVersion = function_exists('shell_exec') ? trim(@shell_exec('composer --version 2>&1') ?: '') : '';
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SGIN - Setup, Build & Update Center (Leaves)</title>
+    <title>SGIN - Setup, NPM Build & Full Artisan Suite</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -659,17 +788,17 @@ $composerVersion = function_exists('shell_exec') ? trim(@shell_exec('composer --
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-4 sm:p-8">
 
-    <div class="max-w-5xl mx-auto space-y-6">
+    <div class="max-w-6xl mx-auto space-y-6">
 
         <!-- Header -->
         <div class="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-emerald-950 border border-slate-700/80 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
                 <div class="flex items-center space-x-2">
                     <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-extrabold uppercase border border-emerald-400/30">Leaves Setup & Deploy Center</span>
-                    <span class="text-xs text-slate-300">GitHub • NPM • Composer • Artisan</span>
+                    <span class="text-xs text-slate-300">GitHub • NPM • Composer • Complete Artisan Suite</span>
                 </div>
                 <h1 class="text-2xl sm:text-3xl font-black text-white mt-1.5">Leaves Application Control Center</h1>
-                <p class="text-xs text-slate-300 mt-1">Setup lengkap, jalankan NPM Build, Artisan migrate, Composer install, dan sinkronisasi repo GitHub <code>Frhstaaa/leaves</code></p>
+                <p class="text-xs text-slate-300 mt-1">Eksekusi NPM Run Build, Artisan Migrate, Seeder, Cache Optimizer, dan sinkronisasi GitHub <code>Frhstaaa/leaves</code></p>
             </div>
             <a href="./" class="px-5 py-3 rounded-2xl bg-white text-slate-950 hover:bg-emerald-50 font-black text-xs shadow-lg transition-transform hover:scale-105 shrink-0 text-center">
                 &larr; Buka Aplikasi SGIN
@@ -678,7 +807,7 @@ $composerVersion = function_exists('shell_exec') ? trim(@shell_exec('composer --
 
         <!-- PROMINENT SUCCESS / ERROR NOTIFICATION BANNER AT TOP -->
         <?php if (!empty($outputLog)): ?>
-        <div id="executionBanner" class="p-6 rounded-3xl <?= $actionStatus === 'success' ? 'bg-emerald-950/80 border-emerald-500/70 shadow-emerald-950/50' : 'bg-rose-950/80 border-rose-500/70 shadow-rose-950/50' ?> border shadow-2xl space-y-4 animate-fade-in">
+        <div id="executionBanner" class="p-6 rounded-3xl <?= $actionStatus === 'success' ? 'bg-emerald-950/80 border-emerald-500/70 shadow-emerald-950/50' : 'bg-rose-950/80 border-rose-500/70 shadow-rose-950/50' ?> border shadow-2xl space-y-4">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b <?= $actionStatus === 'success' ? 'border-emerald-800/60' : 'border-rose-800/60' ?> pb-3">
                 <div class="flex items-center space-x-3">
                     <?php if ($actionStatus === 'success'): ?>
@@ -686,7 +815,7 @@ $composerVersion = function_exists('shell_exec') ? trim(@shell_exec('composer --
                         ✓
                     </div>
                     <div>
-                        <h3 class="text-base font-black text-emerald-300">UPDATE BERHASIL! (<?= htmlspecialchars($actionTitle ?: 'Sukses') ?>)</h3>
+                        <h3 class="text-base font-black text-emerald-300">PROSES BERHASIL! (<?= htmlspecialchars($actionTitle ?: 'Sukses') ?>)</h3>
                         <p class="text-xs text-emerald-200/80">Kodingan, database, dan cache aplikasi telah berhasil diperbarui ke versi terbaru.</p>
                     </div>
                     <?php else: ?>
@@ -694,7 +823,7 @@ $composerVersion = function_exists('shell_exec') ? trim(@shell_exec('composer --
                         ✗
                     </div>
                     <div>
-                        <h3 class="text-base font-black text-rose-300">UPDATE MENGALAMI KENDALA (<?= htmlspecialchars($actionTitle ?: 'Error') ?>)</h3>
+                        <h3 class="text-base font-black text-rose-300">PROSES MENGALAMI KENDALA (<?= htmlspecialchars($actionTitle ?: 'Error') ?>)</h3>
                         <p class="text-xs text-rose-200/80">Silakan periksa log terminal di bawah untuk rincian penyebabnya.</p>
                     </div>
                     <?php endif; ?>
@@ -712,18 +841,17 @@ $composerVersion = function_exists('shell_exec') ? trim(@shell_exec('composer --
             </div>
         </div>
         <script>
-            // Auto-scroll to top result banner on load
             window.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('executionBanner')?.scrollIntoView({ behavior: 'smooth' });
             });
         </script>
         <?php endif; ?>
 
-        <!-- Status Overview Cards -->
+        <!-- Diagnostic Overview Cards -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
             <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800">
                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Repository</span>
-                <span class="text-xs font-black text-emerald-400 truncate block" title="<?= DEFAULT_GITHUB_REPO ?>"><?= DEFAULT_GITHUB_REPO ?></span>
+                <span class="text-xs font-black text-emerald-400 truncate block"><?= DEFAULT_GITHUB_REPO ?></span>
             </div>
             <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800">
                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Branch Target</span>
@@ -736,9 +864,9 @@ $composerVersion = function_exists('shell_exec') ? trim(@shell_exec('composer --
                 </span>
             </div>
             <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800">
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Server Tools</span>
-                <span class="text-[11px] text-slate-300 truncate block">
-                    PHP <?= PHP_VERSION ?> <?= $nodeVersion ? '• Node ' . $nodeVersion : '' ?>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Node / NPM Tools</span>
+                <span class="text-[11px] font-bold <?= $detectedNodeBin ? 'text-emerald-400' : 'text-slate-400' ?> truncate block">
+                    <?= $detectedNodeBin ? "✓ Node $nodeVersion" : "Pre-bundled Assets" ?>
                 </span>
             </div>
         </div>
@@ -752,133 +880,193 @@ $composerVersion = function_exists('shell_exec') ? trim(@shell_exec('composer --
                         <h3 class="text-lg sm:text-xl font-black text-white">🚀 1-Click Complete Setup & Update (All-in-One)</h3>
                     </div>
                     <p class="text-xs text-slate-300 leading-relaxed max-w-2xl">
-                        Menjalankan seluruh rangkaian: Tarik kodingan terbaru GitHub (<code><?= DEFAULT_GITHUB_REPO ?></code>) &rarr; Composer install &rarr; NPM build &rarr; Artisan migrate database &rarr; Storage link &rarr; Clear & Cache Optimize.
+                        Menjalankan seluruh rangkaian otomatis: Pull GitHub (<code><?= DEFAULT_GITHUB_REPO ?></code>) &rarr; Composer install &rarr; NPM build Vite &rarr; Artisan migrate database &rarr; Storage link &rarr; Clear & Cache Optimize.
                     </p>
                 </div>
                 <form method="POST" onsubmit="handleFormSubmit(event, this, 'Complete Setup & Update')">
                     <input type="hidden" name="action" value="full_setup_update">
-                    <input type="hidden" name="github_repo" value="<?= htmlspecialchars($repoName) ?>">
-                    <input type="hidden" name="github_branch" value="<?= htmlspecialchars($branchName) ?>">
-                    <input type="hidden" name="github_token" value="<?= htmlspecialchars($githubToken) ?>">
-                    <button type="submit" id="btnMainUpdate" class="w-full lg:w-auto px-7 py-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-xl shadow-emerald-600/30 flex items-center justify-center space-x-2 transition-all hover:scale-105 shrink-0">
-                        <span id="btnMainText">Eksekusi Complete Update &rarr;</span>
+                    <button type="submit" class="w-full lg:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-xl shadow-emerald-600/30 flex items-center justify-center space-x-2 transition-all hover:scale-105 shrink-0">
+                        <span>Eksekusi Complete Update &rarr;</span>
                     </button>
                 </form>
             </div>
         </div>
 
-        <!-- SECTION: NPM & FRONTEND BUILD -->
-        <div class="p-6 rounded-3xl bg-slate-900/60 border border-amber-500/30 space-y-4">
-            <div class="flex items-center justify-between">
+        <!-- SECTION 1: NPM & FRONTEND BUILD TOOLS -->
+        <div class="p-6 rounded-3xl bg-slate-900/80 border border-amber-500/40 space-y-4 shadow-xl">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
                 <div class="flex items-center space-x-2">
-                    <span class="text-amber-400 text-lg">⚡</span>
-                    <h3 class="text-sm font-black text-amber-300 uppercase tracking-wider">Frontend & NPM Build Tools</h3>
+                    <span class="text-amber-400 text-xl">⚡</span>
+                    <div>
+                        <h3 class="text-sm font-black text-amber-300 uppercase tracking-wider">Frontend & NPM Build Tools (Vite / React)</h3>
+                        <p class="text-xs text-slate-400">Kompilasi ulang aset JavaScript, CSS, dan React langsung di server hosting Anda.</p>
+                    </div>
                 </div>
-                <span class="text-[11px] text-slate-400"><?= $nodeVersion ? "Node: $nodeVersion | NPM: $npmVersion" : "Pre-built Assets Enabled" ?></span>
+                <div class="text-xs font-mono px-3 py-1.5 rounded-xl bg-black/60 border border-slate-800 text-slate-300 shrink-0">
+                    <?= $detectedNodeBin ? "Path: $detectedNodeBin ($nodeVersion)" : "Hosting Status: Pre-compiled GitHub Assets" ?>
+                </div>
             </div>
-            <p class="text-xs text-slate-300">
-                Kompilasi ulang aset JavaScript / React / Vite di server Anda jika NodeJS terpasang di hosting.
-            </p>
+
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <form method="POST" onsubmit="handleFormSubmit(event, this, 'NPM Run Build')">
                     <input type="hidden" name="action" value="npm_build">
-                    <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-amber-600/20 border border-amber-500/40 text-amber-200 font-bold text-xs transition-colors flex items-center justify-center space-x-2">
-                        <span>⚡ Jalankan <code>npm run build</code> (Vite)</span>
+                    <button type="submit" class="w-full p-4 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 text-amber-200 font-bold text-xs transition-all flex items-center justify-between shadow-md">
+                        <div class="text-left">
+                            <span class="block font-black text-sm text-amber-300">⚡ Jalankan NPM Run Build</span>
+                            <span class="text-[11px] text-amber-200/70">Kompilasi aset Vite produksi (public/build)</span>
+                        </div>
+                        <span class="text-base">&rarr;</span>
                     </button>
                 </form>
                 <form method="POST" onsubmit="handleFormSubmit(event, this, 'NPM Install')">
                     <input type="hidden" name="action" value="npm_install">
-                    <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors flex items-center justify-center space-x-2">
-                        <span>📦 Jalankan <code>npm install</code></span>
+                    <button type="submit" class="w-full p-4 rounded-2xl bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-slate-200 font-bold text-xs transition-all flex items-center justify-between shadow-md">
+                        <div class="text-left">
+                            <span class="block font-black text-sm text-white">📦 Jalankan NPM Install</span>
+                            <span class="text-[11px] text-slate-400">Pasang/update dependensi package.json</span>
+                        </div>
+                        <span class="text-base">&rarr;</span>
                     </button>
                 </form>
             </div>
         </div>
 
-        <!-- SECTION: PHP ARTISAN SUITE -->
-        <div class="p-6 rounded-3xl bg-slate-900/60 border border-indigo-500/30 space-y-4">
-            <div class="flex items-center space-x-2">
-                <span class="text-indigo-400 text-lg">🛠️</span>
-                <h3 class="text-sm font-black text-indigo-300 uppercase tracking-wider">PHP Artisan Suite (Backend & Database)</h3>
+        <!-- SECTION 2: COMPLETE PHP ARTISAN SUITE -->
+        <div class="p-6 rounded-3xl bg-slate-900/80 border border-indigo-500/40 space-y-5 shadow-xl">
+            <div class="flex items-center space-x-2 border-b border-slate-800 pb-3">
+                <span class="text-indigo-400 text-xl">🛠️</span>
+                <div>
+                    <h3 class="text-sm font-black text-indigo-300 uppercase tracking-wider">PHP Artisan Suite (Database, Cache & System)</h3>
+                    <p class="text-xs text-slate-400">Pusat eksekusi perintah lengkap Laravel Artisan langsung dari web browser.</p>
+                </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <!-- Migrate -->
-                <form method="POST" onsubmit="handleFormSubmit(event, this, 'Artisan Migrate')">
-                    <input type="hidden" name="action" value="migrate_only">
-                    <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-indigo-600/20 border border-indigo-500/40 text-indigo-200 font-bold text-xs transition-colors">
-                        🗄️ <code>artisan migrate --force</code>
-                    </button>
-                </form>
-                <!-- Migrate Status -->
-                <form method="POST" onsubmit="handleFormSubmit(event, this, 'Migrate Status')">
-                    <input type="hidden" name="action" value="migrate_status">
-                    <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
-                        📊 <code>artisan migrate:status</code>
-                    </button>
-                </form>
-                <!-- DB Seed -->
-                <form method="POST" onsubmit="handleFormSubmit(event, this, 'Database Seed')">
-                    <input type="hidden" name="action" value="db_seed">
-                    <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
-                        🌱 <code>artisan db:seed --force</code>
-                    </button>
-                </form>
-                <!-- Storage Link -->
-                <form method="POST" onsubmit="handleFormSubmit(event, this, 'Storage Link')">
-                    <input type="hidden" name="action" value="storage_link">
-                    <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
-                        🔗 <code>artisan storage:link</code>
-                    </button>
-                </form>
-                <!-- Clear Cache -->
-                <form method="POST" onsubmit="handleFormSubmit(event, this, 'Clear Cache')">
-                    <input type="hidden" name="action" value="clear_cache">
-                    <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
-                        🧹 <code>artisan optimize:clear</code>
-                    </button>
-                </form>
-                <!-- Optimize Production -->
-                <form method="POST" onsubmit="handleFormSubmit(event, this, 'Optimize Cache')">
-                    <input type="hidden" name="action" value="optimize">
-                    <button type="submit" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
-                        ⚡ <code>artisan config/route/view:cache</code>
-                    </button>
-                </form>
+            <!-- Group A: Database & Migrations -->
+            <div class="space-y-2">
+                <span class="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block">🗄️ Database & Migrasi</span>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <form method="POST" onsubmit="handleFormSubmit(event, this, 'Artisan: Migrate')">
+                        <input type="hidden" name="action" value="migrate_only">
+                        <button type="submit" class="w-full py-3 px-3 rounded-xl bg-slate-800 hover:bg-indigo-600/20 border border-indigo-500/40 text-indigo-200 font-bold text-xs text-center transition-colors">
+                            🗄️ <code>migrate --force</code>
+                        </button>
+                    </form>
+                    <form method="POST" onsubmit="handleFormSubmit(event, this, 'Artisan: Migrate Status')">
+                        <input type="hidden" name="action" value="migrate_status">
+                        <button type="submit" class="w-full py-3 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs text-center transition-colors">
+                            📊 <code>migrate:status</code>
+                        </button>
+                    </form>
+                    <form method="POST" onsubmit="handleFormSubmit(event, this, 'Artisan: DB Seed')">
+                        <input type="hidden" name="action" value="db_seed">
+                        <button type="submit" class="w-full py-3 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs text-center transition-colors">
+                            🌱 <code>db:seed --force</code>
+                        </button>
+                    </form>
+                    <form method="POST" onsubmit="handleFormSubmit(event, this, 'Artisan: Migrate Rollback')">
+                        <input type="hidden" name="action" value="migrate_rollback">
+                        <button type="submit" onclick="return confirm('Apakah Anda yakin ingin rollback 1 step migrasi terakhir?')" class="w-full py-3 px-3 rounded-xl bg-slate-800 hover:bg-amber-600/20 border border-amber-500/40 text-amber-200 font-bold text-xs text-center transition-colors">
+                            ⏪ <code>migrate:rollback</code>
+                        </button>
+                    </form>
+                </div>
             </div>
 
-            <!-- Custom Artisan Interactive Input -->
-            <div class="pt-2">
-                <form method="POST" onsubmit="handleFormSubmit(event, this, 'Custom Artisan')" class="flex flex-col sm:flex-row gap-2">
+            <!-- Group B: Cache & Optimization -->
+            <div class="space-y-2">
+                <span class="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block">⚡ Cache & Performa</span>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <form method="POST" onsubmit="handleFormSubmit(event, this, 'Artisan: Optimize Clear')">
+                        <input type="hidden" name="action" value="clear_cache">
+                        <button type="submit" class="w-full py-3 px-3 rounded-xl bg-slate-800 hover:bg-emerald-600/20 border border-emerald-500/40 text-emerald-200 font-bold text-xs text-center transition-colors">
+                            🧹 <code>optimize:clear</code>
+                        </button>
+                    </form>
+                    <form method="POST" onsubmit="handleFormSubmit(event, this, 'Artisan: Optimize Cache')">
+                        <input type="hidden" name="action" value="optimize">
+                        <button type="submit" class="w-full py-3 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs text-center transition-colors">
+                            ⚡ <code>optimize cache</code>
+                        </button>
+                    </form>
+                    <form method="POST" onsubmit="handleFormSubmit(event, this, 'Artisan: Storage Link')">
+                        <input type="hidden" name="action" value="storage_link">
+                        <button type="submit" class="w-full py-3 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs text-center transition-colors">
+                            🔗 <code>storage:link</code>
+                        </button>
+                    </form>
+                    <form method="POST" onsubmit="handleFormSubmit(event, this, 'Artisan: Route List')">
+                        <input type="hidden" name="action" value="route_list">
+                        <button type="submit" class="w-full py-3 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs text-center transition-colors">
+                            🛣️ <code>route:list</code>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Group C: System Tools & Background Workers -->
+            <div class="space-y-2">
+                <span class="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block">⚙️ Sistem & Background Workers</span>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <form method="POST" onsubmit="handleFormSubmit(event, this, 'Artisan: System About')">
+                        <input type="hidden" name="action" value="artisan_about">
+                        <button type="submit" class="w-full py-3 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs text-center transition-colors">
+                            ℹ️ <code>about</code>
+                        </button>
+                    </form>
+                    <form method="POST" onsubmit="handleFormSubmit(event, this, 'Artisan: Key Generate')">
+                        <input type="hidden" name="action" value="key_generate">
+                        <button type="submit" onclick="return confirm('Generate key baru akan membatalkan sesi login user saat ini. Lanjutkan?')" class="w-full py-3 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs text-center transition-colors">
+                            🔑 <code>key:generate</code>
+                        </button>
+                    </form>
+                    <form method="POST" onsubmit="handleFormSubmit(event, this, 'Artisan: Queue Work')">
+                        <input type="hidden" name="action" value="queue_work">
+                        <button type="submit" class="w-full py-3 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs text-center transition-colors">
+                            📬 <code>queue:work</code>
+                        </button>
+                    </form>
+                    <form method="POST" onsubmit="handleFormSubmit(event, this, 'Artisan: Schedule Run')">
+                        <input type="hidden" name="action" value="schedule_run">
+                        <button type="submit" class="w-full py-3 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs text-center transition-colors">
+                            ⏰ <code>schedule:run</code>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Group D: Custom Artisan Command Line Interface -->
+            <div class="pt-2 border-t border-slate-800 space-y-2">
+                <span class="text-[11px] font-extrabold text-indigo-300 uppercase tracking-wider block">💻 Jalankan Custom Artisan Command Bebas</span>
+                <form method="POST" onsubmit="handleFormSubmit(event, this, 'Custom Artisan Command')" class="flex flex-col sm:flex-row gap-2">
                     <input type="hidden" name="action" value="run_custom_artisan">
                     <div class="relative flex-1">
                         <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-mono text-indigo-400 font-bold">php artisan</span>
-                        <input type="text" name="custom_artisan" placeholder="about, key:generate, queue:restart, dll" class="w-full pl-28 pr-4 py-3 rounded-2xl bg-black/60 border border-indigo-500/40 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400">
+                        <input type="text" name="custom_artisan" placeholder="Contoh: route:list, config:show app, env, dll" class="w-full pl-28 pr-4 py-3.5 rounded-2xl bg-black/70 border border-indigo-500/40 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400">
                     </div>
-                    <button type="submit" class="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shrink-0 transition-colors shadow-md">
-                        Jalankan Command
+                    <button type="submit" class="px-7 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shrink-0 transition-colors shadow-lg shadow-indigo-600/30">
+                        Jalankan Command &rarr;
                     </button>
                 </form>
             </div>
         </div>
 
-        <!-- SECTION: COMPOSER & GIT TOOLS -->
+        <!-- SECTION 3: COMPOSER & GIT TOOLS -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <!-- Composer Card -->
-            <div class="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-3">
+            <div class="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3 shadow-lg">
                 <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
                     <span>🐘 Composer Backend Tools</span>
                 </h4>
                 <div class="grid grid-cols-2 gap-2">
                     <form method="POST" onsubmit="handleFormSubmit(event, this, 'Composer Install')">
                         <input type="hidden" name="action" value="composer_install">
-                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
+                        <button type="submit" class="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
                             Composer Install
                         </button>
                     </form>
                     <form method="POST" onsubmit="handleFormSubmit(event, this, 'Composer Dump')">
                         <input type="hidden" name="action" value="composer_dump">
-                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
+                        <button type="submit" class="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
                             Dump Autoload
                         </button>
                     </form>
@@ -886,14 +1074,14 @@ $composerVersion = function_exists('shell_exec') ? trim(@shell_exec('composer --
             </div>
 
             <!-- Git Pull Card -->
-            <div class="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-3">
+            <div class="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3 shadow-lg">
                 <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
                     <span>📥 Git Repository Tools</span>
                 </h4>
                 <div class="grid grid-cols-1 gap-2">
                     <form method="POST" onsubmit="handleFormSubmit(event, this, 'Git Pull Saja')">
                         <input type="hidden" name="action" value="github_pull_only">
-                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
+                        <button type="submit" class="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-colors">
                             Tarik Kodingan Git Saja (Tanpa Migrasi)
                         </button>
                     </form>
@@ -924,7 +1112,7 @@ $composerVersion = function_exists('shell_exec') ? trim(@shell_exec('composer --
             <div class="space-y-1">
                 <h4 class="text-xs font-extrabold text-rose-300 uppercase tracking-wider">🔒 Tindakan Keamanan</h4>
                 <p class="text-[11px] text-rose-200/80 leading-relaxed">
-                    Jika proses setup selesai dan tidak menggunakan webhook otomatis, Anda dapat menghapus file <code>update.php</code> demi keamanan.
+                    Jika proses setup selesai dan tidak menggunakan webhook otomatis, Anda dapat menghapus file <code>update.php</code> demi keamanan server Anda.
                 </p>
             </div>
             <form method="POST">
@@ -943,7 +1131,7 @@ $composerVersion = function_exists('shell_exec') ? trim(@shell_exec('composer --
             <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div class="flex items-center space-x-3">
                     <div id="modalSpinner" class="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-                    <h3 id="modalTitle" class="text-base font-black text-white">Memproses Update...</h3>
+                    <h3 id="modalTitle" class="text-base font-black text-white">Memproses Perintah...</h3>
                 </div>
                 <button id="modalCloseBtn" onclick="closeModal()" class="text-slate-400 hover:text-white font-bold text-lg hidden">&times;</button>
             </div>
@@ -952,7 +1140,7 @@ $composerVersion = function_exists('shell_exec') ? trim(@shell_exec('composer --
             
             <div class="space-y-1.5">
                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Terminal Log Output:</span>
-                <pre id="modalLogOutput" class="p-4 rounded-2xl bg-black/80 text-emerald-300 font-mono text-xs overflow-x-auto leading-relaxed whitespace-pre-wrap max-h-80 border border-slate-800">Sedang menghubungkan ke server...</pre>
+                <pre id="modalLogOutput" class="p-4 rounded-2xl bg-black/80 text-emerald-300 font-mono text-xs overflow-x-auto leading-relaxed whitespace-pre-wrap max-h-80 border border-slate-800">Sedang mengeksekusi di server...</pre>
             </div>
 
             <div id="modalFooter" class="flex items-center justify-end space-x-3 pt-2 hidden">
@@ -971,7 +1159,6 @@ $composerVersion = function_exists('shell_exec') ? trim(@shell_exec('composer --
         function handleFormSubmit(e, form, title) {
             e.preventDefault();
             
-            // Show modal
             const modal = document.getElementById('liveModal');
             const modalTitle = document.getElementById('modalTitle');
             const modalSpinner = document.getElementById('modalSpinner');
@@ -1003,7 +1190,7 @@ $composerVersion = function_exists('shell_exec') ? trim(@shell_exec('composer --
                 modalSpinner.classList.add('hidden');
                 modalCloseBtn.classList.remove('hidden');
                 modalFooter.classList.remove('hidden');
-                modalLogOutput.innerText = data.output || 'Proses selesai tanpa log output.';
+                modalLogOutput.innerText = data.output || 'Perintah selesai dieksekusi tanpa log output.';
 
                 modalStatusBadge.classList.remove('hidden');
                 if (data.status === 'success') {
@@ -1011,7 +1198,7 @@ $composerVersion = function_exists('shell_exec') ? trim(@shell_exec('composer --
                     modalStatusBadge.innerHTML = `
                         <div class="p-3 rounded-2xl bg-emerald-950/80 border border-emerald-500/50 flex items-center space-x-2 text-emerald-300 font-extrabold text-xs">
                             <span>✓</span>
-                            <span>PROSES BERHASIL! Aplikasi Anda telah diperbarui ke versi terbaru.</span>
+                            <span>EKSEKUSI BERHASIL! Perintah telah selesai dijalankan.</span>
                         </div>
                     `;
                 } else {
@@ -1019,13 +1206,12 @@ $composerVersion = function_exists('shell_exec') ? trim(@shell_exec('composer --
                     modalStatusBadge.innerHTML = `
                         <div class="p-3 rounded-2xl bg-rose-950/80 border border-rose-500/50 flex items-center space-x-2 text-rose-300 font-extrabold text-xs">
                             <span>✗</span>
-                            <span>PROSES MENGALAMI KENDALA. Silakan cek log di bawah.</span>
+                            <span>EKSEKUSI MENGALAMI KENDALA. Silakan periksa log di bawah.</span>
                         </div>
                     `;
                 }
             })
             .catch(err => {
-                // If AJAX fails, submit standard form
                 form.submit();
             });
         }
