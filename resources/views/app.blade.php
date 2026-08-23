@@ -17,7 +17,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
 
     @php
-        $appBaseUrl = rtrim(request()->root(), '/');
+        // Dynamically compute exact URL with subfolder prefix (e.g. https://www.sgin.co.id/leaves-application)
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : (request()->isSecure() ? 'https' : 'http');
+        $host = $_SERVER['HTTP_HOST'] ?? request()->getHost();
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
+        
+        $subfolder = '';
+        if (str_contains($uri, 'leaves-application')) {
+            $subfolder = '/leaves-application';
+        } elseif (preg_match('#^(/[^/]+)#', $uri, $m) && !in_array($m[1], ['/login', '/dashboard', '/build', '/api', '/sw.js', '/quick-login', '/logout'])) {
+            $subfolder = $m[1];
+        }
+
+        $appBaseUrl = $scheme . '://' . $host . $subfolder;
         
         // Multi-candidate search for manifest.json
         $manifestCandidates = [
@@ -71,6 +83,7 @@
         $pwaVersion = substr(md5(($settings['app_logo'] ?? '') . ($settings['app_name'] ?? '')), 0, 8);
     @endphp
 
+    <base href="{{ $appBaseUrl }}/">
     <link rel="manifest" href="{{ $appBaseUrl }}/manifest.webmanifest?v={{ $pwaVersion }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ $appBaseUrl }}/app-icon/180?v={{ $pwaVersion }}">
     <link rel="icon" type="image/png" sizes="192x192" href="{{ $appBaseUrl }}/app-icon/192?v={{ $pwaVersion }}">

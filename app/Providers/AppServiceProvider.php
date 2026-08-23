@@ -20,16 +20,25 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Automatically enforce HTTPS in production
-        if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
-            URL::forceScheme('https');
-        }
-
-        // Dynamically bind Root URL to match request path & host for subfolders (e.g. /leaves-application)
+        // Dynamically bind Root URL and Scheme with subfolder detection (e.g. /leaves-application)
         if (!app()->runningInConsole() && isset($_SERVER['HTTP_HOST'])) {
-            $rootUrl = request()->root();
-            if ($rootUrl) {
-                URL::forceRootUrl($rootUrl);
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : (request()->isSecure() ? 'https' : 'http');
+            $host = $_SERVER['HTTP_HOST'];
+            $uri = $_SERVER['REQUEST_URI'] ?? '';
+            
+            $subfolder = '';
+            if (str_contains($uri, 'leaves-application')) {
+                $subfolder = '/leaves-application';
+            } elseif (preg_match('#^(/[^/]+)#', $uri, $m) && !in_array($m[1], ['/login', '/dashboard', '/build', '/api', '/sw.js', '/quick-login', '/logout'])) {
+                $subfolder = $m[1];
+            }
+
+            $forcedRoot = $scheme . '://' . $host . $subfolder;
+            URL::forceRootUrl($forcedRoot);
+            URL::forceScheme($scheme);
+        } else {
+            if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+                URL::forceScheme('https');
             }
         }
     }
