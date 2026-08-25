@@ -6,62 +6,144 @@ if (!is_dir($iconsDir)) {
     mkdir($iconsDir, 0777, true);
 }
 
-// Function to create crisp corporate icon with PT. Sugiyama green logo
-function generateIcon($size, $isMaskable = false) {
+// 1. Attempt to find company logo from various potential paths
+$logoCandidates = [
+    $baseDir . '/storage/app/public/logos',
+    $baseDir . '/public/storage/logos',
+    $baseDir . '/storage/logos',
+];
+
+$foundLogoPath = null;
+
+// If Laravel is booted or available, check database setting
+if (class_exists('\\App\\Models\\Setting')) {
+    try {
+        $settings = \App\Models\Setting::getAll();
+        $dbLogo = $settings['app_pwa_icon'] ?? $settings['app_logo'] ?? null;
+        if ($dbLogo) {
+            $cleaned = preg_replace('/^\/?storage\//', '', $dbLogo);
+            $checkPaths = [
+                $baseDir . '/storage/app/public/' . $cleaned,
+                $baseDir . '/public/storage/' . $cleaned,
+                $baseDir . '/public/' . $dbLogo,
+            ];
+            foreach ($checkPaths as $cp) {
+                if (file_exists($cp) && !is_dir($cp)) {
+                    $foundLogoPath = $cp;
+                    break;
+                }
+            }
+        }
+    } catch (\Throwable $e) {
+        // Continue to file scan
+    }
+}
+
+// If not found in DB setting, scan logo directories for the most recent logo
+if (!$foundLogoPath) {
+    foreach ($logoCandidates as $dir) {
+        if (is_dir($dir)) {
+            $files = scandir($dir);
+            $latestTime = 0;
+            $latestFile = null;
+            foreach ($files as $f) {
+                if ($f === '.' || $f === '..') continue;
+                $full = $dir . '/' . $f;
+                if (is_file($full)) {
+                    $ext = strtolower(pathinfo($full, PATHINFO_EXTENSION));
+                    if (in_array($ext, ['png', 'webp', 'jpg', 'jpeg'])) {
+                        $mtime = filemtime($full);
+                        if ($mtime > $latestTime) {
+                            $latestTime = $mtime;
+                            $latestFile = $full;
+                        }
+                    }
+                }
+            }
+            if ($latestFile) {
+                $foundLogoPath = $latestFile;
+                break;
+            }
+        }
+    }
+}
+
+echo "Source Logo: " . ($foundLogoPath ? $foundLogoPath : "Default Brand Emblem") . "\n";
+
+// Function to load image resource from path
+function loadSourceImage($path) {
+    if (!$path || !file_exists($path)) return null;
+    $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+    return match ($ext) {
+        'png' => @imagecreatefrompng($path),
+        'webp' => @imagecreatefromwebp($path),
+        'jpg', 'jpeg' => @imagecreatefromjpeg($path),
+        default => null,
+    };
+}
+
+$sourceImg = loadSourceImage($foundLogoPath);
+
+// Function to generate high-resolution PWA icon
+function createPwaIcon($size, $isMaskable, $sourceImg) {
     $img = imagecreatetruecolor($size, $size);
     imagealphablending($img, false);
     imagesavealpha($img, true);
 
     if ($isMaskable || $size === 180) {
-        // Crisp white background for maskable and iOS
+        // Solid crisp white canvas for maskable & iOS icons so no black background appears in launchers
         $bg = imagecolorallocate($img, 255, 255, 255);
         imagefilledrectangle($img, 0, 0, $size, $size, $bg);
-        $pad = (int) round($size * 0.15);
+        $padding = (int) round($size * 0.16); // 16% safe zone margin
     } else {
-        // Emerald background with rounded feel
-        $bg = imagecolorallocate($img, 15, 161, 114); // #0FA172
+        // Clean white background with rounded corner feel for standard icon
+        $bg = imagecolorallocate($img, 255, 255, 255);
         imagefilledrectangle($img, 0, 0, $size, $size, $bg);
-        $pad = (int) round($size * 0.10);
+        $padding = (int) round($size * 0.10); // 10% margin
     }
 
-    $innerSize = $size - ($pad * 2);
-    
-    // Draw Emerald stylized "S" or "SG" badge
-    $textColor = ($isMaskable || $size === 180) ? imagecolorallocate($img, 15, 161, 114) : imagecolorallocate($img, 255, 255, 255);
-    
-    // Draw stylish shield/square in center
-    $centerX = (int) round($size / 2);
-    $centerY = (int) round($size / 2);
+    if ($sourceImg) {
+        $srcW = imagesx($sourceImg);
+        $srcH = imagesy($sourceImg);
 
-    if ($isMaskable || $size === 180) {
-        // Green rounded badge inside white canvas
-        $badgeBg = imagecolorallocate($img, 15, 161, 114);
-        imagefilledellipse($img, $centerX, $centerY, (int) round($innerSize * 0.95), (int) round($innerSize * 0.95), $badgeBg);
-        $textColor = imagecolorallocate($img, 255, 255, 255);
+        $targetArea = $size - ($padding * 2);
+        $ratio = min($targetArea / max(1, $srcW), $targetArea / max(1, $srcH));
+        $newW = (int) round($srcW * $ratio);
+        $newH = (int) round($srcH * $ratio);
+
+        $dstX = (int) round(($size - $newW) / 2);
+        $dstY = (int) round(($size - $newH) / 2);
+
+        imagealphablending($img, true);
+        imagecopyresampled($img, $sourceImg, $dstX, $dstY, 0, 0, $newW, $newH, $srcW, $srcH);
+    } else {
+        // Fallback default PT. Sugiyama brand emblem
+        $centerX = (int) round($size / 2);
+        $centerY = (int) round($size / 2);
+        $innerSize = $size - ($padding * 2);
+
+        $badgeBg = imagecolorallocate($img, 15, 161, 114); // Emerald #0FA172
+        imagefilledellipse($img, $centerX, $centerY, (int) round($innerSize * 0.92), (int) round($innerSize * 0.92), $badgeBg);
+
+        $font = 5;
+        $text = "SG";
+        $textW = imagefontwidth($font) * strlen($text);
+        $textH = imagefontheight($font);
+        $scale = max(1, (int) round($size / 70));
+        $bigW = $textW * $scale;
+        $bigH = $textH * $scale;
+
+        $temp = imagecreatetruecolor($textW, $textH);
+        $tBg = imagecolorallocate($temp, 0, 0, 0);
+        imagecolortransparent($temp, $tBg);
+        $tFg = imagecolorallocate($temp, 255, 255, 255);
+        imagestring($temp, $font, 0, 0, $text, $tFg);
+
+        $dstX = (int) round($centerX - ($bigW / 2));
+        $dstY = (int) round($centerY - ($bigH / 2));
+        imagecopyresized($img, $temp, $dstX, $dstY, 0, 0, $bigW, $bigH, $textW, $textH);
+        imagedestroy($temp);
     }
-
-    // Bold text "SG" in center
-    $font = 5; // Built-in GD font
-    $text = "SG";
-    $textW = imagefontwidth($font) * strlen($text);
-    $textH = imagefontheight($font);
-    
-    // Scale text up if large icon
-    $scale = max(1, (int) round($size / 70));
-    $bigW = $textW * $scale;
-    $bigH = $textH * $scale;
-    
-    $temp = imagecreatetruecolor($textW, $textH);
-    $tBg = imagecolorallocate($temp, 0, 0, 0);
-    imagecolortransparent($temp, $tBg);
-    $tFg = imagecolorallocate($temp, 255, 255, 255);
-    imagestring($temp, $font, 0, 0, $text, $tFg);
-    
-    $dstX = (int) round($centerX - ($bigW / 2));
-    $dstY = (int) round($centerY - ($bigH / 2));
-    
-    imagecopyresized($img, $temp, $dstX, $dstY, 0, 0, $bigW, $bigH, $textW, $textH);
-    imagedestroy($temp);
 
     return $img;
 }
@@ -75,18 +157,32 @@ $sizes = [
 ];
 
 foreach ($sizes as $s) {
-    $icon = generateIcon($s['size'], $s['maskable']);
+    $icon = createPwaIcon($s['size'], $s['maskable'], $sourceImg);
     imagepng($icon, $iconsDir . '/' . $s['name']);
     imagedestroy($icon);
     echo "Generated: " . $iconsDir . '/' . $s['name'] . "\n";
 }
 
+if ($sourceImg) {
+    imagedestroy($sourceImg);
+}
+
 // Generate static manifest files in public
+$appName = 'PT. Sugiyama';
+$appDesc = 'Sistem Informasi Pengajuan Cuti & Slip Gaji Karyawan PT. Sugiyama Indonesia';
+if (class_exists('\\App\\Models\\Setting')) {
+    try {
+        $settings = \App\Models\Setting::getAll();
+        $appName = $settings['app_name'] ?? $appName;
+        $appDesc = $settings['app_description'] ?? $appDesc;
+    } catch (\Throwable $e) {}
+}
+
 $manifest = [
     'id' => './?source=pwa',
-    'name' => 'PT. Sugiyama - Cuti & Ketidakhadiran',
-    'short_name' => 'PT. Sugiyama',
-    'description' => 'Sistem Informasi Pengajuan Cuti & Slip Gaji Karyawan PT. Sugiyama Indonesia',
+    'name' => $appName . ' - Cuti & Ketidakhadiran',
+    'short_name' => $appName,
+    'description' => $appDesc,
     'start_url' => './login?source=pwa',
     'scope' => './',
     'display' => 'standalone',
@@ -149,4 +245,4 @@ $manifest = [
 $jsonContent = json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 file_put_contents($baseDir . '/public/manifest.webmanifest', $jsonContent);
 file_put_contents($baseDir . '/public/manifest.json', $jsonContent);
-echo "Generated static manifest files in public/\n";
+echo "✓ Manifest and static PWA assets synced with company branding.\n";

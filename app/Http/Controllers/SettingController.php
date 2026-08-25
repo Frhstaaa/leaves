@@ -98,11 +98,15 @@ class SettingController extends Controller
                     ob_start();
                     imagepng($square);
                     $pngData = ob_get_clean();
-                    imagedestroy($src);
-                    imagedestroy($square);
-
                     Storage::disk('public')->put($pngFilename, $pngData);
                     Setting::set('app_pwa_icon', $pngFilename);
+                }
+
+                // Immediately regenerate physical static PWA icons in public/icons/
+                if (file_exists(base_path('generate_pwa_assets.php'))) {
+                    try {
+                        include(base_path('generate_pwa_assets.php'));
+                    } catch (\Throwable $e) {}
                 }
             }
         }
