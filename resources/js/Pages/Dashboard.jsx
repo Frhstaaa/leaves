@@ -87,34 +87,34 @@ export default function Dashboard({
         {/* ========================================================================= */}
         {/* 1. TOP GREETING & USER PROFILE SUMMARY (MOBILE & DESKTOP OPTIMIZED)       */}
         {/* ========================================================================= */}
-        <motion.div variants={itemVariants} className="flex items-center justify-between gap-3">
-          <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
-            <Avatar className="w-12 h-12 sm:w-14 sm:h-14 border-2 border-emerald-500/30 ring-2 ring-emerald-500/10">
+        <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-5 md:p-6 bg-white border border-slate-200/90 rounded-2xl md:rounded-3xl shadow-xs">
+          <div className="flex items-center space-x-3.5 sm:space-x-4 min-w-0">
+            <Avatar className="w-12 h-12 sm:w-14 sm:h-14 border-2 border-emerald-500/30 ring-4 ring-emerald-500/10 shadow-xs">
               <AvatarImage src={user.avatar_url} alt={user.name} />
-              <AvatarFallback className="text-base font-black">
+              <AvatarFallback className="text-base font-bold text-emerald-800 bg-emerald-100">
                 {user.name?.charAt(0) || 'U'}
               </AvatarFallback>
             </Avatar>
 
             <div className="min-w-0">
-              <div className="flex items-center space-x-2">
-                <h2 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight truncate">
-                  Halo, {user.name?.split(' ')[0] || user.name}
+              <div className="flex items-center space-x-2.5">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900 tracking-tight truncate">
+                  Selamat Datang, {user.name?.split(' ')[0] || user.name}
                 </h2>
-                <Badge variant={isAdmin ? 'purple' : isManager ? 'info' : 'success'} className="capitalize text-[10px] hidden sm:inline-flex">
+                <Badge variant={isAdmin ? 'purple' : isManager ? 'info' : 'success'} className="capitalize text-[10px] md:text-xs font-semibold px-2.5 py-0.5 rounded-full hidden sm:inline-flex">
                   {user.role}
                 </Badge>
               </div>
-              <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
-                {user.nik || 'NIK: -'} &bull; {user.department?.name || 'Departemen General'}
+              <p className="text-xs text-slate-500 font-normal truncate mt-0.5">
+                <span className="font-mono text-slate-700 font-medium">{user.nik || 'NIK: -'}</span> &bull; {user.department?.name || 'Departemen General'}
               </p>
             </div>
           </div>
 
           {/* Quick Header Actions */}
-          <div className="flex items-center space-x-2 shrink-0">
-            <Link href={route('leave-requests.create')} className="hidden sm:inline-flex">
-              <Button variant="default" className="rounded-2xl space-x-2">
+          <div className="flex items-center space-x-2 shrink-0 self-start sm:self-auto">
+            <Link href={route('leave-requests.create')} className="inline-flex">
+              <Button variant="default" className="rounded-xl md:rounded-2xl space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-600/20 font-semibold text-xs">
                 <Plus size={16} />
                 <span>Buat Pengajuan</span>
               </Button>
@@ -243,65 +243,65 @@ export default function Dashboard({
         {/* ========================================================================= */}
         {/* 4. STATS METRIC CARDS (SHADCN CARDS WITH BADGES & HOVER ANIMATION)        */}
         {/* ========================================================================= */}
-        <motion.div variants={itemVariants} className="space-y-2.5">
+        <motion.div variants={itemVariants} className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Ringkasan Permohonan Cuti Pribadi
             </h3>
-            <Link href={route('leave-requests.index')} className="text-xs font-bold text-emerald-600 hover:underline">
+            <Link href={route('leave-requests.index')} className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline">
               Lihat Detail &rarr;
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             {/* TOTAL */}
-            <Card className="hover:shadow-md transition-all border-slate-200">
-              <CardContent className="p-3.5 sm:p-5 flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold shrink-0">
+            <Card className="hover:shadow-md transition-all border-slate-200/90 bg-white">
+              <CardContent className="p-4 sm:p-5 flex items-center space-x-3.5">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold shrink-0">
                   <Layers size={20} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] sm:text-xs font-extrabold text-slate-400 uppercase truncate">Total Diajukan</p>
-                  <h4 className="text-lg sm:text-2xl font-black text-slate-900">{totalRequests}</h4>
+                  <p className="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase truncate tracking-wider">Total Diajukan</p>
+                  <h4 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">{totalRequests}</h4>
                 </div>
               </CardContent>
             </Card>
 
             {/* PENDING / PROSES */}
-            <Card className="hover:shadow-md transition-all border-amber-200/80 bg-amber-50/20">
-              <CardContent className="p-3.5 sm:p-5 flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold shrink-0">
+            <Card className="hover:shadow-md transition-all border-amber-200/90 bg-amber-50/30">
+              <CardContent className="p-4 sm:p-5 flex items-center space-x-3.5">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-amber-100/80 text-amber-800 flex items-center justify-center font-bold shrink-0">
                   <Clock size={20} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] sm:text-xs font-extrabold text-amber-700 uppercase truncate">Menunggu</p>
-                  <h4 className="text-lg sm:text-2xl font-black text-amber-700">{stats.pending_requests || 0}</h4>
+                  <p className="text-[10px] sm:text-xs font-semibold text-amber-700 uppercase truncate tracking-wider">Menunggu</p>
+                  <h4 className="text-xl sm:text-2xl font-bold text-amber-800 tracking-tight">{stats.pending_requests || 0}</h4>
                 </div>
               </CardContent>
             </Card>
 
             {/* APPROVED / SELESAI */}
-            <Card className="hover:shadow-md transition-all border-emerald-200/80 bg-emerald-50/20">
-              <CardContent className="p-3.5 sm:p-5 flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold shrink-0">
+            <Card className="hover:shadow-md transition-all border-emerald-200/90 bg-emerald-50/30">
+              <CardContent className="p-4 sm:p-5 flex items-center space-x-3.5">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-emerald-100/80 text-emerald-800 flex items-center justify-center font-bold shrink-0">
                   <CheckCircle2 size={20} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] sm:text-xs font-extrabold text-emerald-700 uppercase truncate">Disetujui</p>
-                  <h4 className="text-lg sm:text-2xl font-black text-emerald-700">{stats.approved_requests || 0}</h4>
+                  <p className="text-[10px] sm:text-xs font-semibold text-emerald-700 uppercase truncate tracking-wider">Disetujui</p>
+                  <h4 className="text-xl sm:text-2xl font-bold text-emerald-800 tracking-tight">{stats.approved_requests || 0}</h4>
                 </div>
               </CardContent>
             </Card>
 
             {/* REJECTED / DITOLAK */}
-            <Card className="hover:shadow-md transition-all border-rose-200/80 bg-rose-50/20">
-              <CardContent className="p-3.5 sm:p-5 flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-800 flex items-center justify-center font-bold shrink-0">
+            <Card className="hover:shadow-md transition-all border-rose-200/90 bg-rose-50/30">
+              <CardContent className="p-4 sm:p-5 flex items-center space-x-3.5">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-rose-100/80 text-rose-800 flex items-center justify-center font-bold shrink-0">
                   <XCircle size={20} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] sm:text-xs font-extrabold text-rose-700 uppercase truncate">Ditolak</p>
-                  <h4 className="text-lg sm:text-2xl font-black text-rose-700">{stats.rejected_requests || 0}</h4>
+                  <p className="text-[10px] sm:text-xs font-semibold text-rose-700 uppercase truncate tracking-wider">Ditolak</p>
+                  <h4 className="text-xl sm:text-2xl font-bold text-rose-800 tracking-tight">{stats.rejected_requests || 0}</h4>
                 </div>
               </CardContent>
             </Card>
@@ -312,64 +312,64 @@ export default function Dashboard({
         {/* 5. HRD / ADMIN COMPANY-WIDE INSIGHT METRICS (IF ADMIN/SUPERADMIN)          */}
         {/* ========================================================================= */}
         {isAdmin && Object.keys(hrdMetrics).length > 0 && (
-          <motion.div variants={itemVariants} className="space-y-2.5">
+          <motion.div variants={itemVariants} className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Badge variant="purple" className="font-extrabold">HRD Analytics</Badge>
-                <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">
+                <Badge variant="purple" className="font-semibold text-xs px-2.5 py-0.5 rounded-full">HRD Analytics</Badge>
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Ringkasan Karyawan & Cuti Perusahaan
                 </h3>
               </div>
-              <Link href={route('hrd.index')} className="text-xs font-bold text-purple-700 hover:underline">
+              <Link href={route('hrd.index')} className="text-xs font-semibold text-purple-700 hover:text-purple-800 hover:underline">
                 Buka Rekap HRD &rarr;
               </Link>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
-              <Card className="p-3.5 sm:p-4 border-slate-200">
-                <div className="flex items-center space-x-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              <Card className="p-4 sm:p-5 border-slate-200/90 bg-white hover:shadow-md transition-all">
+                <div className="flex items-center space-x-3.5">
                   <div className="p-2.5 rounded-xl bg-purple-50 text-purple-700">
                     <Users size={18} />
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Total Karyawan</span>
-                    <span className="text-base sm:text-xl font-black text-slate-900">{hrdMetrics.total_employees || 0}</span>
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Total Karyawan</span>
+                    <span className="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight">{hrdMetrics.total_employees || 0}</span>
                   </div>
                 </div>
               </Card>
 
-              <Card className="p-3.5 sm:p-4 border-slate-200">
-                <div className="flex items-center space-x-3">
+              <Card className="p-4 sm:p-5 border-slate-200/90 bg-white hover:shadow-md transition-all">
+                <div className="flex items-center space-x-3.5">
                   <div className="p-2.5 rounded-xl bg-blue-50 text-blue-700">
                     <Building size={18} />
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Departemen</span>
-                    <span className="text-base sm:text-xl font-black text-slate-900">{hrdMetrics.total_departments || 0}</span>
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Departemen</span>
+                    <span className="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight">{hrdMetrics.total_departments || 0}</span>
                   </div>
                 </div>
               </Card>
 
-              <Card className="p-3.5 sm:p-4 border-slate-200">
-                <div className="flex items-center space-x-3">
+              <Card className="p-4 sm:p-5 border-slate-200/90 bg-white hover:shadow-md transition-all">
+                <div className="flex items-center space-x-3.5">
                   <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-700">
                     <CalendarDays size={18} />
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Cuti Hari Ini</span>
-                    <span className="text-base sm:text-xl font-black text-emerald-700">{hrdMetrics.on_leave_today || 0} Org</span>
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Cuti Hari Ini</span>
+                    <span className="text-lg sm:text-2xl font-bold text-emerald-700 tracking-tight">{hrdMetrics.on_leave_today || 0} Org</span>
                   </div>
                 </div>
               </Card>
 
-              <Card className="p-3.5 sm:p-4 border-slate-200">
-                <div className="flex items-center space-x-3">
+              <Card className="p-4 sm:p-5 border-slate-200/90 bg-white hover:shadow-md transition-all">
+                <div className="flex items-center space-x-3.5">
                   <div className="p-2.5 rounded-xl bg-amber-50 text-amber-700">
                     <Clock size={18} />
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Pending All</span>
-                    <span className="text-base sm:text-xl font-black text-amber-700">{hrdMetrics.pending_company_wide || 0}</span>
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Pending All</span>
+                    <span className="text-lg sm:text-2xl font-bold text-amber-700 tracking-tight">{hrdMetrics.pending_company_wide || 0}</span>
                   </div>
                 </div>
               </Card>
