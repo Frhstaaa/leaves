@@ -248,6 +248,23 @@ export default function AuthenticatedLayout({ children, title }) {
 
   const can = (perm) => isSuperadmin || userPermissions.includes(perm);
 
+  const handleDirectInstall = () => {
+    const promptEvent = window.deferredPWAInstallPrompt;
+    if (promptEvent) {
+      promptEvent.prompt();
+      promptEvent.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          window.deferredPWAInstallPrompt = null;
+          showToast('Aplikasi berhasil dipasang di perangkat Anda!');
+        }
+      }).catch(() => {
+        window.dispatchEvent(new CustomEvent('open-pwa-install-modal'));
+      });
+    } else {
+      window.dispatchEvent(new CustomEvent('open-pwa-install-modal'));
+    }
+  };
+
   const navSections = [
     {
       title: 'MENU UTAMA',
@@ -492,8 +509,8 @@ export default function AuthenticatedLayout({ children, title }) {
             {/* Direct PWA Install Trigger Button */}
             <button
               type="button"
-              onClick={() => window.dispatchEvent(new CustomEvent('open-pwa-install-modal'))}
-              className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] flex items-center space-x-1 shadow-xs transition-all active:scale-95 shrink-0"
+              onClick={handleDirectInstall}
+              className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] flex items-center space-x-1 shadow-xs transition-all active:scale-95 shrink-0 cursor-pointer"
               title="Install Aplikasi ke HP"
             >
               <Smartphone size={13} />
@@ -538,8 +555,8 @@ export default function AuthenticatedLayout({ children, title }) {
             {/* Desktop Direct PWA Install Button */}
             <button
               type="button"
-              onClick={() => window.dispatchEvent(new CustomEvent('open-pwa-install-modal'))}
-              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs flex items-center space-x-1.5 shadow-md shadow-emerald-600/20 transition-all active:scale-95"
+              onClick={handleDirectInstall}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs flex items-center space-x-1.5 shadow-md shadow-emerald-600/20 transition-all active:scale-95 cursor-pointer"
               title="Pasang Aplikasi di Desktop / HP"
             >
               <Smartphone size={15} />

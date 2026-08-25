@@ -109,6 +109,19 @@
         @endif
     @endforeach
 
+    <script>
+        window.deferredPWAInstallPrompt = null;
+        window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            window.deferredPWAInstallPrompt = e;
+            window.dispatchEvent(new CustomEvent('pwa-prompt-ready', { detail: e }));
+        });
+        window.addEventListener('appinstalled', function() {
+            window.deferredPWAInstallPrompt = null;
+            window.dispatchEvent(new CustomEvent('pwa-installed'));
+        });
+    </script>
+
     @routes
     @inertiaHead
 </head>
