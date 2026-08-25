@@ -117,7 +117,13 @@ class MediaOptimizer
         imagedestroy($targetImage);
 
         $filename = $folder . '/' . uniqid('opt_') . '_' . time() . '.webp';
-        Storage::disk($disk)->put($filename, $webpBuffer);
+        
+        // 1. Upload to Cloudflare R2 if configured
+        if (CloudflareR2::isConfigured()) {
+            CloudflareR2::put($filename, $webpBuffer, 'image/webp');
+        } else {
+            Storage::disk('public')->put($filename, $webpBuffer);
+        }
 
         return $filename;
     }
@@ -132,7 +138,6 @@ class MediaOptimizer
      */
     public static function optimizePdfAndStore($file, string $folder = 'attachments', ?string $customFileName = null): string
     {
-        $disk = self::getDisk();
         $realPath = $file instanceof UploadedFile ? $file->getRealPath() : $file;
         $fileName = $customFileName ?: (uniqid('doc_') . '_' . time() . '.pdf');
         $targetRelativePath = rtrim($folder, '/') . '/' . $fileName;
@@ -146,16 +151,17 @@ class MediaOptimizer
         }
 
         $sourceToUpload = (file_exists($tempOut) && filesize($tempOut) > 0) ? $tempOut : $realPath;
+        $pdfData = file_get_contents($sourceToUpload);
 
-        if ($disk === 'public' || $disk === 'local') {
+        if (CloudflareR2::isConfigured()) {
+            CloudflareR2::put($targetRelativePath, $pdfData, 'application/pdf');
+        } else {
             $targetFullPath = storage_path('app/public/' . $targetRelativePath);
             $targetDir = dirname($targetFullPath);
             if (!is_dir($targetDir)) {
                 File::makeDirectory($targetDir, 0755, true);
             }
-            File::copy($sourceToUpload, $targetFullPath);
-        } else {
-            Storage::disk($disk)->put($targetRelativePath, file_get_contents($sourceToUpload));
+            File::put($targetFullPath, $pdfData);
         }
 
         if (file_exists($tempOut)) {

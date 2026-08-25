@@ -590,33 +590,31 @@ if ($actionExecuted) {
             case 'test_r2':
                 $actionTitle = 'Uji Koneksi Cloudflare R2';
                 echo "=== PENGUJIAN KONEKSI CLOUDFLARE R2 OBJECT STORAGE ===\n\n";
-                if ($app) {
-                    try {
-                        $testFile = 'r2_healthcheck_' . time() . '.txt';
-                        $testBody = 'Cloudflare R2 verification from SGIN Leaves System at ' . date('Y-m-d H:i:s');
-                        
-                        echo "1. Menguji upload file uji coba ke bucket 'sgin'...\n";
-                        \Illuminate\Support\Facades\Storage::disk('r2')->put($testFile, $testBody);
-                        echo "✓ Upload berhasil!\n\n";
-
-                        echo "2. Menguji keberadaan file di Cloudflare R2...\n";
-                        $exists = \Illuminate\Support\Facades\Storage::disk('r2')->exists($testFile);
-                        echo ($exists ? "✓ File terverifikasi ada di Cloudflare R2!\n\n" : "✗ File tidak ditemukan di R2.\n\n");
-
-                        echo "3. Membersihkan file uji coba...\n";
-                        \Illuminate\Support\Facades\Storage::disk('r2')->delete($testFile);
-                        echo "✓ Pembersihan selesai.\n\n";
-
-                        echo "=================================================================\n";
-                        echo "  ✓ KONEKSI CLOUDFLARE R2 BUCKET 'sgin' 100% SUKSES & AKTIF!     \n";
-                        echo "=================================================================\n";
-                        $actionStatus = 'success';
-                    } catch (\Throwable $e) {
-                        echo "✗ Gagal terhubung ke Cloudflare R2: " . $e->getMessage() . "\n";
-                        $actionStatus = 'error';
+                try {
+                    $testFile = 'r2_healthcheck_' . time() . '.txt';
+                    $testBody = 'Cloudflare R2 verification from SGIN Leaves System at ' . date('Y-m-d H:i:s');
+                    
+                    echo "1. Menguji upload file uji coba ke bucket 'sgin'...\n";
+                    $putOk = \App\Services\CloudflareR2::put($testFile, $testBody, 'text/plain');
+                    if (!$putOk) {
+                        throw new \Exception("Gagal mengunggah file uji coba via cURL AWS SigV4.");
                     }
-                } else {
-                    echo "✗ Laravel application kernel tidak tersedia.\n";
+                    echo "✓ Upload berhasil!\n\n";
+
+                    echo "2. Menguji keberadaan file di Cloudflare R2...\n";
+                    $exists = \App\Services\CloudflareR2::exists($testFile);
+                    echo ($exists ? "✓ File terverifikasi ada di Cloudflare R2!\n\n" : "✗ File tidak ditemukan di R2.\n\n");
+
+                    echo "3. Membersihkan file uji coba...\n";
+                    \App\Services\CloudflareR2::delete($testFile);
+                    echo "✓ Pembersihan selesai.\n\n";
+
+                    echo "=================================================================\n";
+                    echo "  ✓ KONEKSI CLOUDFLARE R2 BUCKET 'sgin' 100% SUKSES & AKTIF!     \n";
+                    echo "=================================================================\n";
+                    $actionStatus = 'success';
+                } catch (\Throwable $e) {
+                    echo "✗ Gagal terhubung ke Cloudflare R2: " . $e->getMessage() . "\n";
                     $actionStatus = 'error';
                 }
                 break;
@@ -624,49 +622,54 @@ if ($actionExecuted) {
             case 'migrate_storage_to_r2':
                 $actionTitle = 'Migrasi File Lokal ke Cloudflare R2';
                 echo "=== SINKRONISASI & MIGRASI FILE LOKAL KE CLOUDFLARE R2 ===\n\n";
-                if ($app) {
-                    try {
-                        $sourceDirs = [
-                            $basePath . '/storage/app/public/logos',
-                            $basePath . '/storage/app/public/avatars',
-                            $basePath . '/storage/app/public/attachments',
-                            $basePath . '/storage/app/public/payslips',
-                        ];
+                try {
+                    $sourceDirs = [
+                        $basePath . '/storage/app/public/logos',
+                        $basePath . '/storage/app/public/avatars',
+                        $basePath . '/storage/app/public/attachments',
+                        $basePath . '/storage/app/public/payslips',
+                    ];
 
-                        $migratedCount = 0;
-                        $totalBytes = 0;
+                    $migratedCount = 0;
+                    $totalBytes = 0;
 
-                        foreach ($sourceDirs as $sDir) {
-                            if (!is_dir($sDir)) continue;
-                            $it = new RecursiveIteratorIterator(
-                                new RecursiveDirectoryIterator($sDir, RecursiveDirectoryIterator::SKIP_DOTS),
-                                RecursiveIteratorIterator::SELF_FIRST
-                            );
-                            foreach ($it as $file) {
-                                if ($file->isFile()) {
-                                    $relPath = substr($file->getPathname(), strlen($basePath . '/storage/app/public/'));
-                                    $relPath = str_replace('\\', '/', $relPath);
-                                    if ($relPath === '.gitignore') continue;
+                    foreach ($sourceDirs as $sDir) {
+                        if (!is_dir($sDir)) continue;
+                        $it = new RecursiveIteratorIterator(
+                            new RecursiveDirectoryIterator($sDir, RecursiveDirectoryIterator::SKIP_DOTS),
+                            RecursiveIteratorIterator::SELF_FIRST
+                        );
+                        foreach ($it as $file) {
+                            if ($file->isFile()) {
+                                $relPath = substr($file->getPathname(), strlen($basePath . '/storage/app/public/'));
+                                $relPath = str_replace('\\', '/', $relPath);
+                                if ($relPath === '.gitignore') continue;
 
-                                    echo "Mengunggah: $relPath... ";
-                                    $content = file_get_contents($file->getPathname());
-                                    \Illuminate\Support\Facades\Storage::disk('r2')->put($relPath, $content);
+                                echo "Mengunggah: $relPath... ";
+                                $content = file_get_contents($file->getPathname());
+                                $ext = strtolower($file->getExtension());
+                                $mimes = ['png' => 'image/png', 'webp' => 'image/webp', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'pdf' => 'application/pdf'];
+                                $m = $mimes[$ext] ?? 'application/octet-stream';
+                                $up = \App\Services\CloudflareR2::put($relPath, $content, $m);
+                                if ($up) {
                                     $migratedCount++;
                                     $totalBytes += $file->getSize();
                                     echo "✓ Berhasil.\n";
+                                } else {
+                                    echo "✗ Gagal.\n";
                                 }
                             }
                         }
-
-                        $mb = round($totalBytes / 1024 / 1024, 2);
-                        echo "\n=================================================================\n";
-                        echo "  ✓ SELESAI: $migratedCount file ($mb MB) telah disinkronkan ke Cloudflare R2! \n";
-                        echo "=================================================================\n";
-                        $actionStatus = 'success';
-                    } catch (\Throwable $e) {
-                        echo "✗ Error migrasi: " . $e->getMessage() . "\n";
-                        $actionStatus = 'error';
                     }
+
+                    $mb = round($totalBytes / 1024 / 1024, 2);
+                    echo "\n=================================================================\n";
+                    echo "  ✓ SELESAI: $migratedCount file ($mb MB) telah disinkronkan ke Cloudflare R2! \n";
+                    echo "=================================================================\n";
+                    $actionStatus = 'success';
+                } catch (\Throwable $e) {
+                    echo "✗ Error migrasi: " . $e->getMessage() . "\n";
+                    $actionStatus = 'error';
                 }
                 break;
 

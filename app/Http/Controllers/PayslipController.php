@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Department;
 use App\Models\Payslip;
 use App\Models\User;
+use App\Services\CloudflareR2;
 use App\Services\MediaOptimizer;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -31,9 +32,9 @@ class PayslipController extends Controller
             ->orderBy('month', 'desc')
             ->get();
 
-        // Get available years for dropdown
         $availableYears = Payslip::where('user_id', $user->id)
-            ->distinct()
+            ->where('status', 'published')
+            ->selectRaw('DISTINCT year')
             ->orderBy('year', 'desc')
             ->pluck('year')
             ->toArray();
@@ -42,24 +43,18 @@ class PayslipController extends Controller
             $availableYears = [(int) date('Y')];
         }
 
-        $stats = [
-            'total_this_year' => $payslips->count(),
-            'unviewed_count' => $payslips->whereNull('viewed_at')->count(),
-            'latest_month' => $payslips->first()?->month_name ?? '-',
-        ];
-
         return Inertia::render('Payslips/Index', [
             'payslips' => $payslips,
             'selectedYear' => $selectedYear,
             'availableYears' => $availableYears,
-            'stats' => $stats,
+            'canManage' => $user->isAdmin(),
         ]);
     }
 
     /**
-     * Preview PDF in browser / iframe.
+     * View PDF file inline in browser securely.
      */
-    public function preview($id)
+    public function viewPdf($id)
     {
         $payslip = Payslip::with('user')->findOrFail($id);
         $user = Auth::user();
@@ -74,27 +69,18 @@ class PayslipController extends Controller
             $payslip->update(['viewed_at' => now()]);
         }
 
-        $defaultDisk = config('filesystems.default', 'public');
-
-        // 1. Check Cloudflare R2 / S3 Storage
-        if (Storage::disk($defaultDisk)->exists($payslip->file_path)) {
-            $stream = Storage::disk($defaultDisk)->readStream($payslip->file_path);
-            return response()->stream(function () use ($stream) {
-                fpassthru($stream);
-            }, 200, [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="' . $payslip->original_filename . '"',
-            ]);
+        // 1. Check Cloudflare R2
+        if (CloudflareR2::isConfigured() && CloudflareR2::exists($payslip->file_path)) {
+            $pdfContent = CloudflareR2::get($payslip->file_path);
+            if ($pdfContent !== null) {
+                return response($pdfContent, 200, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $payslip->original_filename . '"',
+                ]);
+            }
         }
 
-        // 2. Check local public storage fallback
-        if ($defaultDisk !== 'public' && Storage::disk('public')->exists($payslip->file_path)) {
-            return response()->file(storage_path('app/public/' . $payslip->file_path), [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="' . $payslip->original_filename . '"',
-            ]);
-        }
-
+        // 2. Check local public storage
         $filePath = storage_path('app/public/' . $payslip->file_path);
         if (!file_exists($filePath)) {
             $publicFallback = public_path('storage/' . $payslip->file_path);
@@ -129,18 +115,18 @@ class PayslipController extends Controller
             $payslip->update(['viewed_at' => now()]);
         }
 
-        $defaultDisk = config('filesystems.default', 'public');
-
-        // 1. Check Cloudflare R2 / S3 Storage
-        if (Storage::disk($defaultDisk)->exists($payslip->file_path)) {
-            return Storage::disk($defaultDisk)->download($payslip->file_path, $payslip->original_filename);
+        // 1. Check Cloudflare R2
+        if (CloudflareR2::isConfigured() && CloudflareR2::exists($payslip->file_path)) {
+            $pdfContent = CloudflareR2::get($payslip->file_path);
+            if ($pdfContent !== null) {
+                return response($pdfContent, 200, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'attachment; filename="' . $payslip->original_filename . '"',
+                ]);
+            }
         }
 
-        // 2. Check local public storage fallback
-        if ($defaultDisk !== 'public' && Storage::disk('public')->exists($payslip->file_path)) {
-            return Storage::disk('public')->download($payslip->file_path, $payslip->original_filename);
-        }
-
+        // 2. Check local public storage
         $filePath = storage_path('app/public/' . $payslip->file_path);
         if (!file_exists($filePath)) {
             $publicFallback = public_path('storage/' . $payslip->file_path);
@@ -152,6 +138,14 @@ class PayslipController extends Controller
         }
 
         return response()->download($filePath, $payslip->original_filename);
+    }
+
+    /**
+     * Preview PDF in browser / iframe (alias to viewPdf).
+     */
+    public function preview($id)
+    {
+        return $this->viewPdf($id);
     }
 
     /**
@@ -484,11 +478,10 @@ class PayslipController extends Controller
 
         // Delete physical file from cloud and local storage
         if ($payslip->file_path) {
-            $defaultDisk = config('filesystems.default', 'public');
-            @Storage::disk($defaultDisk)->delete($payslip->file_path);
-            if ($defaultDisk !== 'public') {
-                @Storage::disk('public')->delete($payslip->file_path);
+            if (CloudflareR2::isConfigured()) {
+                CloudflareR2::delete($payslip->file_path);
             }
+            @Storage::disk('public')->delete($payslip->file_path);
         }
 
         $payslip->delete();

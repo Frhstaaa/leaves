@@ -66,6 +66,71 @@ Route::get('/build/{path}', function ($path) {
     return response('File not found', 404);
 })->where('path', '.*');
 
+// Storage Direct & Cloudflare R2 Proxy Route with Master Fallback
+Route::get('/storage/{path}', function ($path) {
+    // 1. Check local file in storage/app/public or public/storage
+    $localCandidates = [
+        storage_path('app/public/' . $path),
+        public_path('storage/' . $path),
+        base_path('public/storage/' . $path),
+    ];
+    foreach ($localCandidates as $loc) {
+        if (file_exists($loc) && is_file($loc)) {
+            $ext = strtolower(pathinfo($loc, PATHINFO_EXTENSION));
+            $mimes = [
+                'png' => 'image/png',
+                'webp' => 'image/webp',
+                'jpg' => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'svg' => 'image/svg+xml',
+                'pdf' => 'application/pdf',
+            ];
+            return response(file_get_contents($loc), 200, [
+                'Content-Type' => $mimes[$ext] ?? 'application/octet-stream',
+                'Access-Control-Allow-Origin' => '*',
+                'Cache-Control' => 'public, max-age=86400',
+            ]);
+        }
+    }
+
+    // 2. Check in Cloudflare R2
+    if (\App\Services\CloudflareR2::isConfigured() && \App\Services\CloudflareR2::exists($path)) {
+        $content = \App\Services\CloudflareR2::get($path);
+        if ($content !== null) {
+            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            $mimes = [
+                'png' => 'image/png',
+                'webp' => 'image/webp',
+                'jpg' => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'svg' => 'image/svg+xml',
+                'pdf' => 'application/pdf',
+            ];
+            return response($content, 200, [
+                'Content-Type' => $mimes[$ext] ?? 'application/octet-stream',
+                'Access-Control-Allow-Origin' => '*',
+                'Cache-Control' => 'public, max-age=86400',
+            ]);
+        }
+    }
+
+    // 3. Fallback for logos
+    if (str_contains($path, 'logo')) {
+        $masterLogo = public_path('icons/company_logo_master.png');
+        if (!file_exists($masterLogo)) {
+            $masterLogo = base_path('public/icons/company_logo_master.png');
+        }
+        if (file_exists($masterLogo)) {
+            return response(file_get_contents($masterLogo), 200, [
+                'Content-Type' => 'image/png',
+                'Access-Control-Allow-Origin' => '*',
+            ]);
+        }
+    }
+
+    return response('File not found', 404);
+})->where('path', '.*');
+
 // PWA Manifest & Dynamic App Icon Routes
 Route::get('/manifest.webmanifest', [\App\Http\Controllers\SettingController::class, 'manifest'])->name('pwa.manifest');
 Route::get('/manifest.json', [\App\Http\Controllers\SettingController::class, 'manifest']);
