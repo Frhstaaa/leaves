@@ -31,7 +31,7 @@ class HrdEmployeeService
         return DB::transaction(function () use ($data, $avatarFile) {
             $avatarPath = null;
             if ($avatarFile) {
-                $avatarPath = $avatarFile->store('avatars', 'public');
+                $avatarPath = MediaOptimizer::convertImageToWebp($avatarFile, 'avatars', 85, 400, 400);
             }
 
             $user = $this->userRepo->create([
@@ -83,9 +83,13 @@ class HrdEmployeeService
 
             if ($avatarFile) {
                 if ($user->avatar) {
-                    Storage::disk('public')->delete($user->avatar);
+                    $disk = config('filesystems.default', 'public');
+                    @Storage::disk($disk)->delete($user->avatar);
+                    if ($disk !== 'public') {
+                        @Storage::disk('public')->delete($user->avatar);
+                    }
                 }
-                $updateData['avatar'] = $avatarFile->store('avatars', 'public');
+                $updateData['avatar'] = MediaOptimizer::convertImageToWebp($avatarFile, 'avatars', 85, 400, 400);
             }
 
             $this->userRepo->update($user, $updateData);
@@ -109,7 +113,11 @@ class HrdEmployeeService
     {
         return DB::transaction(function () use ($user) {
             if ($user->avatar) {
-                Storage::disk('public')->delete($user->avatar);
+                $disk = config('filesystems.default', 'public');
+                @Storage::disk($disk)->delete($user->avatar);
+                if ($disk !== 'public') {
+                    @Storage::disk('public')->delete($user->avatar);
+                }
             }
             LeaveQuota::where('user_id', $user->id)->delete();
             return $this->userRepo->delete($user);

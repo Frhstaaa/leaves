@@ -58,12 +58,21 @@ class LeaveRequestService
             $countToday = LeaveRequest::whereDate('created_at', today())->count() + 1;
             $requestNumber = $prefix . '-' . str_pad($countToday, 4, '0', STR_PAD_LEFT);
 
-            // Handle Attachment Upload
+            // Handle Attachment Upload (Optimized & Cloud-ready)
             $attachmentPath = null;
             $attachmentName = null;
             if ($attachmentFile) {
-                $attachmentPath = $attachmentFile->store('attachments/leave_requests', 'public');
                 $attachmentName = $attachmentFile->getClientOriginalName();
+                $mime = $attachmentFile->getMimeType();
+                $ext = strtolower($attachmentFile->getClientOriginalExtension());
+
+                if (str_contains($mime, 'image') || in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'])) {
+                    $attachmentPath = MediaOptimizer::convertImageToWebp($attachmentFile, 'attachments/leave_requests');
+                } elseif (str_contains($mime, 'pdf') || $ext === 'pdf') {
+                    $attachmentPath = MediaOptimizer::optimizePdfAndStore($attachmentFile, 'attachments/leave_requests');
+                } else {
+                    $attachmentPath = $attachmentFile->store('attachments/leave_requests', config('filesystems.default', 'public'));
+                }
             }
 
             // Multi-Tier Effective Approvers
@@ -293,7 +302,11 @@ class LeaveRequestService
 
         return DB::transaction(function () use ($leaveRequest) {
             if ($leaveRequest->attachment_path) {
-                Storage::disk('public')->delete($leaveRequest->attachment_path);
+                $disk = config('filesystems.default', 'public');
+                @Storage::disk($disk)->delete($leaveRequest->attachment_path);
+                if ($disk !== 'public') {
+                    @Storage::disk('public')->delete($leaveRequest->attachment_path);
+                }
             }
             if ($leaveRequest->status === 'approved') {
                 $this->quotaService->restoreQuota($leaveRequest);

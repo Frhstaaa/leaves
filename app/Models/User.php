@@ -42,9 +42,25 @@ class User extends Authenticatable
 
     public function getAvatarUrlAttribute(): ?string
     {
-        if ($this->avatar && Storage::disk('public')->exists($this->avatar)) {
+        if (!$this->avatar) {
+            return null;
+        }
+
+        if (str_starts_with($this->avatar, 'http://') || str_starts_with($this->avatar, 'https://')) {
+            return $this->avatar;
+        }
+
+        $r2Url = env('CLOUDFLARE_R2_URL');
+        $defaultDisk = config('filesystems.default', 'public');
+
+        if (($defaultDisk === 'r2' || $defaultDisk === 's3') && $r2Url) {
+            return rtrim($r2Url, '/') . '/' . ltrim($this->avatar, '/');
+        }
+
+        if (Storage::disk('public')->exists($this->avatar)) {
             return asset('storage/' . $this->avatar);
         }
+
         return null;
     }
 

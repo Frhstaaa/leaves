@@ -18,9 +18,13 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
-        // Delete old avatar
-        if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
-            Storage::disk('public')->delete($user->avatar);
+        // Delete old avatar from cloud & local
+        if ($user->avatar) {
+            $disk = config('filesystems.default', 'public');
+            @Storage::disk($disk)->delete($user->avatar);
+            if ($disk !== 'public') {
+                @Storage::disk('public')->delete($user->avatar);
+            }
         }
 
         $file = $request->file('avatar');

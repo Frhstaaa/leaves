@@ -74,15 +74,34 @@ class PayslipController extends Controller
             $payslip->update(['viewed_at' => now()]);
         }
 
-        $filePath = storage_path('app/public/' . $payslip->file_path);
+        $defaultDisk = config('filesystems.default', 'public');
 
+        // 1. Check Cloudflare R2 / S3 Storage
+        if (Storage::disk($defaultDisk)->exists($payslip->file_path)) {
+            $stream = Storage::disk($defaultDisk)->readStream($payslip->file_path);
+            return response()->stream(function () use ($stream) {
+                fpassthru($stream);
+            }, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . $payslip->original_filename . '"',
+            ]);
+        }
+
+        // 2. Check local public storage fallback
+        if ($defaultDisk !== 'public' && Storage::disk('public')->exists($payslip->file_path)) {
+            return response()->file(storage_path('app/public/' . $payslip->file_path), [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . $payslip->original_filename . '"',
+            ]);
+        }
+
+        $filePath = storage_path('app/public/' . $payslip->file_path);
         if (!file_exists($filePath)) {
-            // Check in public_path as fallback
             $publicFallback = public_path('storage/' . $payslip->file_path);
             if (file_exists($publicFallback)) {
                 $filePath = $publicFallback;
             } else {
-                abort(404, 'File slip gaji tidak ditemukan di server.');
+                abort(404, 'File slip gaji tidak ditemukan di cloud maupun server.');
             }
         }
 
@@ -93,7 +112,7 @@ class PayslipController extends Controller
     }
 
     /**
-     * Download PDF file securely.
+     * Download PDF file securely from Cloudflare R2 or local server.
      */
     public function download($id)
     {
@@ -110,14 +129,25 @@ class PayslipController extends Controller
             $payslip->update(['viewed_at' => now()]);
         }
 
-        $filePath = storage_path('app/public/' . $payslip->file_path);
+        $defaultDisk = config('filesystems.default', 'public');
 
+        // 1. Check Cloudflare R2 / S3 Storage
+        if (Storage::disk($defaultDisk)->exists($payslip->file_path)) {
+            return Storage::disk($defaultDisk)->download($payslip->file_path, $payslip->original_filename);
+        }
+
+        // 2. Check local public storage fallback
+        if ($defaultDisk !== 'public' && Storage::disk('public')->exists($payslip->file_path)) {
+            return Storage::disk('public')->download($payslip->file_path, $payslip->original_filename);
+        }
+
+        $filePath = storage_path('app/public/' . $payslip->file_path);
         if (!file_exists($filePath)) {
             $publicFallback = public_path('storage/' . $payslip->file_path);
             if (file_exists($publicFallback)) {
                 $filePath = $publicFallback;
             } else {
-                abort(404, 'File slip gaji tidak ditemukan di server.');
+                abort(404, 'File slip gaji tidak ditemukan di cloud maupun server.');
             }
         }
 
@@ -452,9 +482,13 @@ class PayslipController extends Controller
 
         $payslip = Payslip::findOrFail($id);
 
-        // Delete physical file
-        if ($payslip->file_path && Storage::disk('public')->exists($payslip->file_path)) {
-            Storage::disk('public')->delete($payslip->file_path);
+        // Delete physical file from cloud and local storage
+        if ($payslip->file_path) {
+            $defaultDisk = config('filesystems.default', 'public');
+            @Storage::disk($defaultDisk)->delete($payslip->file_path);
+            if ($defaultDisk !== 'public') {
+                @Storage::disk('public')->delete($payslip->file_path);
+            }
         }
 
         $payslip->delete();

@@ -10,6 +10,11 @@ use Illuminate\Support\Str;
 
 class MediaOptimizer
 {
+    public static function getDisk(): string
+    {
+        return config('filesystems.default', 'public');
+    }
+
     /**
      * Convert any uploaded image to optimized WebP format with optional resizing and EXIF orientation correction.
      *
@@ -22,12 +27,13 @@ class MediaOptimizer
      */
     public static function convertImageToWebp($file, string $folder = 'attachments', int $quality = 80, int $maxWidth = 1920, int $maxHeight = 1920): string
     {
+        $disk = self::getDisk();
         $realPath = $file instanceof UploadedFile ? $file->getRealPath() : $file;
         $mime = $file instanceof UploadedFile ? $file->getMimeType() : (function_exists('mime_content_type') ? @mime_content_type($realPath) : '');
 
         if (!file_exists($realPath)) {
             if ($file instanceof UploadedFile) {
-                return $file->store($folder, 'public');
+                return $file->store($folder, $disk);
             }
             return '';
         }
@@ -58,10 +64,10 @@ class MediaOptimizer
         // If GD is unavailable or image cannot be parsed, fallback to default store
         if (!$srcImage || !function_exists('imagewebp')) {
             if ($file instanceof UploadedFile) {
-                return $file->store($folder, 'public');
+                return $file->store($folder, $disk);
             }
             $filename = $folder . '/' . uniqid('img_') . '_' . time() . '.' . pathinfo($realPath, PATHINFO_EXTENSION);
-            Storage::disk('public')->put($filename, file_get_contents($realPath));
+            Storage::disk($disk)->put($filename, file_get_contents($realPath));
             return $filename;
         }
 
@@ -111,13 +117,13 @@ class MediaOptimizer
         imagedestroy($targetImage);
 
         $filename = $folder . '/' . uniqid('opt_') . '_' . time() . '.webp';
-        Storage::disk('public')->put($filename, $webpBuffer);
+        Storage::disk($disk)->put($filename, $webpBuffer);
 
         return $filename;
     }
 
     /**
-     * Compress an uploaded or existing PDF file without degrading visual quality.
+     * Compress an uploaded or existing PDF file without degrading visual quality and store on cloud/local disk.
      *
      * @param UploadedFile|string $file
      * @param string $folder Target storage folder (e.g. 'payslips/2026/08', 'attachments')
@@ -126,34 +132,34 @@ class MediaOptimizer
      */
     public static function optimizePdfAndStore($file, string $folder = 'attachments', ?string $customFileName = null): string
     {
+        $disk = self::getDisk();
         $realPath = $file instanceof UploadedFile ? $file->getRealPath() : $file;
-        $originalName = $file instanceof UploadedFile ? $file->getClientOriginalName() : basename($realPath);
-        
         $fileName = $customFileName ?: (uniqid('doc_') . '_' . time() . '.pdf');
         $targetRelativePath = rtrim($folder, '/') . '/' . $fileName;
-        $targetFullPath = storage_path('app/public/' . $targetRelativePath);
 
-        // Ensure directory exists
-        $targetDir = dirname($targetFullPath);
-        if (!is_dir($targetDir)) {
-            File::makeDirectory($targetDir, 0755, true);
+        $tempOut = sys_get_temp_dir() . '/' . uniqid('temp_opt_') . '.pdf';
+
+        // Try Ghostscript / QPDF optimization if available
+        $gsOptimized = self::tryGhostscriptCompression($realPath, $tempOut);
+        if (!$gsOptimized) {
+            self::tryQpdfCompression($realPath, $tempOut);
         }
 
-        // Try Ghostscript optimization if available
-        $gsOptimized = self::tryGhostscriptCompression($realPath, $targetFullPath);
+        $sourceToUpload = (file_exists($tempOut) && filesize($tempOut) > 0) ? $tempOut : $realPath;
 
-        if (!$gsOptimized) {
-            // Try QPDF optimization if available
-            $qpdfOptimized = self::tryQpdfCompression($realPath, $targetFullPath);
-
-            if (!$qpdfOptimized) {
-                // Fallback: Copy original file directly
-                if ($file instanceof UploadedFile) {
-                    $file->storeAs($folder, $fileName, 'public');
-                } else {
-                    File::copy($realPath, $targetFullPath);
-                }
+        if ($disk === 'public' || $disk === 'local') {
+            $targetFullPath = storage_path('app/public/' . $targetRelativePath);
+            $targetDir = dirname($targetFullPath);
+            if (!is_dir($targetDir)) {
+                File::makeDirectory($targetDir, 0755, true);
             }
+            File::copy($sourceToUpload, $targetFullPath);
+        } else {
+            Storage::disk($disk)->put($targetRelativePath, file_get_contents($sourceToUpload));
+        }
+
+        if (file_exists($tempOut)) {
+            @unlink($tempOut);
         }
 
         return $targetRelativePath;

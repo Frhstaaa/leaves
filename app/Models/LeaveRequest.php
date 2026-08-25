@@ -48,6 +48,30 @@ class LeaveRequest extends Model
         'amount' => 'decimal:2',
     ];
 
+    protected $appends = [
+        'attachment_url',
+    ];
+
+    public function getAttachmentUrlAttribute(): ?string
+    {
+        if (!$this->attachment_path) {
+            return null;
+        }
+
+        if (str_starts_with($this->attachment_path, 'http://') || str_starts_with($this->attachment_path, 'https://')) {
+            return $this->attachment_path;
+        }
+
+        $r2Url = env('CLOUDFLARE_R2_URL');
+        $defaultDisk = config('filesystems.default', 'public');
+
+        if (($defaultDisk === 'r2' || $defaultDisk === 's3') && $r2Url) {
+            return rtrim($r2Url, '/') . '/' . ltrim($this->attachment_path, '/');
+        }
+
+        return url('storage/' . ltrim($this->attachment_path, '/'));
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

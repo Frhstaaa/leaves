@@ -437,16 +437,49 @@ if ($actionExecuted) {
                 echo $syncLog . "\n\n";
 
                 if ($success) {
-                    // 1.5 Auto-Fix .env APP_URL if missing subfolder
+                    // 1.5 Auto-Fix .env APP_URL and Cloudflare R2
                     $envFile = $basePath . '/.env';
                     if (file_exists($envFile)) {
                         $envContent = file_get_contents($envFile);
                         $expectedUrl = "$protocol://$currentHost/leaves-application";
+                        $envChanged = false;
+
                         if (!str_contains($envContent, 'leaves-application') || str_contains($envContent, 'http://localhost')) {
                             echo "[1.5/6] Menyesuaikan APP_URL di .env agar presisi ke subfolder ($expectedUrl)...\n";
                             $envContent = preg_replace('/^APP_URL=.*/m', "APP_URL=" . $expectedUrl, $envContent);
+                            $envChanged = true;
+                            echo "✓ APP_URL di file .env berhasil disinkronkan!\n";
+                        }
+
+                        // Auto-Inject Cloudflare R2 Configuration if not present
+                        if (!str_contains($envContent, 'CLOUDFLARE_R2_ACCESS_KEY_ID')) {
+                            echo "-> Mengintegrasikan Cloudflare R2 (10GB Free Lifetime Cloud Storage) ke file .env...\n";
+                            $r2Config = "\n# Cloudflare R2 Cloud Storage (10GB Lifetime Free)\n"
+                                . "FILESYSTEM_DISK=r2\n"
+                                . "CLOUDFLARE_R2_ACCESS_KEY_ID=fbe7d6c6ec7f262c09fbaa7e45b2d4da\n"
+                                . "CLOUDFLARE_R2_SECRET_ACCESS_KEY=4f4941af6f1a58b7b00a33de9b20c5f3974a3a15c48636f99f2dd846cca20b69\n"
+                                . "CLOUDFLARE_R2_DEFAULT_REGION=auto\n"
+                                . "CLOUDFLARE_R2_BUCKET=sgin\n"
+                                . "CLOUDFLARE_R2_ENDPOINT=https://a6cec2d2f2d06ff617a7e61a35c11429.r2.cloudflarestorage.com\n"
+                                . "CLOUDFLARE_R2_URL=https://a6cec2d2f2d06ff617a7e61a35c11429.r2.cloudflarestorage.com/sgin\n"
+                                . "CLOUDFLARE_R2_USE_PATH_STYLE_ENDPOINT=true\n\n"
+                                . "AWS_ACCESS_KEY_ID=fbe7d6c6ec7f262c09fbaa7e45b2d4da\n"
+                                . "AWS_SECRET_ACCESS_KEY=4f4941af6f1a58b7b00a33de9b20c5f3974a3a15c48636f99f2dd846cca20b69\n"
+                                . "AWS_DEFAULT_REGION=auto\n"
+                                . "AWS_BUCKET=sgin\n"
+                                . "AWS_ENDPOINT=https://a6cec2d2f2d06ff617a7e61a35c11429.r2.cloudflarestorage.com\n"
+                                . "AWS_URL=https://a6cec2d2f2d06ff617a7e61a35c11429.r2.cloudflarestorage.com/sgin\n"
+                                . "AWS_USE_PATH_STYLE_ENDPOINT=true\n";
+
+                            $envContent = preg_replace('/^FILESYSTEM_DISK=.*/m', "FILESYSTEM_DISK=r2", $envContent);
+                            $envContent .= $r2Config;
+                            $envChanged = true;
+                            echo "✓ Konfigurasi Cloudflare R2 otomatis aktif di server!\n";
+                        }
+
+                        if ($envChanged) {
                             file_put_contents($envFile, $envContent);
-                            echo "✓ APP_URL di file .env berhasil disinkronkan!\n\n";
+                            echo "\n";
                         }
                     }
 
