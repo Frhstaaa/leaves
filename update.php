@@ -429,6 +429,13 @@ if ($actionExecuted) {
                         } catch (\Throwable $e) {
                             echo "ℹ️ Seeder status: " . $e->getMessage() . "\n\n";
                         }
+
+                        try {
+                            \App\Models\LeaveQuota::syncAllUsers();
+                            echo "✓ Sinkronisasi kuota cuti karyawan berhasil diperbarui (Cuti Tahunan & Cuti Haid memotong kuota, kategori lain bebas kuota)!\n\n";
+                        } catch (\Throwable $e) {
+                            echo "ℹ️ Sync quota status: " . $e->getMessage() . "\n\n";
+                        }
                     }
 
                     // 5. Storage Link

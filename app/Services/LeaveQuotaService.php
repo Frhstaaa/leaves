@@ -19,7 +19,7 @@ class LeaveQuotaService
     }
 
     /**
-     * Deduct quota for approved leave request.
+     * Deduct quota for approved leave request (Cuti Tahunan & Cuti Haid).
      */
     public function deductQuota(LeaveRequest $leaveRequest): void
     {
@@ -27,8 +27,13 @@ class LeaveQuotaService
             return;
         }
 
-        $isAnnualLeave = $leaveRequest->category && strtolower($leaveRequest->category->name) === 'cuti tahunan';
-        if (!$isAnnualLeave) {
+        $category = $leaveRequest->category;
+        $isDeductible = $category && (
+            $category->deducts_quota || 
+            in_array(strtolower(trim($category->name)), ['cuti tahunan', 'cuti haid'])
+        );
+
+        if (!$isDeductible) {
             return;
         }
 
@@ -42,6 +47,16 @@ class LeaveQuotaService
     public function restoreQuota(LeaveRequest $leaveRequest): void
     {
         if ($leaveRequest->unit !== 'hari') {
+            return;
+        }
+
+        $category = $leaveRequest->category;
+        $isDeductible = $category && (
+            $category->deducts_quota || 
+            in_array(strtolower(trim($category->name)), ['cuti tahunan', 'cuti haid'])
+        );
+
+        if (!$isDeductible) {
             return;
         }
 
@@ -67,7 +82,8 @@ class LeaveQuotaService
                 ->whereYear('start_date', $year)
                 ->where('unit', 'hari')
                 ->whereHas('category', function ($q) {
-                    $q->whereRaw('LOWER(name) = ?', ['cuti tahunan']);
+                    $q->where('deducts_quota', true)
+                      ->orWhereRaw('LOWER(name) IN (?, ?)', ['cuti tahunan', 'cuti haid']);
                 })
                 ->sum('amount');
 

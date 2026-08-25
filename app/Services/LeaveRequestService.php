@@ -42,12 +42,13 @@ class LeaveRequestService
                 ]);
             }
 
-            // Quota validation for annual leave
-            if (strtolower($category->name) === 'cuti tahunan' && ($data['unit'] ?? 'hari') === 'hari') {
+            // Quota validation for deductible absence categories (Cuti Tahunan & Cuti Haid)
+            $isQuotaDeductible = $category->deducts_quota || in_array(strtolower(trim($category->name)), ['cuti tahunan', 'cuti haid']);
+            if ($isQuotaDeductible && ($data['unit'] ?? 'hari') === 'hari') {
                 $quota = $this->quotaService->getOrSyncUserQuota($user->id, $currentYear);
                 if ($quota->remaining_quota < (float) $data['amount']) {
                     throw ValidationException::withMessages([
-                        'amount' => "Sisa kuota cuti tahunan Anda tidak mencukupi ({$quota->remaining_quota} hari tersisa).",
+                        'amount' => "Sisa kuota cuti Anda tidak mencukupi untuk {$category->name} ({$quota->remaining_quota} hari tersisa).",
                     ]);
                 }
             }

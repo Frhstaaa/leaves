@@ -311,10 +311,16 @@ class MonitoringController extends Controller
         $users = $query->orderBy('department_id')->orderBy('name')->get();
 
         $userIds = $users->pluck('id');
-        $leaveRequests = LeaveRequest::whereIn('user_id', $userIds)
+        $leaveRequests = LeaveRequest::with('category')
+            ->whereIn('user_id', $userIds)
             ->where('status', 'approved')
             ->whereYear('start_date', $year)
-            ->get(['user_id', 'start_date', 'amount', 'unit']);
+            ->where('unit', 'hari')
+            ->whereHas('category', function ($q) {
+                $q->where('deducts_quota', true)
+                  ->orWhereRaw('LOWER(name) IN (?, ?)', ['cuti tahunan', 'cuti haid']);
+            })
+            ->get(['user_id', 'leave_category_id', 'start_date', 'amount', 'unit']);
 
         $groupedRequests = $leaveRequests->groupBy('user_id');
 

@@ -370,21 +370,42 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
 
                   {/* Selected Category Detail Card */}
                   {selectedCategory && (
-                    <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 space-y-1.5 animate-fade-in mt-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-extrabold text-emerald-950 flex items-center space-x-1.5">
+                    <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 space-y-2 animate-fade-in mt-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-emerald-950 flex items-center space-x-1.5">
                           <FileText size={16} className="text-emerald-600 shrink-0" />
                           <span>{selectedCategory.name}</span>
                         </span>
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                          selectedCategory.requires_attachment ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                        }`}>
-                          {selectedCategory.requires_attachment ? 'Wajib Surat / Bukti Lampiran' : 'Tanpa Lampiran'}
-                        </span>
+                        <div className="flex items-center space-x-1.5">
+                          {selectedCategory.deducts_quota || ['cuti tahunan', 'cuti haid'].includes(selectedCategory.name?.toLowerCase()) ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white shadow-xs">
+                              ✂️ Memotong Kuota Cuti
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700">
+                              🛡️ Bebas Kuota (Tidak Potong)
+                            </span>
+                          )}
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                            selectedCategory.requires_attachment ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          }`}>
+                            {selectedCategory.requires_attachment ? 'Wajib Lampiran' : 'Tanpa Lampiran'}
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-[11px] text-emerald-900 leading-relaxed font-medium">
+                      <p className="text-[11px] text-emerald-900 leading-relaxed font-normal">
                         {selectedCategory.description || `Satuan permohonan: ${selectedCategory.unit_type}.`}
                       </p>
+                      {selectedCategory.deducts_quota || ['cuti tahunan', 'cuti haid'].includes(selectedCategory.name?.toLowerCase()) ? (
+                        <div className="p-2.5 rounded-xl bg-white/80 border border-emerald-200 text-[11px] text-emerald-900 font-medium flex items-center justify-between">
+                          <span>Sisa Kuota Cuti Tahunan Anda ({new Date().getFullYear()}):</span>
+                          <strong className="text-emerald-800 font-bold">{remainingQuota} Hari Tersedia</strong>
+                        </div>
+                      ) : (
+                        <div className="p-2.5 rounded-xl bg-slate-100/80 border border-slate-200 text-[11px] text-slate-600 font-medium">
+                          ℹ️ Kategori ini <strong>tidak akan mengurangi kuota cuti tahunan</strong> Anda.
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -765,15 +786,24 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
                         }`}
                       >
                         <div className="min-w-0 flex-1 pr-2">
-                          <div className="flex items-center space-x-2">
+                          <div className="flex flex-wrap items-center gap-1.5">
                             <span className="font-bold text-xs text-slate-900">{cat.name}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                               cat.requires_attachment
                                 ? 'bg-amber-100 text-amber-800 border border-amber-200'
                                 : 'bg-slate-200 text-slate-700'
                             }`}>
                               {cat.requires_attachment ? 'Wajib Lampiran' : cat.unit_type || 'Hari'}
                             </span>
+                            {cat.deducts_quota || ['cuti tahunan', 'cuti haid'].includes(cat.name?.toLowerCase()) ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                Potong Kuota
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                                Bebas Kuota
+                              </span>
+                            )}
                           </div>
                           {cat.description && (
                             <p className="text-[11px] text-slate-500 font-normal mt-0.5 truncate">{cat.description}</p>
