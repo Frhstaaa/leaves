@@ -8,6 +8,7 @@ if (!is_dir($iconsDir)) {
 
 // 1. Attempt to find company logo from various potential paths
 $logoCandidates = [
+    $baseDir . '/public/icons/company_logo_master.png',
     $baseDir . '/storage/app/public/logos',
     $baseDir . '/public/storage/logos',
     $baseDir . '/storage/logos',
@@ -39,10 +40,13 @@ if (class_exists('\\App\\Models\\Setting')) {
     }
 }
 
-// If not found in DB setting, scan logo directories for the most recent logo
+// If not found in DB setting, scan logo candidates
 if (!$foundLogoPath) {
     foreach ($logoCandidates as $dir) {
-        if (is_dir($dir)) {
+        if (is_file($dir) && file_exists($dir)) {
+            $foundLogoPath = $dir;
+            break;
+        } elseif (is_dir($dir)) {
             $files = scandir($dir);
             $latestTime = 0;
             $latestFile = null;
