@@ -70,6 +70,17 @@ Route::get('/build/{path}', function ($path) {
 Route::get('/manifest.webmanifest', [\App\Http\Controllers\SettingController::class, 'manifest'])->name('pwa.manifest');
 Route::get('/manifest.json', [\App\Http\Controllers\SettingController::class, 'manifest']);
 Route::get('/app-icon/{size?}', [\App\Http\Controllers\SettingController::class, 'getAppIcon'])->name('pwa.icon');
+Route::get('/icons/{filename}', function ($filename) {
+    $path = public_path('icons/' . $filename);
+    if (file_exists($path)) {
+        return response(file_get_contents($path), 200, [
+            'Content-Type' => 'image/png',
+            'Access-Control-Allow-Origin' => '*',
+            'Cache-Control' => 'public, max-age=31536000, immutable',
+        ]);
+    }
+    return response('Icon not found', 404);
+})->where('filename', '.*');
 
 // Authentication Routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
