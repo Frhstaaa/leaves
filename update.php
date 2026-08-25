@@ -297,6 +297,50 @@ function syncFromGithub($basePath, $repo, $branch, $token = '') {
     }
 }
 
+function freeServerDiskSpace($basePath) {
+    $freed = 0;
+    // 1. Empty all Laravel log files
+    $logDir = $basePath . '/storage/logs';
+    if (is_dir($logDir)) {
+        foreach (glob($logDir . '/*.log') as $file) {
+            $freed += @filesize($file);
+            @file_put_contents($file, '');
+        }
+    }
+    // 2. Clean compiled blade view cache
+    $viewDir = $basePath . '/storage/framework/views';
+    if (is_dir($viewDir)) {
+        foreach (glob($viewDir . '/*.php') as $file) {
+            $freed += @filesize($file);
+            @unlink($file);
+        }
+    }
+    // 3. Clean framework data cache
+    $cacheDir = $basePath . '/storage/framework/cache/data';
+    if (is_dir($cacheDir)) {
+        try {
+            $it = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($cacheDir, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::CHILD_FIRST
+            );
+            foreach ($it as $f) {
+                if ($f->isFile()) {
+                    $freed += $f->getSize();
+                    @unlink($f->getRealPath());
+                } elseif ($f->isDir()) {
+                    @rmdir($f->getRealPath());
+                }
+            }
+        } catch (\Throwable $e) {}
+    }
+    // 4. Git prune
+    if (function_exists('shell_exec')) {
+        @shell_exec('git prune 2>&1');
+        @shell_exec('git gc --auto 2>&1');
+    }
+    return $freed;
+}
+
 // Determine Host & URLs
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
 $currentHost = $_SERVER['HTTP_HOST'] ?? 'www.sgin.co.id';
@@ -328,17 +372,14 @@ if (isset($_GET['webhook']) || (isset($_SERVER['HTTP_X_GITHUB_EVENT']) && $_SERV
 
     $repo = $_GET['repo'] ?? DEFAULT_GITHUB_REPO;
     $branch = $_GET['branch'] ?? DEFAULT_GITHUB_BRANCH;
-    $token = $_GET['token'] ?? '';
+    list($syncSuccess, $syncLogs) = syncFromGithub($basePath, $repo, $branch, '');
 
-    list($syncSuccess, $syncLogs) = syncFromGithub($basePath, $repo, $branch, $token);
-
-    if ($app) {
+    if ($syncSuccess && $app) {
         try {
             \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
             \Illuminate\Support\Facades\Artisan::call('optimize:clear');
             \Illuminate\Support\Facades\Artisan::call('config:cache');
             \Illuminate\Support\Facades\Artisan::call('route:cache');
-            \Illuminate\Support\Facades\Artisan::call('view:cache');
         } catch (\Throwable $e) {}
     }
 
@@ -367,11 +408,28 @@ if ($actionExecuted) {
     ob_start();
     try {
         switch ($actionExecuted) {
+            case 'clean_disk':
+                $actionTitle = 'Pembersihan Ruang Disk Hosting';
+                echo "=== MEMBERSIHKAN RUANG DISK PENYIMPANAN HOSTING ===\n\n";
+                $freed = freeServerDiskSpace($basePath);
+                $freedMB = round($freed / 1024 / 1024, 2);
+                echo "✓ Berhasil mengosongkan file log, cache view, dan file sementara!\n";
+                echo "✓ Ruang disk yang dibebaskan: {$freedMB} MB.\n";
+                $actionStatus = 'success';
+                break;
+
             case 'full_setup_update':
                 $actionTitle = 'Complete Setup & Update (All-in-One)';
                 echo "=================================================================\n";
                 echo "  🚀 1-CLICK COMPLETE SETUP & UPDATE LEAVES SYSTEM (ALL IN ONE)  \n";
                 echo "=================================================================\n\n";
+
+                // 0. Auto Free Disk Space first to avoid quota issues
+                $freed = freeServerDiskSpace($basePath);
+                $freedMB = round($freed / 1024 / 1024, 2);
+                if ($freed > 0) {
+                    echo "[0/6] Membersihkan log & cache lama ({$freedMB} MB dibebaskan)...\n";
+                }
 
                 // 1. Pull from GitHub
                 echo "[1/6] Mengambil kodingan terbaru dari GitHub ($repoName:$branchName)...\n";
@@ -407,18 +465,25 @@ if ($actionExecuted) {
 
                     // 3. NPM Build Check (NodeJS Frontend)
                     echo "[3/6] Memeriksa build frontend Vite (NPM)...\n";
-                    if ($detectedNodeBin) {
+                    $hasPrebuilt = file_exists($basePath . '/public/build/manifest.json');
+                    if ($hasPrebuilt) {
+                        echo "✓ Frontend bundle Vite terkompilasi siap pakai terdeteksi dari GitHub (public/build/). Tidak perlu compile ulang (menghemat disk & RAM hosting).\n\n";
+                    } elseif ($detectedNodeBin) {
                         echo "NodeJS terdeteksi ($detectedNodeBin - $nodeVersion). Menjalankan npm run build...\n";
                         echo executeNpmCommand("run build", $basePath) . "\n";
                     } else {
-                        echo "✓ NodeJS tidak ada di server hosting. Frontend menggunakan aset build yang sudah ter-compile otomatis dari GitHub (public/build/).\n\n";
+                        echo "✓ Frontend siap pakai dari repository.\n\n";
                     }
 
                     // 4. Database Migrations & Sync Role Permissions
                     echo "[4/6] Menjalankan migrasi database & sinkronisasi role permissions...\n";
                     if ($app) {
-                        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-                        echo \Illuminate\Support\Facades\Artisan::output() . "\n";
+                        try {
+                            \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+                            echo \Illuminate\Support\Facades\Artisan::output() . "\n";
+                        } catch (\Throwable $e) {
+                            echo "ℹ️ Migrate status: " . $e->getMessage() . "\n";
+                        }
 
                         try {
                             \Illuminate\Support\Facades\Artisan::call('db:seed', [
@@ -446,8 +511,10 @@ if ($actionExecuted) {
                         @symlink($appStorage, $publicStorage);
                     }
                     if ($app) {
-                        \Illuminate\Support\Facades\Artisan::call('storage:link');
-                        echo \Illuminate\Support\Facades\Artisan::output() . "\n";
+                        try {
+                            \Illuminate\Support\Facades\Artisan::call('storage:link');
+                            echo \Illuminate\Support\Facades\Artisan::output() . "\n";
+                        } catch (\Throwable $e) {}
                     }
                     if (file_exists($basePath . '/generate_pwa_assets.php')) {
                         echo "-> Memperbarui icon PWA dan manifest statis...\n";
@@ -467,11 +534,14 @@ if ($actionExecuted) {
                         echo "✓ PHP OPcache di-reset.\n";
                     }
                     if ($app) {
-                        \Illuminate\Support\Facades\Artisan::call('optimize:clear');
-                        \Illuminate\Support\Facades\Artisan::call('config:cache');
-                        \Illuminate\Support\Facades\Artisan::call('route:cache');
-                        \Illuminate\Support\Facades\Artisan::call('view:cache');
-                        echo "✓ Cache production berhasil diperbarui.\n\n";
+                        try {
+                            \Illuminate\Support\Facades\Artisan::call('optimize:clear');
+                            \Illuminate\Support\Facades\Artisan::call('config:cache');
+                            \Illuminate\Support\Facades\Artisan::call('route:cache');
+                            echo "✓ Cache production berhasil diperbarui.\n\n";
+                        } catch (\Throwable $e) {
+                            echo "ℹ️ Cache status: " . $e->getMessage() . "\n\n";
+                        }
                     }
 
                     echo "=================================================================\n";
