@@ -46,8 +46,18 @@ class SettingService
         $shortName = $settings['app_name'] ?? 'Form SGIN';
         $themeColor = $settings['theme_color'] ?? '#0FA172';
         $description = $settings['app_description'] ?? 'Sistem Informasi Pengajuan Cuti & Slip Gaji Karyawan PT. Sugiyama Indonesia';
-        $version = substr(md5(($settings['app_logo'] ?? '') . ($settings['app_name'] ?? '')), 0, 8);
-        $root = app()->runningInConsole() ? url('/') : rtrim(request()->root(), '/');
+        $scheme = request()->getScheme() ?: (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http');
+        $host = request()->getHost() ?: ($_SERVER['HTTP_HOST'] ?? 'www.sgin.co.id');
+        $uri = $_SERVER['REQUEST_URI'] ?? request()->getRequestUri();
+
+        $subfolder = '';
+        if (str_contains($uri, 'leaves-application')) {
+            $subfolder = '/leaves-application';
+        } elseif (preg_match('#^(/[^/]+)#', $uri, $m) && !in_array($m[1], ['/login', '/dashboard', '/build', '/api', '/sw.js', '/quick-login', '/logout', '/manifest.webmanifest', '/manifest.json', '/app-icon'])) {
+            $subfolder = $m[1];
+        }
+
+        $root = $scheme . '://' . $host . $subfolder;
 
         return [
             'id' => $root . '/?source=pwa',

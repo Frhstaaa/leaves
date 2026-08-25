@@ -116,6 +116,7 @@ class SettingController extends Controller
 
         return response()->json($manifest)
             ->header('Content-Type', 'application/manifest+json; charset=utf-8')
+            ->header('Access-Control-Allow-Origin', '*')
             ->header('Cache-Control', 'no-cache, no-store, must-revalidate');
     }
 
@@ -194,6 +195,7 @@ class SettingController extends Controller
 
                 return response($pngData, 200, [
                     'Content-Type' => 'image/png',
+                    'Access-Control-Allow-Origin' => '*',
                     'Cache-Control' => 'no-cache, must-revalidate',
                     'Pragma' => 'no-cache',
                 ]);
@@ -226,6 +228,7 @@ class SettingController extends Controller
 
         return response($pngData, 200, [
             'Content-Type' => 'image/png',
+            'Access-Control-Allow-Origin' => '*',
             'Cache-Control' => 'no-cache, must-revalidate',
             'Pragma' => 'no-cache',
         ]);
