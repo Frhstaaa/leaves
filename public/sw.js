@@ -1,5 +1,5 @@
 // High-Performance Service Worker for Form SGIN PWA
-const CACHE_NAME = 'sgin-pwa-v6';
+const CACHE_NAME = 'sgin-pwa-v7';
 const OFFLINE_URL = './';
 
 const ASSETS_TO_CACHE = [

@@ -121,32 +121,16 @@ function createPwaIcon($size, $isMaskable, $sourceImg) {
         imagealphablending($img, true);
         imagecopyresampled($img, $sourceImg, $dstX, $dstY, 0, 0, $newW, $newH, $srcW, $srcH);
     } else {
-        // Fallback default PT. Sugiyama brand emblem
-        $centerX = (int) round($size / 2);
-        $centerY = (int) round($size / 2);
-        $innerSize = $size - ($padding * 2);
-
-        $badgeBg = imagecolorallocate($img, 15, 161, 114); // Emerald #0FA172
-        imagefilledellipse($img, $centerX, $centerY, (int) round($innerSize * 0.92), (int) round($innerSize * 0.92), $badgeBg);
-
-        $font = 5;
-        $text = "SG";
-        $textW = imagefontwidth($font) * strlen($text);
-        $textH = imagefontheight($font);
-        $scale = max(1, (int) round($size / 70));
-        $bigW = $textW * $scale;
-        $bigH = $textH * $scale;
-
-        $temp = imagecreatetruecolor($textW, $textH);
-        $tBg = imagecolorallocate($temp, 0, 0, 0);
-        imagecolortransparent($temp, $tBg);
-        $tFg = imagecolorallocate($temp, 255, 255, 255);
-        imagestring($temp, $font, 0, 0, $text, $tFg);
-
-        $dstX = (int) round($centerX - ($bigW / 2));
-        $dstY = (int) round($centerY - ($bigH / 2));
-        imagecopyresized($img, $temp, $dstX, $dstY, 0, 0, $bigW, $bigH, $textW, $textH);
-        imagedestroy($temp);
+        // Fallback load company logo master
+        $masterFile = $baseDir . '/public/icons/company_logo_master.png';
+        if (file_exists($masterFile)) {
+            $mImg = @imagecreatefrompng($masterFile);
+            if ($mImg) {
+                imagealphablending($img, true);
+                imagecopyresampled($img, $mImg, 0, 0, 0, 0, $size, $size, imagesx($mImg), imagesy($mImg));
+                imagedestroy($mImg);
+            }
+        }
     }
 
     return $img;
