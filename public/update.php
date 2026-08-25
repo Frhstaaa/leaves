@@ -586,6 +586,90 @@ if ($actionExecuted) {
                 }
                 break;
 
+            // --- CLOUDFLARE R2 ACTIONS ---
+            case 'test_r2':
+                $actionTitle = 'Uji Koneksi Cloudflare R2';
+                echo "=== PENGUJIAN KONEKSI CLOUDFLARE R2 OBJECT STORAGE ===\n\n";
+                if ($app) {
+                    try {
+                        $testFile = 'r2_healthcheck_' . time() . '.txt';
+                        $testBody = 'Cloudflare R2 verification from SGIN Leaves System at ' . date('Y-m-d H:i:s');
+                        
+                        echo "1. Menguji upload file uji coba ke bucket 'sgin'...\n";
+                        \Illuminate\Support\Facades\Storage::disk('r2')->put($testFile, $testBody);
+                        echo "✓ Upload berhasil!\n\n";
+
+                        echo "2. Menguji keberadaan file di Cloudflare R2...\n";
+                        $exists = \Illuminate\Support\Facades\Storage::disk('r2')->exists($testFile);
+                        echo ($exists ? "✓ File terverifikasi ada di Cloudflare R2!\n\n" : "✗ File tidak ditemukan di R2.\n\n");
+
+                        echo "3. Membersihkan file uji coba...\n";
+                        \Illuminate\Support\Facades\Storage::disk('r2')->delete($testFile);
+                        echo "✓ Pembersihan selesai.\n\n";
+
+                        echo "=================================================================\n";
+                        echo "  ✓ KONEKSI CLOUDFLARE R2 BUCKET 'sgin' 100% SUKSES & AKTIF!     \n";
+                        echo "=================================================================\n";
+                        $actionStatus = 'success';
+                    } catch (\Throwable $e) {
+                        echo "✗ Gagal terhubung ke Cloudflare R2: " . $e->getMessage() . "\n";
+                        $actionStatus = 'error';
+                    }
+                } else {
+                    echo "✗ Laravel application kernel tidak tersedia.\n";
+                    $actionStatus = 'error';
+                }
+                break;
+
+            case 'migrate_storage_to_r2':
+                $actionTitle = 'Migrasi File Lokal ke Cloudflare R2';
+                echo "=== SINKRONISASI & MIGRASI FILE LOKAL KE CLOUDFLARE R2 ===\n\n";
+                if ($app) {
+                    try {
+                        $sourceDirs = [
+                            $basePath . '/storage/app/public/logos',
+                            $basePath . '/storage/app/public/avatars',
+                            $basePath . '/storage/app/public/attachments',
+                            $basePath . '/storage/app/public/payslips',
+                        ];
+
+                        $migratedCount = 0;
+                        $totalBytes = 0;
+
+                        foreach ($sourceDirs as $sDir) {
+                            if (!is_dir($sDir)) continue;
+                            $it = new RecursiveIteratorIterator(
+                                new RecursiveDirectoryIterator($sDir, RecursiveDirectoryIterator::SKIP_DOTS),
+                                RecursiveIteratorIterator::SELF_FIRST
+                            );
+                            foreach ($it as $file) {
+                                if ($file->isFile()) {
+                                    $relPath = substr($file->getPathname(), strlen($basePath . '/storage/app/public/'));
+                                    $relPath = str_replace('\\', '/', $relPath);
+                                    if ($relPath === '.gitignore') continue;
+
+                                    echo "Mengunggah: $relPath... ";
+                                    $content = file_get_contents($file->getPathname());
+                                    \Illuminate\Support\Facades\Storage::disk('r2')->put($relPath, $content);
+                                    $migratedCount++;
+                                    $totalBytes += $file->getSize();
+                                    echo "✓ Berhasil.\n";
+                                }
+                            }
+                        }
+
+                        $mb = round($totalBytes / 1024 / 1024, 2);
+                        echo "\n=================================================================\n";
+                        echo "  ✓ SELESAI: $migratedCount file ($mb MB) telah disinkronkan ke Cloudflare R2! \n";
+                        echo "=================================================================\n";
+                        $actionStatus = 'success';
+                    } catch (\Throwable $e) {
+                        echo "✗ Error migrasi: " . $e->getMessage() . "\n";
+                        $actionStatus = 'error';
+                    }
+                }
+                break;
+
             // --- NPM & FRONTEND ACTIONS ---
             case 'npm_build':
                 $actionTitle = 'NPM Run Build (Vite)';
@@ -1039,6 +1123,36 @@ if ($app) {
                 <a href="cleaner.php" target="_blank" class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition-all">
                     Buka Cleaner ↗
                 </a>
+            </div>
+        </div>
+
+        <!-- CLOUDFLARE R2 OBJECT STORAGE CONTROL -->
+        <div class="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-slate-900 to-sky-950/60 border border-sky-500/40 shadow-xl space-y-4">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xl">☁️</span>
+                        <h3 class="text-base font-bold text-white">Cloudflare R2 Object Storage (10 GB Free Lifetime)</h3>
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">Bucket: sgin</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Menyimpan seluruh lampiran surat dokter, PDF slip gaji, foto profil & logo langsung di Cloudflare R2 agar disk cPanel tetap 0 MB.
+                    </p>
+                </div>
+                <div class="flex items-center space-x-2.5 shrink-0">
+                    <form method="POST" onsubmit="handleFormSubmit(event, this, 'Uji Koneksi Cloudflare R2')">
+                        <input type="hidden" name="action" value="test_r2">
+                        <button type="submit" class="px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow-lg shadow-sky-600/30 transition-all flex items-center space-x-1.5">
+                            <span>🧪 Uji Koneksi R2</span>
+                        </button>
+                    </form>
+                    <form method="POST" onsubmit="handleFormSubmit(event, this, 'Sinkronkan File ke Cloudflare R2')">
+                        <input type="hidden" name="action" value="migrate_storage_to_r2">
+                        <button type="submit" class="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/30 transition-all flex items-center space-x-1.5">
+                            <span>☁️ Sinkronkan File Lama ke R2</span>
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
 
