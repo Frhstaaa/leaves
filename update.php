@@ -985,6 +985,30 @@ if ($app) {
             </div>
         </div>
 
+        <!-- DISK SPACE OPTIMIZER & CLEANER BANNER -->
+        <div class="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-slate-900 to-indigo-950/60 border border-indigo-500/40 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="space-y-1">
+                <div class="flex items-center space-x-2">
+                    <span class="text-xl">🧹</span>
+                    <h3 class="text-base font-bold text-white">Pembersih Cepat Kuota Disk Hosting cPanel</h3>
+                </div>
+                <p class="text-xs text-slate-300 leading-relaxed">
+                    Hapus folder <code>node_modules/</code> (~200MB yang tidak terpakai), kosongkan file <code>laravel.log</code>, dan bersihkan cache untuk membebaskan ratusan MB ruang disk seketika.
+                </p>
+            </div>
+            <div class="flex items-center space-x-3 shrink-0">
+                <form method="POST" onsubmit="handleFormSubmit(event, this, 'Pembersihan Ruang Disk')">
+                    <input type="hidden" name="action" value="clean_disk">
+                    <button type="submit" class="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center space-x-1.5 transition-all">
+                        <span>🧹 Bersihkan Disk Sekarang</span>
+                    </button>
+                </form>
+                <a href="cleaner.php" target="_blank" class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition-all">
+                    Buka Cleaner ↗
+                </a>
+            </div>
+        </div>
+
         <!-- 1-Click Complete Setup & Auto-Update -->
         <div class="p-6 sm:p-7 rounded-3xl bg-slate-900 border border-emerald-500/40 shadow-2xl space-y-4">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
