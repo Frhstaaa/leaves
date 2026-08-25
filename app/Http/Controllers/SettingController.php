@@ -143,6 +143,22 @@ class SettingController extends Controller
             }
         }
 
+        // Check company logo master or icons directory if no custom upload is resolved
+        if (!$filePath || !file_exists($filePath)) {
+            $fallbacks = [
+                public_path('icons/company_logo_master.png'),
+                public_path('icons/icon-512x512.png'),
+                public_path('icons/icon-192x192.png'),
+                base_path('public/icons/company_logo_master.png'),
+            ];
+            foreach ($fallbacks as $fb) {
+                if (file_exists($fb)) {
+                    $filePath = $fb;
+                    break;
+                }
+            }
+        }
+
         if ($filePath && file_exists($filePath)) {
             $mime = function_exists('mime_content_type') ? @mime_content_type($filePath) : '';
             $src = match (true) {
@@ -173,10 +189,10 @@ class SettingController extends Controller
                     imagefilledrectangle($canvas, 0, 0, $size, $size, $bgColor);
                     $padding = (int) round($size * 0.16);
                 } else {
-                    // Transparent canvas for 'any' purpose
-                    $transparent = imagecolorallocatealpha($canvas, 255, 255, 255, 127);
-                    imagefilledrectangle($canvas, 0, 0, $size, $size, $transparent);
-                    $padding = (int) round($size * 0.08);
+                    // Clean white background with rounded corner feel
+                    $bgColor = imagecolorallocate($canvas, 255, 255, 255);
+                    imagefilledrectangle($canvas, 0, 0, $size, $size, $bgColor);
+                    $padding = (int) round($size * 0.10);
                 }
 
                 $w = imagesx($src);
@@ -206,35 +222,16 @@ class SettingController extends Controller
             }
         }
 
-        // Generate default branded gradient icon
-        $canvas = imagecreatetruecolor($size, $size);
-        imagealphablending($canvas, false);
-        imagesavealpha($canvas, true);
+        // If all else fails, return the static file directly
+        $staticFile = public_path('icons/icon-192x192.png');
+        if (file_exists($staticFile)) {
+            return response(file_get_contents($staticFile), 200, [
+                'Content-Type' => 'image/png',
+                'Access-Control-Allow-Origin' => '*',
+                'Cache-Control' => 'no-cache, must-revalidate',
+            ]);
+        }
 
-        // Emerald background
-        $green = imagecolorallocate($canvas, 5, 150, 105);
-        imagefilledrectangle($canvas, 0, 0, $size, $size, $green);
-
-        // White text "SG"
-        $white = imagecolorallocate($canvas, 255, 255, 255);
-        $font = 5; // Built-in GD font
-        $text = "SG";
-        $textWidth = imagefontwidth($font) * strlen($text);
-        $textHeight = imagefontheight($font);
-        $x = (int) round(($size - $textWidth) / 2);
-        $y = (int) round(($size - $textHeight) / 2);
-        imagestring($canvas, $font, $x, $y, $text, $white);
-
-        ob_start();
-        imagepng($canvas);
-        $pngData = ob_get_clean();
-        imagedestroy($canvas);
-
-        return response($pngData, 200, [
-            'Content-Type' => 'image/png',
-            'Access-Control-Allow-Origin' => '*',
-            'Cache-Control' => 'no-cache, must-revalidate',
-            'Pragma' => 'no-cache',
-        ]);
+        return response('', 404);
     }
 }

@@ -75,31 +75,31 @@ class SettingService
             'prefer_related_applications' => false,
             'icons' => [
                 [
-                    'src' => $root . "/app-icon/180?v={$version}",
+                    'src' => $root . "/icons/icon-180x180.png?v={$version}",
                     'sizes' => '180x180',
                     'type' => 'image/png',
                     'purpose' => 'any',
                 ],
                 [
-                    'src' => $root . "/app-icon/192?v={$version}",
+                    'src' => $root . "/icons/icon-192x192.png?v={$version}",
                     'sizes' => '192x192',
                     'type' => 'image/png',
                     'purpose' => 'any',
                 ],
                 [
-                    'src' => $root . "/app-icon/192?v={$version}&maskable=1",
+                    'src' => $root . "/icons/icon-maskable-192.png?v={$version}",
                     'sizes' => '192x192',
                     'type' => 'image/png',
                     'purpose' => 'maskable',
                 ],
                 [
-                    'src' => $root . "/app-icon/512?v={$version}",
+                    'src' => $root . "/icons/icon-512x512.png?v={$version}",
                     'sizes' => '512x512',
                     'type' => 'image/png',
                     'purpose' => 'any',
                 ],
                 [
-                    'src' => $root . "/app-icon/512?v={$version}&maskable=1",
+                    'src' => $root . "/icons/icon-maskable-512.png?v={$version}",
                     'sizes' => '512x512',
                     'type' => 'image/png',
                     'purpose' => 'maskable',
