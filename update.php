@@ -449,6 +449,15 @@ if ($actionExecuted) {
                         \Illuminate\Support\Facades\Artisan::call('storage:link');
                         echo \Illuminate\Support\Facades\Artisan::output() . "\n";
                     }
+                    if (file_exists($basePath . '/generate_pwa_assets.php')) {
+                        echo "-> Memperbarui icon PWA dan manifest statis...\n";
+                        try {
+                            include_once($basePath . '/generate_pwa_assets.php');
+                            echo "✓ Icon PWA dan manifest siap.\n";
+                        } catch (\Throwable $e) {
+                            echo "ℹ️ PWA generator: " . $e->getMessage() . "\n";
+                        }
+                    }
                     echo "✓ Storage link siap.\n\n";
 
                     // 6. Cache Clear & Optimize

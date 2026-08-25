@@ -85,10 +85,10 @@
 
     <base href="{{ $appBaseUrl }}/">
     <link rel="manifest" href="{{ $appBaseUrl }}/manifest.webmanifest?v={{ $pwaVersion }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ $appBaseUrl }}/app-icon/180?v={{ $pwaVersion }}">
-    <link rel="icon" type="image/png" sizes="192x192" href="{{ $appBaseUrl }}/app-icon/192?v={{ $pwaVersion }}">
-    <link rel="icon" type="image/png" sizes="512x512" href="{{ $appBaseUrl }}/app-icon/512?v={{ $pwaVersion }}">
-    <link rel="shortcut icon" href="{{ $appBaseUrl }}/app-icon/192?v={{ $pwaVersion }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ $appBaseUrl }}/icons/icon-180x180.png?v={{ $pwaVersion }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ $appBaseUrl }}/icons/icon-192x192.png?v={{ $pwaVersion }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ $appBaseUrl }}/icons/icon-512x512.png?v={{ $pwaVersion }}">
+    <link rel="shortcut icon" href="{{ $appBaseUrl }}/icons/icon-192x192.png?v={{ $pwaVersion }}">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="{{ $appName }}">

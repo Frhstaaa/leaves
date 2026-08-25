@@ -58,10 +58,14 @@
     ExpiresByType application/font-woff "access plus 1 year"
 </IfModule>
 
+# Manifest MIME Types
+AddType application/manifest+json .webmanifest
+AddType application/manifest+json .json
+
 # Enable Keep-Alive, Immutable Cache-Control & CORS Headers
 <IfModule mod_headers.c>
     Header set Connection keep-alive
-    <FilesMatch "\.(css|js|mjs|woff2|woff|ttf|eot|png|jpg|jpeg|gif|svg|webp|ico|json)$">
+    <FilesMatch "\.(css|js|mjs|woff2|woff|ttf|eot|png|jpg|jpeg|gif|svg|webp|ico|json|webmanifest)$">
         Header set Access-Control-Allow-Origin "*"
         Header set Cache-Control "public, max-age=31536000, immutable"
     </FilesMatch>

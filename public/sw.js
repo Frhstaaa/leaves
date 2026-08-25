@@ -1,9 +1,11 @@
 // High-Performance Service Worker for Form SGIN PWA
-const CACHE_NAME = 'sgin-pwa-v5';
+const CACHE_NAME = 'sgin-pwa-v6';
 const OFFLINE_URL = './';
 
 const ASSETS_TO_CACHE = [
   './manifest.webmanifest',
+  './icons/icon-192x192.png',
+  './icons/icon-512x512.png',
 ];
 
 // Install Event
@@ -50,7 +52,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // 1. Dynamic Network-First for Manifest & App Icons (Always fresh branding)
-  if (url.pathname.includes('manifest') || url.pathname.includes('app-icon')) {
+  if (url.pathname.includes('manifest') || url.pathname.includes('app-icon') || url.pathname.includes('/icons/')) {
     event.respondWith(
       fetch(event.request)
         .then((networkResponse) => {
