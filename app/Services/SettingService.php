@@ -58,10 +58,11 @@ class SettingService
         }
 
         $root = $scheme . '://' . $host . $subfolder;
+        $version = substr(md5(($settings['app_logo'] ?? '') . ($settings['app_name'] ?? '') . 'v8'), 0, 8);
 
         return [
             'id' => $root . '/?source=pwa',
-            'name' => $appName . ' - PT. Sugiyama Indonesia',
+            'name' => $appName . ' - Cuti & Ketidakhadiran',
             'short_name' => $shortName,
             'description' => $description,
             'start_url' => $root . '/login?source=pwa',
@@ -111,14 +112,14 @@ class SettingService
                     'short_name' => 'Pengajuan',
                     'description' => 'Buat pengajuan cuti atau izin baru',
                     'url' => $root . '/leave-requests/create',
-                    'icons' => [['src' => $root . "/app-icon/192?v={$version}", 'sizes' => '192x192']],
+                    'icons' => [['src' => $root . "/icons/icon-192x192.png?v={$version}", 'sizes' => '192x192']],
                 ],
                 [
                     'name' => 'Persetujuan Team',
                     'short_name' => 'Approval',
                     'description' => 'Tinjau persetujuan cuti bawahan',
                     'url' => $root . '/approvals',
-                    'icons' => [['src' => $root . "/app-icon/192?v={$version}", 'sizes' => '192x192']],
+                    'icons' => [['src' => $root . "/icons/icon-192x192.png?v={$version}", 'sizes' => '192x192']],
                 ],
             ],
         ];
