@@ -1,5 +1,5 @@
 // High-Performance Service Worker for Form SGIN PWA
-const CACHE_NAME = 'sgin-pwa-v4';
+const CACHE_NAME = 'sgin-pwa-v5';
 const OFFLINE_URL = './';
 
 const ASSETS_TO_CACHE = [
@@ -40,16 +40,17 @@ self.addEventListener('fetch', (event) => {
 
   // Bypass API, export, and download endpoints
   if (
-    url.pathname.startsWith('/api') ||
+    url.pathname.includes('/api/') ||
     url.pathname.endsWith('/download') ||
     url.pathname.endsWith('/export') ||
-    url.pathname.endsWith('/template')
+    url.pathname.endsWith('/template') ||
+    url.pathname.endsWith('/print')
   ) {
     return;
   }
 
   // 1. Dynamic Network-First for Manifest & App Icons (Always fresh branding)
-  if (url.pathname.startsWith('/manifest.') || url.pathname.startsWith('/app-icon/')) {
+  if (url.pathname.includes('manifest') || url.pathname.includes('app-icon')) {
     event.respondWith(
       fetch(event.request)
         .then((networkResponse) => {
@@ -66,7 +67,7 @@ self.addEventListener('fetch', (event) => {
 
   // 2. Cache-First for Immutable Build Assets (/build/assets/*) and Google Fonts
   if (
-    url.pathname.startsWith('/build/') ||
+    url.pathname.includes('/build/') ||
     url.hostname.includes('fonts.googleapis.com') ||
     url.hostname.includes('fonts.gstatic.com')
   ) {

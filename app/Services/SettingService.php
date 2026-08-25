@@ -44,22 +44,32 @@ class SettingService
         $settings = Setting::getAll();
         $appName = $settings['app_name'] ?? 'Form SGIN';
         $shortName = $settings['app_name'] ?? 'Form SGIN';
-        $themeColor = $settings['theme_color'] ?? '#059669';
-        $description = $settings['app_description'] ?? 'Sistem Informasi Pengajuan Cuti & Slip Gaji Karyawan';
+        $themeColor = $settings['theme_color'] ?? '#0FA172';
+        $description = $settings['app_description'] ?? 'Sistem Informasi Pengajuan Cuti & Slip Gaji Karyawan PT. Sugiyama Indonesia';
         $version = substr(md5(($settings['app_logo'] ?? '') . ($settings['app_name'] ?? '')), 0, 8);
         $root = app()->runningInConsole() ? url('/') : rtrim(request()->root(), '/');
 
         return [
-            'name' => $appName . ' - Absence & Leave Management',
+            'id' => $root . '/?source=pwa',
+            'name' => $appName . ' - PT. Sugiyama Indonesia',
             'short_name' => $shortName,
             'description' => $description,
-            'start_url' => $root . '/login',
+            'start_url' => $root . '/login?source=pwa',
             'scope' => $root . '/',
             'display' => 'standalone',
+            'display_override' => ['window-controls-overlay', 'standalone', 'minimal-ui'],
             'background_color' => '#F5FAF7',
             'theme_color' => $themeColor,
             'orientation' => 'portrait',
+            'categories' => ['business', 'productivity', 'utilities'],
+            'prefer_related_applications' => false,
             'icons' => [
+                [
+                    'src' => $root . "/app-icon/180?v={$version}",
+                    'sizes' => '180x180',
+                    'type' => 'image/png',
+                    'purpose' => 'any',
+                ],
                 [
                     'src' => $root . "/app-icon/192?v={$version}",
                     'sizes' => '192x192',
@@ -90,15 +100,15 @@ class SettingService
                     'name' => 'Buat Pengajuan',
                     'short_name' => 'Pengajuan',
                     'description' => 'Buat pengajuan cuti atau izin baru',
-                    'url' => '/leave-requests/create',
-                    'icons' => [['src' => "/app-icon/192?v={$version}", 'sizes' => '192x192']],
+                    'url' => $root . '/leave-requests/create',
+                    'icons' => [['src' => $root . "/app-icon/192?v={$version}", 'sizes' => '192x192']],
                 ],
                 [
                     'name' => 'Persetujuan Team',
                     'short_name' => 'Approval',
                     'description' => 'Tinjau persetujuan cuti bawahan',
-                    'url' => '/approvals',
-                    'icons' => [['src' => "/app-icon/192?v={$version}", 'sizes' => '192x192']],
+                    'url' => $root . '/approvals',
+                    'icons' => [['src' => $root . "/app-icon/192?v={$version}", 'sizes' => '192x192']],
                 ],
             ],
         ];
