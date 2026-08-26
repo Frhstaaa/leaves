@@ -22,7 +22,10 @@ import {
   Info,
   ChevronRight,
   ArrowLeft,
-  Copy
+  Copy,
+  GraduationCap,
+  Activity,
+  HeartHandshake
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { showToast, showAlert } from '@/Utils/swal';
@@ -111,7 +114,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
       onSuccess: () => {
         showToast('Data diri berhasil disimpan ke sistem PT SUGIYAMA INDONESIA!');
       },
-      onError: (errs) => {
+      onError: () => {
         showAlert({
           title: 'Periksa Isian Formulir',
           text: 'Terdapat beberapa data yang belum sesuai format. Silakan periksa pesan kesalahan pada formulir.',
@@ -122,17 +125,17 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
   };
 
   const tabs = [
-    { id: 'pekerjaan', label: '1. Data Pekerjaan', icon: Briefcase, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { id: 'pribadi', label: '2. Identitas Pribadi', icon: User, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { id: 'keuangan', label: '3. BPJS & Operasional', icon: ShieldCheck, color: 'text-amber-600', bg: 'bg-amber-50' },
-    { id: 'keluarga', label: '4. Keluarga & Darurat', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { id: 'pekerjaan', label: '1. Data Pekerjaan', shortLabel: 'Pekerjaan', icon: Briefcase, color: 'text-blue-600', activeBg: 'bg-blue-50 text-blue-700 border-blue-200' },
+    { id: 'pribadi', label: '2. Identitas Pribadi', shortLabel: 'Identitas', icon: User, color: 'text-emerald-600', activeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    { id: 'keuangan', label: '3. BPJS & Operasional', shortLabel: 'BPJS & Keuangan', icon: ShieldCheck, color: 'text-teal-600', activeBg: 'bg-teal-50 text-teal-700 border-teal-200' },
+    { id: 'keluarga', label: '4. Keluarga & Darurat', shortLabel: 'Keluarga', icon: Users, color: 'text-purple-600', activeBg: 'bg-purple-50 text-purple-700 border-purple-200' },
   ];
 
   return (
     <AuthenticatedLayout title={isHrdView ? `Data Diri: ${user.name}` : 'Form Data Diri Saya'}>
       <Head title={`Form Data Diri - ${user.name || 'PT SUGIYAMA INDONESIA'}`} />
 
-      <div className="max-w-6xl mx-auto space-y-6 pb-12">
+      <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6 pb-28 sm:pb-12">
         {/* Breadcrumb Navigation for HRD View */}
         {isHrdView && (
           <div className="flex items-center space-x-2 text-xs font-semibold text-slate-500 bg-white p-3 rounded-2xl border border-slate-200 shadow-xs">
@@ -145,52 +148,60 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
           </div>
         )}
 
-        {/* Hero Header Card */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white p-6 sm:p-8 shadow-xl border border-emerald-500/20">
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center space-x-4">
-              <UserAvatar user={user} size="w-16 h-16 sm:w-20 sm:h-20" textSize="text-2xl" />
-              <div>
-                <div className="flex items-center space-x-2">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    {user.employee_status || 'Karyawan SGIN'}
+        {/* ========================================================================= */}
+        {/* HERO PROFILE HEADER CARD (CLEAN SGIN WHITE & EMERALD THEME)               */}
+        {/* ========================================================================= */}
+        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-white border border-slate-200/90 shadow-xs p-4 sm:p-6 md:p-7">
+          {/* Top Decorative Green Accent Bar */}
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600" />
+
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 pt-1">
+            {/* User Avatar & Info */}
+            <div className="flex items-center space-x-3.5 sm:space-x-5 min-w-0">
+              <UserAvatar user={user} size="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20" textSize="text-xl sm:text-2xl" />
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    {user.employee_status || 'Karyawan Tetap'}
                   </span>
-                  <span className="text-xs text-slate-400 font-mono">NIK: {user.nik || 'EMP-201'}</span>
+                  <span className="text-[11px] sm:text-xs font-mono font-bold text-emerald-800 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200">
+                    NIK: {user.nik || 'EMP-201'}
+                  </span>
                 </div>
-                <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight mt-1">{user.name}</h1>
-                <p className="text-xs text-slate-300 flex items-center space-x-2 mt-0.5">
-                  <span>{user.department?.name || 'PT SUGIYAMA INDONESIA'}</span>
-                  <span>•</span>
+                <h1 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900 tracking-tight mt-1 truncate">
+                  {user.name}
+                </h1>
+                <p className="text-xs sm:text-sm text-slate-500 font-medium truncate mt-0.5">
+                  <span className="text-slate-800 font-semibold">{user.department?.name || 'PT SUGIYAMA INDONESIA'}</span>
+                  <span className="mx-1.5 text-slate-300">•</span>
                   <span>{user.position || user.role}</span>
                 </p>
               </div>
             </div>
 
-            {/* Completeness Gauge & Print Action */}
-            <div className="flex flex-wrap items-center gap-3">
+            {/* Completeness Status & Print Action */}
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 sm:gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
               {/* Completeness Card */}
-              <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center space-x-3.5 shrink-0">
-                <div className="relative flex items-center justify-center">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center font-black text-sm ${
-                    liveCompletenessPercent >= 80 ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-slate-950'
-                  }`}>
-                    {liveCompletenessPercent}%
-                  </div>
+              <div className="flex-1 sm:flex-initial p-3 sm:p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-center space-x-3 min-w-[180px]">
+                <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center font-black text-xs sm:text-sm shrink-0 shadow-xs ${
+                  liveCompletenessPercent >= 80 ? 'bg-emerald-600 text-white shadow-emerald-600/20' : 'bg-amber-500 text-white shadow-amber-500/20'
+                }`}>
+                  {liveCompletenessPercent}%
                 </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider font-extrabold text-slate-300">
+                <div className="min-w-0">
+                  <div className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400 truncate">
                     Kelengkapan Data
                   </div>
-                  <div className="text-xs font-bold text-white flex items-center space-x-1 mt-0.5">
+                  <div className="text-xs font-bold text-slate-800 flex items-center space-x-1 mt-0.5 truncate">
                     {liveCompletenessPercent >= 80 ? (
                       <>
-                        <CheckCircle2 size={13} className="text-emerald-400" />
-                        <span>Data Lengkap</span>
+                        <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                        <span className="text-emerald-700">Data Lengkap</span>
                       </>
                     ) : (
                       <>
-                        <AlertCircle size={13} className="text-amber-400" />
-                        <span>Perlu Dilengkapi</span>
+                        <AlertCircle size={13} className="text-amber-600 shrink-0" />
+                        <span className="text-amber-700">Perlu Dilengkapi</span>
                       </>
                     )}
                   </div>
@@ -202,59 +213,66 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                 href={isHrdView ? route('hrd.employees.biodata.print', user.id) : route('profile.biodata.print')}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs flex items-center space-x-2 border border-white/20 transition-all active:scale-[0.98] shrink-0"
+                className="w-full sm:w-auto px-4 py-3 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs flex items-center justify-center space-x-2 border border-slate-200 shadow-xs transition-all active:scale-[0.98] shrink-0"
               >
-                <Printer size={16} />
-                <span>Cetak Form Data Diri</span>
+                <Printer size={15} className="text-emerald-600" />
+                <span>Cetak Form</span>
               </a>
             </div>
           </div>
         </div>
 
-        {/* Tab Navigation Pill Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-3 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-2 ${
-                  isActive
-                    ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 font-extrabold'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                }`}
-              >
-                <Icon size={16} className={isActive ? tab.color : 'text-slate-400'} />
-                <span className="truncate">{tab.label}</span>
-              </button>
-            );
-          })}
+        {/* ========================================================================= */}
+        {/* RESPONSIVE TAB NAVIGATION BAR (HORIZONTAL PILLS ON MOBILE)                */}
+        {/* ========================================================================= */}
+        <div className="bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/90">
+          <div className="flex sm:grid sm:grid-cols-4 gap-1.5 overflow-x-auto no-scrollbar scroll-smooth">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`py-2.5 sm:py-3 px-3.5 sm:px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-2 shrink-0 sm:shrink ${
+                    isActive
+                      ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-200/90 font-extrabold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  }`}
+                >
+                  <Icon size={16} className={isActive ? tab.color : 'text-slate-400'} />
+                  <span className="truncate hidden sm:inline">{tab.label}</span>
+                  <span className="truncate sm:hidden">{tab.shortLabel}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Main Form Content */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* ========================================================================= */}
+        {/* MAIN FORM CONTENT WITH ENHANCED MOBILE PROPORTIONS                        */}
+        {/* ========================================================================= */}
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           {/* TAB 1: DATA PEKERJAAN */}
           {activeTab === 'pekerjaan' && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6"
+              exit={{ opacity: 0, y: -8 }}
+              className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-slate-200/90 shadow-xs space-y-5 sm:space-y-6"
             >
-              <div className="flex items-center space-x-3 border-b border-slate-100 pb-4">
-                <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600">
+              <div className="flex items-center space-x-3 border-b border-slate-100 pb-3.5 sm:pb-4">
+                <div className="p-2 sm:p-2.5 rounded-xl bg-blue-50 text-blue-600 shrink-0">
                   <Briefcase size={20} />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-slate-900">1. Data Pokok Pekerjaan</h3>
-                  <p className="text-xs text-slate-500">Informasi penempatan, jabatan, dan status kepegawaian PT Sugiyama Indonesia</p>
+                  <h3 className="text-sm sm:text-base font-extrabold text-slate-900">1. Data Pokok Pekerjaan</h3>
+                  <p className="text-[11px] sm:text-xs text-slate-500">Informasi penempatan, jabatan, dan status kepegawaian PT Sugiyama Indonesia</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5 text-xs">
                 {/* Nama Lengkap */}
                 <div className="space-y-1.5">
                   <label className="font-bold text-slate-700">Nama Lengkap Karyawan</label>
@@ -262,9 +280,9 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                     type="text"
                     value={user.name}
                     disabled
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-semibold cursor-not-allowed"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100/90 border border-slate-200 text-slate-700 font-semibold cursor-not-allowed text-xs sm:text-sm"
                   />
-                  <span className="text-[10px] text-slate-400">Sesuai nama terdaftar pada sistem HRD</span>
+                  <span className="text-[10px] text-slate-400 block">Sesuai nama terdaftar pada sistem HRD</span>
                 </div>
 
                 {/* NIK SGIN */}
@@ -274,9 +292,9 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                     type="text"
                     value={user.nik || 'EMP-201'}
                     disabled
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-emerald-800 font-mono font-bold cursor-not-allowed"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100/90 border border-slate-200 text-emerald-800 font-mono font-bold cursor-not-allowed text-xs sm:text-sm"
                   />
-                  <span className="text-[10px] text-slate-400">Nomor Induk Karyawan PT Sugiyama Indonesia</span>
+                  <span className="text-[10px] text-slate-400 block">Nomor Induk Karyawan PT Sugiyama Indonesia</span>
                 </div>
 
                 {/* Email Terdaftar */}
@@ -286,9 +304,9 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                     type="email"
                     value={user.email}
                     disabled
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-semibold cursor-not-allowed"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100/90 border border-slate-200 text-slate-700 font-semibold cursor-not-allowed text-xs sm:text-sm"
                   />
-                  <span className="text-[10px] text-slate-400">Email login & notifikasi sistem</span>
+                  <span className="text-[10px] text-slate-400 block">Email login & notifikasi sistem</span>
                 </div>
 
                 {/* Departemen / Bagian */}
@@ -298,7 +316,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                     <select
                       value={form.data.department_id}
                       onChange={(e) => form.setData('department_id', e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm"
                     >
                       <option value="">-- Pilih Departemen --</option>
                       {departments.map((d) => (
@@ -310,7 +328,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                       type="text"
                       value={user.department?.name || 'General'}
                       disabled
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-semibold cursor-not-allowed"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100/90 border border-slate-200 text-slate-700 font-semibold cursor-not-allowed text-xs sm:text-sm"
                     />
                   )}
                 </div>
@@ -323,8 +341,8 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                     value={form.data.position}
                     onChange={(e) => form.setData('position', e.target.value)}
                     disabled={!isHrdView && Boolean(user.position)}
-                    placeholder="Contoh: Staff IT, Operator Machining, SPV"
-                    className={`w-full px-3.5 py-2.5 rounded-xl ${!isHrdView && Boolean(user.position) ? 'bg-slate-100 cursor-not-allowed' : 'bg-slate-50 focus:bg-white'} border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none`}
+                    placeholder="Contoh: Staff IT, Operator, SPV"
+                    className={`w-full px-3.5 py-2.5 rounded-xl ${!isHrdView && Boolean(user.position) ? 'bg-slate-100/90 cursor-not-allowed' : 'bg-slate-50 focus:bg-white'} border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all`}
                   />
                 </div>
 
@@ -335,7 +353,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                     value={form.data.employee_status}
                     onChange={(e) => form.setData('employee_status', e.target.value)}
                     disabled={!isHrdView && Boolean(user.employee_status)}
-                    className={`w-full px-3.5 py-2.5 rounded-xl ${!isHrdView && Boolean(user.employee_status) ? 'bg-slate-100 cursor-not-allowed' : 'bg-slate-50 focus:bg-white'} border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl ${!isHrdView && Boolean(user.employee_status) ? 'bg-slate-100/90 cursor-not-allowed' : 'bg-slate-50 focus:bg-white'} border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all`}
                   >
                     <option value="Tetap">Karyawan Tetap (PKWTT)</option>
                     <option value="Kontrak">Karyawan Kontrak (PKWT)</option>
@@ -350,7 +368,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                   <select
                     value={form.data.education}
                     onChange={(e) => form.setData('education', e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                   >
                     <option value="">-- Pilih Jenjang Pendidikan --</option>
                     <option value="SMA / SMK">SMA / SMK Sederajat</option>
@@ -372,7 +390,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                     value={form.data.join_date}
                     onChange={(e) => form.setData('join_date', e.target.value)}
                     disabled={!isHrdView && Boolean(user.join_date)}
-                    className={`w-full px-3.5 py-2.5 rounded-xl ${!isHrdView && Boolean(user.join_date) ? 'bg-slate-100 cursor-not-allowed' : 'bg-slate-50 focus:bg-white'} border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl ${!isHrdView && Boolean(user.join_date) ? 'bg-slate-100/90 cursor-not-allowed' : 'bg-slate-50 focus:bg-white'} border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all`}
                   />
                 </div>
 
@@ -384,9 +402,9 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                     value={form.data.contract_end_date}
                     onChange={(e) => form.setData('contract_end_date', e.target.value)}
                     disabled={!isHrdView}
-                    className={`w-full px-3.5 py-2.5 rounded-xl ${!isHrdView ? 'bg-slate-100 cursor-not-allowed' : 'bg-slate-50 focus:bg-white'} border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl ${!isHrdView ? 'bg-slate-100/90 cursor-not-allowed' : 'bg-slate-50 focus:bg-white'} border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all`}
                   />
-                  <span className="text-[10px] text-slate-400">Khusus karyawan kontrak / PKWT</span>
+                  <span className="text-[10px] text-slate-400 block">Khusus karyawan kontrak / PKWT</span>
                 </div>
               </div>
             </motion.div>
@@ -395,22 +413,22 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
           {/* TAB 2: IDENTITAS PRIBADI & KEPENDUDUKAN */}
           {activeTab === 'pribadi' && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6"
+              exit={{ opacity: 0, y: -8 }}
+              className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-slate-200/90 shadow-xs space-y-5 sm:space-y-6"
             >
-              <div className="flex items-center space-x-3 border-b border-slate-100 pb-4">
-                <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600">
+              <div className="flex items-center space-x-3 border-b border-slate-100 pb-3.5 sm:pb-4">
+                <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
                   <User size={20} />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-slate-900">2. Identitas Pribadi & Kependudukan</h3>
-                  <p className="text-xs text-slate-500">Data kependudukan resmi KTP, KK, dan kontak karyawan</p>
+                  <h3 className="text-sm sm:text-base font-extrabold text-slate-900">2. Identitas Pribadi & Kependudukan</h3>
+                  <p className="text-[11px] sm:text-xs text-slate-500">Data kependudukan resmi KTP, KK, dan kontak karyawan</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5 text-xs">
                 {/* NIK KTP */}
                 <div className="space-y-1.5">
                   <label className="font-bold text-slate-700">
@@ -422,7 +440,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                     value={form.data.ktp_number}
                     onChange={(e) => form.setData('ktp_number', e.target.value.replace(/\D/g, ''))}
                     placeholder="Contoh: 3201012345670001"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 font-mono text-slate-900 font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 font-mono text-slate-900 font-bold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                     required
                   />
                   {form.errors.ktp_number && <p className="text-[11px] text-rose-600 font-bold">{form.errors.ktp_number}</p>}
@@ -431,7 +449,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                 {/* No KK */}
                 <div className="space-y-1.5">
                   <label className="font-bold text-slate-700">
-                    Nomor Kartu Keluarga (No KK) <span className="text-rose-600">*</span>
+                    Nomor Kartu Keluarga (No KK)
                   </label>
                   <input
                     type="text"
@@ -439,7 +457,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                     value={form.data.kk_number}
                     onChange={(e) => form.setData('kk_number', e.target.value.replace(/\D/g, ''))}
                     placeholder="16 Digit Nomor KK"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 font-mono text-slate-900 font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 font-mono text-slate-900 font-bold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                   />
                 </div>
 
@@ -449,7 +467,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                   <select
                     value={form.data.gender}
                     onChange={(e) => form.setData('gender', e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                   >
                     <option value="Laki-laki">Laki-laki</option>
                     <option value="Perempuan">Perempuan</option>
@@ -458,24 +476,24 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
 
                 {/* Tempat Lahir */}
                 <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Tempat Lahir <span className="text-rose-600">*</span></label>
+                  <label className="font-bold text-slate-700">Tempat Lahir</label>
                   <input
                     type="text"
                     value={form.data.birth_place}
                     onChange={(e) => form.setData('birth_place', e.target.value)}
-                    placeholder="Kota kelahiran, contoh: Karawang"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    placeholder="Kota / Kabupaten Lahir"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                   />
                 </div>
 
                 {/* Tanggal Lahir */}
                 <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Tanggal Lahir <span className="text-rose-600">*</span></label>
+                  <label className="font-bold text-slate-700">Tanggal Lahir</label>
                   <input
                     type="date"
                     value={form.data.birth_date}
                     onChange={(e) => form.setData('birth_date', e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                   />
                 </div>
 
@@ -485,25 +503,37 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                   <select
                     value={form.data.blood_type}
                     onChange={(e) => form.setData('blood_type', e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-bold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                   >
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                    <option value="AB">AB</option>
-                    <option value="O">O</option>
+                    <option value="A">Golongan Darah A</option>
+                    <option value="B">Golongan Darah B</option>
+                    <option value="AB">Golongan Darah AB</option>
+                    <option value="O">Golongan Darah O</option>
+                    <option value="-">-</option>
                   </select>
                 </div>
 
-                {/* Nomor HP */}
+                {/* Nama Gadis Ibu Kandung */}
                 <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Nomor HP / WhatsApp <span className="text-rose-600">*</span></label>
+                  <label className="font-bold text-slate-700">Nama Gadis Ibu Kandung</label>
                   <input
                     type="text"
+                    value={form.data.mother_maiden_name}
+                    onChange={(e) => form.setData('mother_maiden_name', e.target.value)}
+                    placeholder="Nama lengkap ibu kandung"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
+                  />
+                </div>
+
+                {/* Nomor HP / WhatsApp */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700">Nomor HP / WhatsApp Aktif</label>
+                  <input
+                    type="tel"
                     value={form.data.phone_number}
                     onChange={(e) => form.setData('phone_number', e.target.value)}
                     placeholder="Contoh: 081234567890"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 font-mono text-slate-900 font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none"
-                    required
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                   />
                 </div>
 
@@ -513,62 +543,43 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                   <select
                     value={form.data.marital_status}
                     onChange={(e) => form.setData('marital_status', e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                   >
-                    <option value="Belum Menikah">Belum Menikah (TK/0)</option>
-                    <option value="Menikah">Menikah (K/0)</option>
-                    <option value="Menikah (Anak 1)">Menikah Anak 1 (K/1)</option>
-                    <option value="Menikah (Anak 2)">Menikah Anak 2 (K/2)</option>
-                    <option value="Menikah (Anak 3)">Menikah Anak 3 (K/3)</option>
+                    <option value="Belum Menikah">Belum Menikah (Lajang)</option>
+                    <option value="Menikah">Menikah (Kawin)</option>
                     <option value="Cerai Hidup">Cerai Hidup</option>
                     <option value="Cerai Mati">Cerai Mati</option>
                   </select>
                 </div>
-
-                {/* Nama Gadis Ibu Kandung */}
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Nama Gadis Ibu Kandung <span className="text-rose-600">*</span></label>
-                  <input
-                    type="text"
-                    value={form.data.mother_maiden_name}
-                    onChange={(e) => form.setData('mother_maiden_name', e.target.value)}
-                    placeholder="Nama lengkap ibu kandung"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none"
-                  />
-                  <span className="text-[10px] text-slate-400">Diperlukan untuk verifikasi BPJS & Perbankan</span>
-                </div>
               </div>
 
-              {/* Alamat KTP & Domisili (Full Width Textareas) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2 text-xs">
+              {/* Alamat KTP & Domisili */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 pt-3 border-t border-slate-100 text-xs">
                 {/* Alamat KTP */}
                 <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 flex items-center space-x-1.5">
-                    <MapPin size={14} className="text-emerald-600" />
-                    <span>Alamat Lengkap KTP <span className="text-rose-600">*</span></span>
+                  <label className="font-bold text-slate-700 flex items-center justify-between">
+                    <span>Alamat Lengkap Sesuai KTP</span>
+                    <span className="text-[10px] text-slate-400 font-normal">RT/RW, Desa/Kel, Kec, Kab/Kota</span>
                   </label>
                   <textarea
                     rows={3}
                     value={form.data.ktp_address}
                     onChange={(e) => form.setData('ktp_address', e.target.value)}
-                    placeholder="Sesuai alamat di KTP (RT/RW, Kelurahan, Kecamatan, Kota/Kabupaten)"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-normal focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    placeholder="Tuliskan alamat lengkap beserta RT, RW, Kelurahan, Kecamatan, Kabupaten/Kota..."
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-medium focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all resize-none"
                   />
                 </div>
 
                 {/* Alamat Domisili */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="font-bold text-slate-700 flex items-center space-x-1.5">
-                      <MapPin size={14} className="text-blue-600" />
-                      <span>Alamat Domisili Sekarang <span className="text-rose-600">*</span></span>
-                    </label>
+                    <label className="font-bold text-slate-700">Alamat Domisili Saat Ini</label>
                     <button
                       type="button"
                       onClick={copyKtpAddress}
-                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center space-x-1"
+                      className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[10px] flex items-center space-x-1 border border-emerald-200 transition-colors"
                     >
-                      <Copy size={12} />
+                      <Copy size={11} />
                       <span>Sama dengan KTP</span>
                     </button>
                   </div>
@@ -576,8 +587,8 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                     rows={3}
                     value={form.data.domicile_address}
                     onChange={(e) => form.setData('domicile_address', e.target.value)}
-                    placeholder="Alamat tempat tinggal saat ini"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-normal focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    placeholder="Tuliskan tempat tinggal sekarang jika berbeda dengan KTP..."
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-medium focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all resize-none"
                   />
                 </div>
               </div>
@@ -587,141 +598,154 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
           {/* TAB 3: BPJS, KEUANGAN & OPERASIONAL */}
           {activeTab === 'keuangan' && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6"
+              exit={{ opacity: 0, y: -8 }}
+              className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-slate-200/90 shadow-xs space-y-5 sm:space-y-6"
             >
-              <div className="flex items-center space-x-3 border-b border-slate-100 pb-4">
-                <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600">
+              <div className="flex items-center space-x-3 border-b border-slate-100 pb-3.5 sm:pb-4">
+                <div className="p-2 sm:p-2.5 rounded-xl bg-teal-50 text-teal-600 shrink-0">
                   <ShieldCheck size={20} />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-slate-900">3. BPJS, Keuangan & Perlengkapan Operasional</h3>
-                  <p className="text-xs text-slate-500">Nomor jaminan sosial, rekening penggajian, dan perlengkapan lapangan</p>
+                  <h3 className="text-sm sm:text-base font-extrabold text-slate-900">3. BPJS, Keuangan & Perlengkapan Kerja</h3>
+                  <p className="text-[11px] sm:text-xs text-slate-500">Nomor jaminan sosial, rekening penggajian, dan fasilitas operasional</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 text-xs">
-                {/* No BPJS Kesehatan */}
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">No. BPJS Kesehatan</label>
-                  <input
-                    type="text"
-                    value={form.data.bpjs_kesehatan_number}
-                    onChange={(e) => form.setData('bpjs_kesehatan_number', e.target.value)}
-                    placeholder="Contoh: 0001234567890"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 font-mono text-slate-900 font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none"
-                  />
-                </div>
+              {/* SECTION: JAMINAN SOSIAL & PAJAK */}
+              <div className="space-y-3">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-400 block">Jaminan Sosial & Pajak</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5 text-xs">
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">No BPJS Kesehatan</label>
+                    <input
+                      type="text"
+                      value={form.data.bpjs_kesehatan_number}
+                      onChange={(e) => form.setData('bpjs_kesehatan_number', e.target.value)}
+                      placeholder="Nomor kartu BPJS Kesehatan"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 font-mono text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
+                    />
+                  </div>
 
-                {/* Faskes BPJS Kes */}
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Faskes BPJS Kes (Faskes Tk 1)</label>
-                  <input
-                    type="text"
-                    value={form.data.bpjs_health_facility}
-                    onChange={(e) => form.setData('bpjs_health_facility', e.target.value)}
-                    placeholder="Nama Klinik / Puskesmas Tingkat 1"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none"
-                  />
-                </div>
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">Faskes BPJS Kes (Tingkat 1)</label>
+                    <input
+                      type="text"
+                      value={form.data.bpjs_health_facility}
+                      onChange={(e) => form.setData('bpjs_health_facility', e.target.value)}
+                      placeholder="Contoh: Klinik SGIN, Puskesmas Klari"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
+                    />
+                  </div>
 
-                {/* No BPJS TKU */}
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">No. BPJS Ketenagakerjaan (TKU)</label>
-                  <input
-                    type="text"
-                    value={form.data.bpjs_ketenagakerjaan_number}
-                    onChange={(e) => form.setData('bpjs_ketenagakerjaan_number', e.target.value)}
-                    placeholder="Nomor KPJ / BPJSTK"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 font-mono text-slate-900 font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none"
-                  />
-                </div>
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">No BPJS TKU / Ketenagakerjaan</label>
+                    <input
+                      type="text"
+                      value={form.data.bpjs_ketenagakerjaan_number}
+                      onChange={(e) => form.setData('bpjs_ketenagakerjaan_number', e.target.value)}
+                      placeholder="Nomor kartu BPJS TKU (KPJ)"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 font-mono text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
+                    />
+                  </div>
 
-                {/* NPWP */}
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">NPWP</label>
-                  <input
-                    type="text"
-                    value={form.data.npwp}
-                    onChange={(e) => form.setData('npwp', e.target.value)}
-                    placeholder="Contoh: 12.345.678.9-408.000"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 font-mono text-slate-900 font-medium focus:ring-2 focus:ring-emerald-500/20 outline-none"
-                  />
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">Nomor NPWP</label>
+                    <input
+                      type="text"
+                      value={form.data.npwp}
+                      onChange={(e) => form.setData('npwp', e.target.value)}
+                      placeholder="15 / 16 Digit NPWP"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 font-mono text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
+                    />
+                  </div>
                 </div>
+              </div>
 
-                {/* Nama Bank */}
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Nama Bank Penggajian</label>
-                  <input
-                    type="text"
-                    value={form.data.bank_name}
-                    onChange={(e) => form.setData('bank_name', e.target.value)}
-                    placeholder="Contoh: BCA / Mandiri / BRI / BNI"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none"
-                  />
+              {/* SECTION: REKENING PENGGAJIAN */}
+              <div className="space-y-3 pt-3 border-t border-slate-100">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-400 block">Rekening Bank Penggajian</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-5 text-xs">
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">Nama Bank</label>
+                    <select
+                      value={form.data.bank_name}
+                      onChange={(e) => form.setData('bank_name', e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-bold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
+                    >
+                      <option value="BCA">Bank Central Asia (BCA)</option>
+                      <option value="Mandiri">Bank Mandiri</option>
+                      <option value="BNI">Bank Negara Indonesia (BNI)</option>
+                      <option value="BRI">Bank Rakyat Indonesia (BRI)</option>
+                      <option value="BSI">Bank Syariah Indonesia (BSI)</option>
+                      <option value="CIMB Niaga">Bank CIMB Niaga</option>
+                      <option value="Permata">Bank Permata</option>
+                      <option value="Lainnya">Bank Lainnya</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">Nomor Rekening Bank</label>
+                    <input
+                      type="text"
+                      value={form.data.bank_account_number}
+                      onChange={(e) => form.setData('bank_account_number', e.target.value.replace(/\D/g, ''))}
+                      placeholder="Nomor rekening atas nama karyawan"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 font-mono text-slate-900 font-bold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
+                    />
+                  </div>
                 </div>
+              </div>
 
-                {/* No Rekening */}
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Nomor Rekening Bank</label>
-                  <input
-                    type="text"
-                    value={form.data.bank_account_number}
-                    onChange={(e) => form.setData('bank_account_number', e.target.value)}
-                    placeholder="Nomor rekening aktif"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 font-mono text-slate-900 font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none"
-                  />
-                </div>
+              {/* SECTION: LOGISTIK & OPERASIONAL */}
+              <div className="space-y-3 pt-3 border-t border-slate-100">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-400 block">Logistik & Perlengkapan Keselamatan</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5 text-xs">
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">No Polisi Kendaraan</label>
+                    <input
+                      type="text"
+                      value={form.data.vehicle_plate_number}
+                      onChange={(e) => form.setData('vehicle_plate_number', e.target.value.toUpperCase())}
+                      placeholder="Contoh: B 1234 SGIN"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 font-mono text-slate-900 font-bold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
+                    />
+                  </div>
 
-                {/* No Polisi Kendaraan */}
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">No Pol Kendaraan (Plat Nomor)</label>
-                  <input
-                    type="text"
-                    value={form.data.vehicle_plate_number}
-                    onChange={(e) => form.setData('vehicle_plate_number', e.target.value.toUpperCase())}
-                    placeholder="Contoh: B 1234 SGI / T 5678 AA"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 font-mono text-slate-900 font-bold uppercase focus:ring-2 focus:ring-emerald-500/20 outline-none"
-                  />
-                </div>
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">Nomor SIM (A / C)</label>
+                    <input
+                      type="text"
+                      value={form.data.sim_number}
+                      onChange={(e) => form.setData('sim_number', e.target.value)}
+                      placeholder="Nomor Surat Izin Mengemudi"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 font-mono text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
+                    />
+                  </div>
 
-                {/* No SIM */}
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Nomor SIM</label>
-                  <input
-                    type="text"
-                    value={form.data.sim_number}
-                    onChange={(e) => form.setData('sim_number', e.target.value)}
-                    placeholder="SIM A / C"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 font-mono text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none"
-                  />
-                </div>
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">Masa Berlaku SIM</label>
+                    <input
+                      type="date"
+                      value={form.data.sim_valid_until}
+                      onChange={(e) => form.setData('sim_valid_until', e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
+                    />
+                  </div>
 
-                {/* Masa Berlaku SIM */}
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Masa Berlaku SIM</label>
-                  <input
-                    type="date"
-                    value={form.data.sim_valid_until}
-                    onChange={(e) => form.setData('sim_valid_until', e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none"
-                  />
-                </div>
-
-                {/* Ukuran Sepatu Safety */}
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Ukuran Sepatu Safety</label>
-                  <select
-                    value={form.data.shoe_size}
-                    onChange={(e) => form.setData('shoe_size', e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none"
-                  >
-                    {['37', '38', '39', '40', '41', '42', '43', '44', '45', '46'].map((sz) => (
-                      <option key={sz} value={sz}>Ukuran {sz}</option>
-                    ))}
-                  </select>
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700">Ukuran Sepatu Safety</label>
+                    <select
+                      value={form.data.shoe_size}
+                      onChange={(e) => form.setData('shoe_size', e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-bold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
+                    >
+                      {['36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46'].map((sz) => (
+                        <option key={sz} value={sz}>Ukuran {sz}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -730,74 +754,80 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
           {/* TAB 4: KELUARGA & KONTAK DARURAT */}
           {activeTab === 'keluarga' && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-8"
+              exit={{ opacity: 0, y: -8 }}
+              className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-slate-200/90 shadow-xs space-y-5 sm:space-y-6"
             >
               {/* SUB-SECTION 1: KONTAK DARURAT */}
-              <div className="space-y-4">
+              <div className="space-y-3.5 sm:space-y-4">
                 <div className="flex items-center space-x-3 border-b border-slate-100 pb-3">
-                  <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
+                  <div className="p-2 rounded-xl bg-rose-50 text-rose-600 shrink-0">
                     <Phone size={18} />
                   </div>
                   <div>
                     <h3 className="text-sm font-extrabold text-slate-900">Keluarga Yang Dapat Dihubungi (Kontak Darurat)</h3>
-                    <p className="text-[11px] text-slate-500">Kontak penting saat keadaan darurat medis / kerja</p>
+                    <p className="text-[11px] text-slate-500">Pihak keluarga yang dapat segera dihubungi saat keadaan darurat medis / kerja</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5 text-xs">
                   <div className="space-y-1.5">
-                    <label className="font-bold text-slate-700">Nama Kontak Darurat <span className="text-rose-600">*</span></label>
+                    <label className="font-bold text-slate-700">Nama Kontak Darurat</label>
                     <input
                       type="text"
                       value={form.data.emergency_contact_name}
                       onChange={(e) => form.setData('emergency_contact_name', e.target.value)}
-                      placeholder="Nama lengkap keluarga"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      placeholder="Nama orang tua, saudara, atau wali"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="font-bold text-slate-700">Hubungan Keluarga <span className="text-rose-600">*</span></label>
-                    <input
-                      type="text"
+                    <label className="font-bold text-slate-700">Hubungan Keluarga</label>
+                    <select
                       value={form.data.emergency_contact_relationship}
                       onChange={(e) => form.setData('emergency_contact_relationship', e.target.value)}
-                      placeholder="Contoh: Orang Tua / Suami / Istri / Kakak"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none"
-                    />
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
+                    >
+                      <option value="">-- Pilih Hubungan --</option>
+                      <option value="Orang Tua (Ayah/Ibu)">Orang Tua (Ayah/Ibu)</option>
+                      <option value="Suami / Istri">Suami / Istri</option>
+                      <option value="Kakak / Adik Kandung">Kakak / Adik Kandung</option>
+                      <option value="Paman / Bibi">Paman / Bibi</option>
+                      <option value="Mertua">Mertua</option>
+                      <option value="Lainnya">Lainnya</option>
+                    </select>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="font-bold text-slate-700">Nomor Telepon / HP <span className="text-rose-600">*</span></label>
+                    <label className="font-bold text-slate-700">Nomor Telepon Kontak Darurat</label>
                     <input
-                      type="text"
+                      type="tel"
                       value={form.data.emergency_contact_phone}
                       onChange={(e) => form.setData('emergency_contact_phone', e.target.value)}
-                      placeholder="Nomor telepon yang aktif"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 font-mono text-slate-900 font-bold focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      placeholder="Contoh: 081234567890"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                     />
                   </div>
 
-                  <div className="col-span-1 md:col-span-3 space-y-1.5">
-                    <label className="font-bold text-slate-700">Alamat Kontak Darurat</label>
-                    <textarea
-                      rows={2}
+                  <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
+                    <label className="font-bold text-slate-700">Alamat Lengkap Kontak Darurat</label>
+                    <input
+                      type="text"
                       value={form.data.emergency_contact_address}
                       onChange={(e) => form.setData('emergency_contact_address', e.target.value)}
-                      placeholder="Alamat tempat tinggal keluarga yang dapat dihubungi"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-normal focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      placeholder="Alamat domisili keluarga yang dapat dihubungi"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-medium focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                     />
                   </div>
                 </div>
               </div>
 
               {/* SUB-SECTION 2: DATA PASANGAN */}
-              <div className="space-y-4 pt-4 border-t border-slate-100">
+              <div className="space-y-3.5 sm:space-y-4 pt-4 border-t border-slate-100">
                 <div className="flex items-center space-x-3 border-b border-slate-100 pb-3">
-                  <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
+                  <div className="p-2 rounded-xl bg-purple-50 text-purple-600 shrink-0">
                     <Heart size={18} />
                   </div>
                   <div>
@@ -806,7 +836,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5 text-xs">
                   <div className="space-y-1.5">
                     <label className="font-bold text-slate-700">Nama Suami / Istri</label>
                     <input
@@ -814,7 +844,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                       value={form.data.spouse_name}
                       onChange={(e) => form.setData('spouse_name', e.target.value)}
                       placeholder="Nama lengkap pasangan"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                     />
                   </div>
 
@@ -826,7 +856,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                       value={form.data.spouse_ktp_number}
                       onChange={(e) => form.setData('spouse_ktp_number', e.target.value.replace(/\D/g, ''))}
                       placeholder="16 Digit NIK KTP Pasangan"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 font-mono text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 font-mono text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                     />
                   </div>
 
@@ -837,7 +867,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                       value={form.data.spouse_birth_place}
                       onChange={(e) => form.setData('spouse_birth_place', e.target.value)}
                       placeholder="Kota lahir pasangan"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                     />
                   </div>
 
@@ -847,16 +877,16 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                       type="date"
                       value={form.data.spouse_birth_date}
                       onChange={(e) => form.setData('spouse_birth_date', e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                     />
                   </div>
                 </div>
               </div>
 
               {/* SUB-SECTION 3: DATA ANAK */}
-              <div className="space-y-4 pt-4 border-t border-slate-100">
+              <div className="space-y-3.5 sm:space-y-4 pt-4 border-t border-slate-100">
                 <div className="flex items-center space-x-3 border-b border-slate-100 pb-3">
-                  <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                  <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
                     <Users size={18} />
                   </div>
                   <div>
@@ -865,7 +895,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-5 text-xs">
                   <div className="space-y-1.5">
                     <label className="font-bold text-slate-700">Nama Anak ke-1</label>
                     <input
@@ -873,7 +903,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                       value={form.data.child_1_name}
                       onChange={(e) => form.setData('child_1_name', e.target.value)}
                       placeholder="Nama anak pertama"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                     />
                   </div>
 
@@ -884,7 +914,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                       value={form.data.child_2_name}
                       onChange={(e) => form.setData('child_2_name', e.target.value)}
                       placeholder="Nama anak kedua"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                     />
                   </div>
 
@@ -895,7 +925,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                       value={form.data.child_3_name}
                       onChange={(e) => form.setData('child_3_name', e.target.value)}
                       placeholder="Nama anak ketiga"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-300 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                     />
                   </div>
                 </div>
@@ -903,23 +933,25 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
             </motion.div>
           )}
 
-          {/* Sticky Bottom Save Action Bar */}
-          <div className="sticky bottom-4 z-20 p-4 rounded-3xl bg-white/90 backdrop-blur-md border border-slate-200 shadow-xl flex items-center justify-between gap-4">
-            <div className="flex items-center space-x-3 text-xs text-slate-600">
+          {/* ========================================================================= */}
+          {/* STICKY BOTTOM SAVE ACTION BAR (SAFE MARGIN ON MOBILE)                     */}
+          {/* ========================================================================= */}
+          <div className="sticky bottom-3 sm:bottom-4 z-20 p-3 sm:p-4 rounded-2xl sm:rounded-3xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center space-x-2.5 text-xs text-slate-600 w-full sm:w-auto">
               <Info size={16} className="text-emerald-600 shrink-0" />
               <span className="hidden sm:inline">
                 Pastikan data yang diisi telah sesuai dengan dokumen resmi kependudukan (KTP & KK).
               </span>
-              <span className="sm:hidden font-bold">
-                Kelengkapan: {liveCompletenessPercent}%
+              <span className="sm:hidden font-bold text-slate-800">
+                Kelengkapan Data: <strong className="text-emerald-700 font-mono">{liveCompletenessPercent}%</strong>
               </span>
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2.5 w-full sm:w-auto">
               <button
                 type="submit"
                 disabled={form.processing}
-                className="px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-extrabold text-xs sm:text-sm shadow-md shadow-emerald-600/20 flex items-center space-x-2 transition-all disabled:opacity-50 cursor-pointer"
+                className="w-full sm:w-auto px-6 py-3 rounded-xl sm:rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-extrabold text-xs sm:text-sm shadow-md shadow-emerald-600/20 flex items-center justify-center space-x-2 transition-all disabled:opacity-50 cursor-pointer"
               >
                 {form.processing ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
