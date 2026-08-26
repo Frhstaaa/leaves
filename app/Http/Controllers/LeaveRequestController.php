@@ -291,9 +291,18 @@ class LeaveRequestController extends Controller
 
     public function show(int $id): JsonResponse
     {
+        $user = Auth::user();
         $leaveRequest = $this->leaveRequestRepo->findById($id);
         if (!$leaveRequest) {
             return response()->json(['message' => 'Pengajuan tidak ditemukan.'], 404);
+        }
+
+        // Authorization: Only owner, assigned manager/approver, or admin
+        $isOwner = (int) $leaveRequest->user_id === (int) $user->id;
+        $canView = $isOwner || $user->isAdmin() || $user->isManager();
+
+        if (!$canView) {
+            return response()->json(['message' => 'Anda tidak memiliki hak akses untuk melihat data pengajuan ini.'], 403);
         }
 
         return response()->json($leaveRequest);

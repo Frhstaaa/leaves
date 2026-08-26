@@ -34,12 +34,18 @@ Route::get('/sw.js', function () {
 
 // Vite Build Assets Direct Route (Guarantees JS/CSS are served with 200 OK & CORS)
 Route::get('/build/{path}', function ($path) {
-    $filePath = public_path('build/' . $path);
-    if (!file_exists($filePath)) {
-        $filePath = base_path('public/build/' . $path);
+    if (str_contains($path, '..') || str_contains($path, "\0")) {
+        abort(404);
     }
-    if (file_exists($filePath) && is_file($filePath)) {
-        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+    $cleanPath = ltrim(str_replace('\\', '/', $path), '/');
+    $filePath = public_path('build/' . $cleanPath);
+    if (!file_exists($filePath)) {
+        $filePath = base_path('public/build/' . $cleanPath);
+    }
+    $real = realpath($filePath);
+    $publicBuild = realpath(public_path('build')) ?: realpath(base_path('public/build'));
+    if ($real && is_file($real) && $publicBuild && str_starts_with($real, $publicBuild)) {
+        $ext = strtolower(pathinfo($real, PATHINFO_EXTENSION));
         $mimes = [
             'js' => 'application/javascript; charset=utf-8',
             'mjs' => 'application/javascript; charset=utf-8',
@@ -57,7 +63,7 @@ Route::get('/build/{path}', function ($path) {
             'ttf' => 'font/ttf',
         ];
         $contentType = $mimes[$ext] ?? 'application/octet-stream';
-        return response(file_get_contents($filePath), 200, [
+        return response(file_get_contents($real), 200, [
             'Content-Type' => $contentType,
             'Access-Control-Allow-Origin' => '*',
             'Cache-Control' => 'public, max-age=31536000, immutable',
@@ -68,36 +74,57 @@ Route::get('/build/{path}', function ($path) {
 
 // Storage Direct & Cloudflare R2 Proxy Route with Master Fallback
 Route::get('/storage/{path}', function ($path) {
+    if (str_contains($path, '..') || str_contains($path, "\0")) {
+        abort(404);
+    }
+    $cleanPath = ltrim(str_replace('\\', '/', $path), '/');
+
     // 1. Check local file in storage/app/public or public/storage
     $localCandidates = [
-        storage_path('app/public/' . $path),
-        public_path('storage/' . $path),
-        base_path('public/storage/' . $path),
+        storage_path('app/public/' . $cleanPath),
+        public_path('storage/' . $cleanPath),
+        base_path('public/storage/' . $cleanPath),
     ];
+    $allowedRoots = array_filter([
+        realpath(storage_path('app/public')),
+        realpath(public_path('storage')),
+        realpath(base_path('public/storage')),
+    ]);
+
     foreach ($localCandidates as $loc) {
-        if (file_exists($loc) && is_file($loc)) {
-            $ext = strtolower(pathinfo($loc, PATHINFO_EXTENSION));
-            $mimes = [
-                'png' => 'image/png',
-                'webp' => 'image/webp',
-                'jpg' => 'image/jpeg',
-                'jpeg' => 'image/jpeg',
-                'svg' => 'image/svg+xml',
-                'pdf' => 'application/pdf',
-            ];
-            return response(file_get_contents($loc), 200, [
-                'Content-Type' => $mimes[$ext] ?? 'application/octet-stream',
-                'Access-Control-Allow-Origin' => '*',
-                'Cache-Control' => 'public, max-age=86400',
-            ]);
+        $real = realpath($loc);
+        if ($real && is_file($real)) {
+            $isSafe = false;
+            foreach ($allowedRoots as $root) {
+                if ($root && str_starts_with($real, $root)) {
+                    $isSafe = true;
+                    break;
+                }
+            }
+            if ($isSafe) {
+                $ext = strtolower(pathinfo($real, PATHINFO_EXTENSION));
+                $mimes = [
+                    'png' => 'image/png',
+                    'webp' => 'image/webp',
+                    'jpg' => 'image/jpeg',
+                    'jpeg' => 'image/jpeg',
+                    'svg' => 'image/svg+xml',
+                    'pdf' => 'application/pdf',
+                ];
+                return response(file_get_contents($real), 200, [
+                    'Content-Type' => $mimes[$ext] ?? 'application/octet-stream',
+                    'Access-Control-Allow-Origin' => '*',
+                    'Cache-Control' => 'public, max-age=86400',
+                ]);
+            }
         }
     }
 
     // 2. Check in Cloudflare R2
-    if (\App\Services\CloudflareR2::isConfigured() && \App\Services\CloudflareR2::exists($path)) {
-        $content = \App\Services\CloudflareR2::get($path);
+    if (\App\Services\CloudflareR2::isConfigured() && \App\Services\CloudflareR2::exists($cleanPath)) {
+        $content = \App\Services\CloudflareR2::get($cleanPath);
         if ($content !== null) {
-            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            $ext = strtolower(pathinfo($cleanPath, PATHINFO_EXTENSION));
             $mimes = [
                 'png' => 'image/png',
                 'webp' => 'image/webp',
@@ -115,7 +142,7 @@ Route::get('/storage/{path}', function ($path) {
     }
 
     // 3. Fallback for logos
-    if (str_contains($path, 'logo')) {
+    if (str_contains($cleanPath, 'logo')) {
         $masterLogo = public_path('icons/company_logo_master.png');
         if (!file_exists($masterLogo)) {
             $masterLogo = base_path('public/icons/company_logo_master.png');
@@ -136,9 +163,15 @@ Route::get('/manifest.webmanifest', [\App\Http\Controllers\SettingController::cl
 Route::get('/manifest.json', [\App\Http\Controllers\SettingController::class, 'manifest']);
 Route::get('/app-icon/{size?}', [\App\Http\Controllers\SettingController::class, 'getAppIcon'])->name('pwa.icon');
 Route::get('/icons/{filename}', function ($filename) {
-    $path = public_path('icons/' . $filename);
-    if (file_exists($path)) {
-        return response(file_get_contents($path), 200, [
+    if (str_contains($filename, '..') || str_contains($filename, "\0")) {
+        abort(404);
+    }
+    $cleanFilename = basename($filename);
+    $path = public_path('icons/' . $cleanFilename);
+    $real = realpath($path);
+    $iconsDir = realpath(public_path('icons'));
+    if ($real && is_file($real) && $iconsDir && str_starts_with($real, $iconsDir)) {
+        return response(file_get_contents($real), 200, [
             'Content-Type' => 'image/png',
             'Access-Control-Allow-Origin' => '*',
             'Cache-Control' => 'public, max-age=31536000, immutable',
@@ -150,7 +183,6 @@ Route::get('/icons/{filename}', function ($filename) {
 // Authentication Routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/quick-login', [AuthController::class, 'quickLogin'])->name('quick-login');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Authenticated Routes
@@ -232,40 +264,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/permissions', [\App\Http\Controllers\Superadmin\RolePermissionController::class, 'storePermission'])->name('permissions.store');
         Route::post('/users/{userId}/assign-role', [\App\Http\Controllers\Superadmin\RolePermissionController::class, 'assignUserRole'])->name('users.assign-role');
     });
-});
-
-// Robust storage route to ensure uploaded files, logos, and attachments are accessible even without symlink
-Route::get('/storage/{path}', function ($path) {
-    $candidates = [
-        storage_path('app/public/' . $path),
-        storage_path('app/' . $path),
-        public_path('storage/' . $path),
-        public_path($path),
-    ];
-
-    foreach ($candidates as $filePath) {
-        if (file_exists($filePath) && !is_dir($filePath)) {
-            return response()->file($filePath);
-        }
-    }
-
-    abort(404, 'File not found on server.');
-})->where('path', '.*')->name('storage.local');
-
-// Route to serve PWA ServiceWorker script reliably across subfolders
-Route::get('/sw.js', function () {
-    $path = public_path('sw.js');
-    if (!file_exists($path)) {
-        $path = base_path('sw.js');
-    }
-    if (file_exists($path)) {
-        return response()->file($path, [
-            'Content-Type' => 'application/javascript; charset=utf-8',
-            'Service-Worker-Allowed' => '/',
-            'Cache-Control' => 'no-cache, no-store, must-revalidate',
-        ]);
-    }
-    abort(404, 'Service worker script not found.');
 });
 
 
