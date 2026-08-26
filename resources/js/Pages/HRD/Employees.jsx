@@ -26,7 +26,8 @@ import {
   MoreVertical,
   Sliders,
   FileText,
-  Printer
+  Printer,
+  Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -1366,9 +1367,9 @@ export default function HrdEmployees({ employees = [], departments = [], manager
               </div>
 
               {/* Step 1: Download Template */}
-              <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <span className="text-[11px] sm:text-xs font-black text-slate-900 uppercase tracking-wider">Langkah 1: Format Template</span>
+                  <span className="text-[11px] sm:text-xs font-black text-slate-900 uppercase tracking-wider">Langkah 1: Format Template CSV</span>
                   <a
                     href={route('hrd.employees.template')}
                     download
@@ -1378,9 +1379,28 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                     <span>Download Template CSV</span>
                   </a>
                 </div>
-                <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed">
-                  Download template resmi di atas. Kolom: <strong>NIK, Nama Karyawan, Email, Password, Role, Kode/Nama Departemen, NIK Atasan 1 (Supervisor), NIK Atasan 2 (Manager), Kuota Cuti</strong>.
-                </p>
+
+                <div className="space-y-2 text-[11px] sm:text-xs">
+                  <div className="flex items-start space-x-2 bg-emerald-50/90 p-2.5 rounded-xl border border-emerald-200 text-emerald-900">
+                    <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-emerald-950 font-black">Kolom WAJIB Diisi (Hanya 2 Kolom):</strong>
+                      <p className="mt-0.5 text-emerald-800">
+                        <strong>[WAJIB] Nama Lengkap Karyawan</strong> dan <strong>[WAJIB] Email Login Akun</strong>.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start space-x-2 bg-blue-50/90 p-2.5 rounded-xl border border-blue-200 text-blue-900">
+                    <Info size={16} className="text-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-blue-950 font-black">Kolom OPSIONAL (Biarkan Kosong):</strong>
+                      <p className="mt-0.5 text-blue-800 leading-relaxed">
+                        NIK, Password, Departemen, Kuota, dan <strong>seluruh kolom data diri</strong> (No KTP, No KK, BPJS, Rekening Bank, Sepatu, Kontak Darurat, Keluarga) bersifat <strong>opsional</strong>. Biarkan kosong agar <strong>karyawan melengkapinya sendiri</strong> melalui menu <em>"Data Diri Saya"</em> saat login.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Step 2: Upload File */}

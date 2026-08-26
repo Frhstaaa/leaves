@@ -420,52 +420,66 @@ class HrdController extends Controller
             $file = fopen('php://output', 'w');
             fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
             fputcsv($file, [
-                'NIK SGIN',
-                'Nama Karyawan',
-                'Email',
-                'Password',
-                'Role (employee/manager/admin)',
-                'Kode/Nama Departemen',
-                'NIK/Email Atasan 1',
-                'NIK/Email Atasan 2',
-                'Jatah Kuota Cuti',
-                'Tanggal Bergabung (YYYY-MM-DD)',
-                'Status Karyawan (Tetap/Kontrak/PKWT)',
-                'Jabatan',
-                'Pendidikan (SMA/SMK/D3/S1)',
-                'NIK KTP (16 Digit)',
-                'Jenis Kelamin (Laki-laki/Perempuan)',
-                'Tempat Lahir',
-                'Tanggal Lahir (YYYY-MM-DD)',
-                'Nomor HP',
-                'Alamat KTP',
-                'Alamat Domisili',
-                'Status Perkawinan (Belum Menikah/Menikah)',
-                'NPWP',
-                'No BPJS Kesehatan',
-                'Faskes BPJS Kes',
-                'No BPJS TKU',
-                'Nama Bank',
-                'No Rekening',
-                'No Pol Kendaraan',
-                'No SIM',
-                'Masa Berlaku SIM (YYYY-MM-DD)',
-                'Ukuran Sepatu Safety',
-                'Golongan Darah (A/B/AB/O)',
-                'Nama Gadis Ibu Kandung',
-                'No KK (16 Digit)',
-                'Nama Suami/Istri',
-                'NIK Suami/Istri',
-                'Tempat Lahir Pasangan',
-                'Tanggal Lahir Pasangan (YYYY-MM-DD)',
-                'Nama Anak ke 1',
-                'Nama Anak ke 2',
-                'Nama Anak ke 3'
+                '[OPSIONAL] NIK SGIN (Kosongkan jika ingin otomatis)',
+                '[WAJIB] Nama Lengkap Karyawan',
+                '[WAJIB] Email Login Akun',
+                '[OPSIONAL] Password (Default: password123)',
+                '[OPSIONAL] Role (employee/manager/admin)',
+                '[OPSIONAL] Nama atau Kode Departemen',
+                '[OPSIONAL] NIK/Email Atasan 1 (Supervisor)',
+                '[OPSIONAL] NIK/Email Atasan 2 (Manager)',
+                '[OPSIONAL] Jatah Kuota Cuti (Default: 12)',
+                '[OPSIONAL] Tanggal Bergabung (YYYY-MM-DD)',
+                '[OPSIONAL] Status Karyawan (Tetap/Kontrak/Magang)',
+                '[OPSIONAL] Jabatan',
+                '[OPSIONAL] Pendidikan Terakhir (SMA/D3/S1)',
+                '[OPSIONAL] NIK KTP (16 Digit)',
+                '[OPSIONAL] Jenis Kelamin (Laki-laki/Perempuan)',
+                '[OPSIONAL] Tempat Lahir',
+                '[OPSIONAL] Tanggal Lahir (YYYY-MM-DD)',
+                '[OPSIONAL] Nomor HP / WhatsApp',
+                '[OPSIONAL] Alamat Lengkap KTP',
+                '[OPSIONAL] Alamat Domisili Saat Ini',
+                '[OPSIONAL] Status Perkawinan (Belum Menikah/Menikah)',
+                '[OPSIONAL] Nomor NPWP',
+                '[OPSIONAL] No BPJS Kesehatan',
+                '[OPSIONAL] Faskes BPJS Kesehatan Tk 1',
+                '[OPSIONAL] No BPJS TKU / Ketenagakerjaan',
+                '[OPSIONAL] Nama Bank (BCA/Mandiri/BNI/BRI)',
+                '[OPSIONAL] Nomor Rekening Bank',
+                '[OPSIONAL] No Pol Kendaraan',
+                '[OPSIONAL] Nomor SIM',
+                '[OPSIONAL] Masa Berlaku SIM (YYYY-MM-DD)',
+                '[OPSIONAL] Ukuran Sepatu Safety (36-46)',
+                '[OPSIONAL] Golongan Darah (A/B/AB/O)',
+                '[OPSIONAL] Nama Gadis Ibu Kandung',
+                '[OPSIONAL] Nomor Kartu Keluarga (No KK)',
+                '[OPSIONAL] Nama Suami / Istri',
+                '[OPSIONAL] NIK KTP Pasangan',
+                '[OPSIONAL] Tempat Lahir Pasangan',
+                '[OPSIONAL] Tanggal Lahir Pasangan (YYYY-MM-DD)',
+                '[OPSIONAL] Nama Anak ke 1',
+                '[OPSIONAL] Nama Anak ke 2',
+                '[OPSIONAL] Nama Anak ke 3'
             ]);
+            // Contoh 1: Import Cepat / Minimal (Hanya isi Nama, Email, dan Departemen. Kolom biodata lainnya dikosongkan untuk diisi mandiri oleh karyawan)
             fputcsv($file, [
                 'EMP-101',
+                'Ahmad Fauzi',
+                'ahmad.fauzi@sgin.co.id',
+                'password123',
+                'employee',
+                'Information Technology',
+                '',
+                '',
+                '12',
+                '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''
+            ]);
+            // Contoh 2: Import Lengkap (Jika Admin sudah memiliki data diri lengkap sebelumnya)
+            fputcsv($file, [
+                'EMP-102',
                 'Budi Santoso',
-                'budi@sgin.com',
+                'budi.santoso@sgin.co.id',
                 'password123',
                 'employee',
                 'Information Technology',
@@ -526,8 +540,11 @@ class HrdController extends Controller
 
         while (($row = fgetcsv($handle, 4000, ',')) !== false) {
             $rowNumber++;
-            if ($rowNumber === 1 && preg_match('/(nik|nama|email)/i', $row[0] ?? '')) continue;
+            // Skip header row reliably
+            if ($rowNumber === 1 && preg_match('/(nik|nama|email|wajib|opsional)/i', ($row[0] ?? '') . ($row[1] ?? ''))) continue;
             if (empty($row[1]) || empty($row[2])) continue;
+            // Also skip if values match column header names
+            if (preg_match('/(nama|email|wajib|opsional)/i', $row[1]) && preg_match('/(nama|email|wajib|opsional|login)/i', $row[2])) continue;
 
             $nik = trim($row[0] ?? '') ?: 'EMP-' . date('Y') . '-' . rand(100, 999);
             $name = trim($row[1]);
