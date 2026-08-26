@@ -181,6 +181,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/hrd/employees', [HrdController::class, 'employees'])->name('hrd.employees');
     Route::get('/hrd/employees/template', [HrdController::class, 'downloadTemplate'])->name('hrd.employees.template');
     Route::post('/hrd/employees/import', [HrdController::class, 'importEmployees'])->name('hrd.employees.import');
+    Route::get('/hrd/employees/export-biodata', [HrdController::class, 'exportBiodataCsv'])->name('hrd.employees.export-biodata');
+    Route::get('/hrd/employees/{userId}/biodata', [HrdController::class, 'employeeBiodata'])->name('hrd.employees.biodata');
+    Route::put('/hrd/employees/{userId}/biodata', [HrdController::class, 'updateEmployeeBiodata'])->name('hrd.employees.biodata.update');
+    Route::get('/hrd/employees/{userId}/biodata/print', [HrdController::class, 'printEmployeeBiodata'])->name('hrd.employees.biodata.print');
     Route::post('/hrd/employees', [HrdController::class, 'storeEmployee'])->name('hrd.employees.store');
     Route::post('/hrd/employees/{userId}/update', [HrdController::class, 'updateEmployee'])->name('hrd.employees.update');
     Route::delete('/hrd/employees/{userId}', [HrdController::class, 'destroyEmployee'])->name('hrd.employees.destroy');
@@ -199,7 +203,11 @@ Route::middleware(['auth'])->group(function () {
     // App Settings Routes
     Route::get('/hrd/settings', [\App\Http\Controllers\SettingController::class, 'index'])->name('hrd.settings');
     Route::post('/hrd/settings', [\App\Http\Controllers\SettingController::class, 'update'])->name('hrd.settings.update');
-    // Profile Routes
+
+    // Profile & Biodata Routes
+    Route::get('/profile/biodata', [\App\Http\Controllers\ProfileController::class, 'biodata'])->name('profile.biodata');
+    Route::put('/profile/biodata', [\App\Http\Controllers\ProfileController::class, 'updateBiodata'])->name('profile.biodata.update');
+    Route::get('/profile/biodata/print', [\App\Http\Controllers\ProfileController::class, 'printBiodata'])->name('profile.biodata.print');
     Route::post('/profile/avatar', [\App\Http\Controllers\ProfileController::class, 'updateAvatar'])->name('profile.avatar');
     Route::put('/profile/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('profile.password');
 

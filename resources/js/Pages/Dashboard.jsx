@@ -123,6 +123,45 @@ export default function Dashboard({
         </motion.div>
 
         {/* ========================================================================= */}
+        {/* REMINDER: LENGKAPI FORM DATA DIRI PT SUGIYAMA INDONESIA                   */}
+        {/* ========================================================================= */}
+        {(user?.profile_completeness !== undefined && user.profile_completeness < 80) && (
+          <motion.div variants={itemVariants}>
+            <Card className="border-emerald-300 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 shadow-xs overflow-hidden">
+              <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-start space-x-3.5">
+                  <div className="p-2.5 rounded-2xl bg-emerald-600 text-white shrink-0 mt-0.5 sm:mt-0 shadow-md shadow-emerald-600/20">
+                    <FileText size={22} />
+                  </div>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <h4 className="text-xs sm:text-sm font-extrabold text-emerald-950">
+                        Lengkapi Form Data Diri Karyawan
+                      </h4>
+                      <Badge variant="success" className="font-black text-[10px] bg-emerald-600 text-white">
+                        {user.profile_completeness || 0}% Terisi
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] sm:text-xs text-emerald-900/80 leading-relaxed mt-0.5">
+                      Mohon lengkapi biodata kependudukan, BPJS, rekening, dan kontak darurat Anda untuk keperluan administrasi PT SUGIYAMA INDONESIA.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 shrink-0 self-end sm:self-auto w-full sm:w-auto">
+                  <Link href={route('profile.biodata')} className="w-full sm:w-auto">
+                    <Button variant="default" className="w-full sm:w-auto rounded-xl space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm shadow-emerald-600/20">
+                      <span>Lengkapi Sekarang</span>
+                      <ChevronRight size={14} />
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* ========================================================================= */}
         {/* 2. MANAGER / ADMIN ALERT CARD (SHADCN CARD WITH WARNING BADGE)            */}
         {/* ========================================================================= */}
         {(isManager || isAdmin) && managerPendingCount > 0 && (

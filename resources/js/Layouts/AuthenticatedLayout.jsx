@@ -283,6 +283,15 @@ export default function AuthenticatedLayout({ children, title }) {
           show: can('view-dashboard') || true,
         },
         {
+          name: 'Data Diri Saya',
+          shortName: 'Data Diri',
+          href: route('profile.biodata'),
+          icon: User,
+          active: url.startsWith('/profile/biodata'),
+          show: true,
+          badge: (user?.profile_completeness !== undefined && user?.profile_completeness < 80) ? `${user?.profile_completeness}%` : null,
+        },
+        {
           name: 'Buat Pengajuan',
           shortName: 'Pengajuan',
           href: route('leave-requests.create'),
@@ -1327,6 +1336,36 @@ export default function AuthenticatedLayout({ children, title }) {
                           className="hidden"
                         />
                       </label>
+                    </div>
+
+                    {/* Profile Completeness Progress Card */}
+                    <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-slate-800 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-700 flex items-center space-x-1.5">
+                          <FileText size={14} className="text-emerald-600" />
+                          <span>Kelengkapan Form Data Diri</span>
+                        </span>
+                        <span className="font-extrabold text-emerald-700 font-mono">
+                          {user.profile_completeness || 0}%
+                        </span>
+                      </div>
+
+                      <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-600 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, user.profile_completeness || 0)}%` }}
+                        />
+                      </div>
+
+                      <Link
+                        href={route('profile.biodata')}
+                        onClick={() => setMyProfileOpen(false)}
+                        className="w-full mt-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center space-x-1.5 shadow-sm transition-all"
+                      >
+                        <FileText size={14} />
+                        <span>Buka & Lengkapi Form Data Diri</span>
+                        <ChevronRight size={14} />
+                      </Link>
                     </div>
 
                     {/* Complete User Details Grid */}

@@ -24,6 +24,52 @@ class User extends Authenticatable
         'approver_1_id',
         'approver_2_id',
         'avatar',
+
+        // Form Data Diri PT SUGIYAMA INDONESIA Fields
+        'join_date',
+        'employee_status',
+        'education',
+        'position',
+        'contract_end_date',
+
+        'ktp_number',
+        'gender',
+        'birth_place',
+        'birth_date',
+        'phone_number',
+        'ktp_address',
+        'domicile_address',
+        'marital_status',
+        'mother_maiden_name',
+        'kk_number',
+        'blood_type',
+
+        'npwp',
+        'bpjs_kesehatan_number',
+        'bpjs_health_facility',
+        'bpjs_ketenagakerjaan_number',
+        'bank_name',
+        'bank_account_number',
+
+        'vehicle_plate_number',
+        'sim_number',
+        'sim_valid_until',
+        'shoe_size',
+
+        'emergency_contact_name',
+        'emergency_contact_relationship',
+        'emergency_contact_phone',
+        'emergency_contact_address',
+
+        'spouse_name',
+        'spouse_ktp_number',
+        'spouse_birth_place',
+        'spouse_birth_date',
+        'child_1_name',
+        'child_2_name',
+        'child_3_name',
+
+        'is_profile_completed',
     ];
 
     protected $hidden = [
@@ -34,11 +80,59 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'join_date' => 'date:Y-m-d',
+        'birth_date' => 'date:Y-m-d',
+        'contract_end_date' => 'date:Y-m-d',
+        'sim_valid_until' => 'date:Y-m-d',
+        'spouse_birth_date' => 'date:Y-m-d',
+        'is_profile_completed' => 'boolean',
     ];
 
     protected $appends = [
         'avatar_url',
+        'profile_completeness',
     ];
+
+    /**
+     * Hitung persentase kelengkapan data diri (0 - 100%).
+     */
+    public function getProfileCompletenessAttribute(): int
+    {
+        $fields = [
+            'name',
+            'nik',
+            'email',
+            'department_id',
+            'join_date',
+            'employee_status',
+            'education',
+            'position',
+            'ktp_number',
+            'gender',
+            'birth_place',
+            'birth_date',
+            'phone_number',
+            'ktp_address',
+            'domicile_address',
+            'marital_status',
+            'mother_maiden_name',
+            'kk_number',
+            'blood_type',
+            'emergency_contact_name',
+            'emergency_contact_relationship',
+            'emergency_contact_phone',
+            'bank_account_number',
+        ];
+
+        $filled = 0;
+        foreach ($fields as $field) {
+            if (!empty($this->{$field})) {
+                $filled++;
+            }
+        }
+
+        return (int) round(($filled / count($fields)) * 100);
+    }
 
     public function getAvatarUrlAttribute(): ?string
     {

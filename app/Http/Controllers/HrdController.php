@@ -419,8 +419,92 @@ class HrdController extends Controller
         return response()->stream(function () {
             $file = fopen('php://output', 'w');
             fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
-            fputcsv($file, ['NIK', 'Nama Karyawan', 'Email', 'Password', 'Role (employee/manager/admin)', 'Kode/Nama Departemen', 'NIK/Email Atasan 1', 'NIK/Email Atasan 2', 'Jatah Kuota Cuti']);
-            fputcsv($file, ['EMP-101', 'Budi Santoso', 'budi@sgin.com', 'password123', 'employee', 'Information Technology', '', '', '12']);
+            fputcsv($file, [
+                'NIK SGIN',
+                'Nama Karyawan',
+                'Email',
+                'Password',
+                'Role (employee/manager/admin)',
+                'Kode/Nama Departemen',
+                'NIK/Email Atasan 1',
+                'NIK/Email Atasan 2',
+                'Jatah Kuota Cuti',
+                'Tanggal Bergabung (YYYY-MM-DD)',
+                'Status Karyawan (Tetap/Kontrak/PKWT)',
+                'Jabatan',
+                'Pendidikan (SMA/SMK/D3/S1)',
+                'NIK KTP (16 Digit)',
+                'Jenis Kelamin (Laki-laki/Perempuan)',
+                'Tempat Lahir',
+                'Tanggal Lahir (YYYY-MM-DD)',
+                'Nomor HP',
+                'Alamat KTP',
+                'Alamat Domisili',
+                'Status Perkawinan (Belum Menikah/Menikah)',
+                'NPWP',
+                'No BPJS Kesehatan',
+                'Faskes BPJS Kes',
+                'No BPJS TKU',
+                'Nama Bank',
+                'No Rekening',
+                'No Pol Kendaraan',
+                'No SIM',
+                'Masa Berlaku SIM (YYYY-MM-DD)',
+                'Ukuran Sepatu Safety',
+                'Golongan Darah (A/B/AB/O)',
+                'Nama Gadis Ibu Kandung',
+                'No KK (16 Digit)',
+                'Nama Suami/Istri',
+                'NIK Suami/Istri',
+                'Tempat Lahir Pasangan',
+                'Tanggal Lahir Pasangan (YYYY-MM-DD)',
+                'Nama Anak ke 1',
+                'Nama Anak ke 2',
+                'Nama Anak ke 3'
+            ]);
+            fputcsv($file, [
+                'EMP-101',
+                'Budi Santoso',
+                'budi@sgin.com',
+                'password123',
+                'employee',
+                'Information Technology',
+                '',
+                '',
+                '12',
+                '2023-01-15',
+                'Tetap',
+                'Staff IT',
+                'S1 Teknik Informatika',
+                '3201012345670001',
+                'Laki-laki',
+                'Karawang',
+                '1995-08-17',
+                '081234567890',
+                'Jl. Raya Sugiyama No. 12, Karawang',
+                'Jl. Melati No. 5, Karawang Barat',
+                'Menikah',
+                '12.345.678.9-408.000',
+                '0001234567890',
+                'Klinik Pratama Sugiyama',
+                '19012345678',
+                'BCA',
+                '8735012345',
+                'B 1234 SGI',
+                '950812345678',
+                '2028-08-17',
+                '42',
+                'O',
+                'Siti Aminah',
+                '3201012345670002',
+                'Dewi Lestari',
+                '3201015567890003',
+                'Bandung',
+                '1997-04-21',
+                'Dimas Pratama',
+                '',
+                ''
+            ]);
             fclose($file);
         }, 200, $headers);
     }
@@ -440,7 +524,7 @@ class HrdController extends Controller
         $rowNumber = 0;
         $departments = $this->departmentRepo->getAll();
 
-        while (($row = fgetcsv($handle, 2000, ',')) !== false) {
+        while (($row = fgetcsv($handle, 4000, ',')) !== false) {
             $rowNumber++;
             if ($rowNumber === 1 && preg_match('/(nik|nama|email)/i', $row[0] ?? '')) continue;
             if (empty($row[1]) || empty($row[2])) continue;
@@ -459,9 +543,51 @@ class HrdController extends Controller
                 $deptId = $matched?->id;
             }
 
+            // Parsing optional biodata fields if present in CSV
+            $userData = [
+                'nik' => $nik,
+                'name' => $name,
+                'password' => Hash::make($password),
+                'role' => $role,
+                'department_id' => $deptId,
+            ];
+
+            if (!empty($row[9])) $userData['join_date'] = trim($row[9]);
+            if (!empty($row[10])) $userData['employee_status'] = trim($row[10]);
+            if (!empty($row[11])) $userData['position'] = trim($row[11]);
+            if (!empty($row[12])) $userData['education'] = trim($row[12]);
+            if (!empty($row[13])) $userData['ktp_number'] = trim($row[13]);
+            if (!empty($row[14])) $userData['gender'] = trim($row[14]);
+            if (!empty($row[15])) $userData['birth_place'] = trim($row[15]);
+            if (!empty($row[16])) $userData['birth_date'] = trim($row[16]);
+            if (!empty($row[17])) $userData['phone_number'] = trim($row[17]);
+            if (!empty($row[18])) $userData['ktp_address'] = trim($row[18]);
+            if (!empty($row[19])) $userData['domicile_address'] = trim($row[19]);
+            if (!empty($row[20])) $userData['marital_status'] = trim($row[20]);
+            if (!empty($row[21])) $userData['npwp'] = trim($row[21]);
+            if (!empty($row[22])) $userData['bpjs_kesehatan_number'] = trim($row[22]);
+            if (!empty($row[23])) $userData['bpjs_health_facility'] = trim($row[23]);
+            if (!empty($row[24])) $userData['bpjs_ketenagakerjaan_number'] = trim($row[24]);
+            if (!empty($row[25])) $userData['bank_name'] = trim($row[25]);
+            if (!empty($row[26])) $userData['bank_account_number'] = trim($row[26]);
+            if (!empty($row[27])) $userData['vehicle_plate_number'] = trim($row[27]);
+            if (!empty($row[28])) $userData['sim_number'] = trim($row[28]);
+            if (!empty($row[29])) $userData['sim_valid_until'] = trim($row[29]);
+            if (!empty($row[30])) $userData['shoe_size'] = trim($row[30]);
+            if (!empty($row[31])) $userData['blood_type'] = trim($row[31]);
+            if (!empty($row[32])) $userData['mother_maiden_name'] = trim($row[32]);
+            if (!empty($row[33])) $userData['kk_number'] = trim($row[33]);
+            if (!empty($row[34])) $userData['spouse_name'] = trim($row[34]);
+            if (!empty($row[35])) $userData['spouse_ktp_number'] = trim($row[35]);
+            if (!empty($row[36])) $userData['spouse_birth_place'] = trim($row[36]);
+            if (!empty($row[37])) $userData['spouse_birth_date'] = trim($row[37]);
+            if (!empty($row[38])) $userData['child_1_name'] = trim($row[38]);
+            if (!empty($row[39])) $userData['child_2_name'] = trim($row[39]);
+            if (!empty($row[40])) $userData['child_3_name'] = trim($row[40]);
+
             $user = User::updateOrCreate(
                 ['email' => $email],
-                ['nik' => $nik, 'name' => $name, 'password' => Hash::make($password), 'role' => $role, 'department_id' => $deptId]
+                $userData
             );
 
             $this->quotaService->setTotalQuota($user->id, $quota);
@@ -469,7 +595,193 @@ class HrdController extends Controller
         }
 
         fclose($handle);
-        return back()->with('success', "Import berhasil! {$successCount} data karyawan berhasil diproses.");
+        return back()->with('success', "Import berhasil! {$successCount} data karyawan beserta data diri awal berhasil diproses.");
+    }
+
+    public function exportBiodataCsv(Request $request): StreamedResponse
+    {
+        $user = Auth::user();
+        if (!$user->isAdmin()) {
+            abort(403, 'Akses khusus HRD.');
+        }
+
+        $employees = User::with('department')->orderBy('name')->get();
+        $fileName = 'rekap_biodata_karyawan_sgin_' . date('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
+        ];
+
+        return response()->stream(function () use ($employees) {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($file, [
+                'NIK SGIN', 'Nama', 'Email', 'Role', 'Departemen', 'Status Kelengkapan', 'Persentase',
+                'Tanggal Bergabung', 'Status Karyawan', 'Jabatan', 'Pendidikan', 'Aktif Bekerja Sampai',
+                'NIK KTP', 'Jenis Kelamin', 'Tempat Lahir', 'Tanggal Lahir', 'No HP',
+                'Alamat KTP', 'Alamat Domisili', 'Status Kawin', 'Nama Ibu Kandung', 'No KK', 'Gol Darah',
+                'NPWP', 'No BPJS Kesehatan', 'Faskes BPJS', 'No BPJS TKU', 'Bank', 'No Rekening',
+                'No Pol Kendaraan', 'No SIM', 'Masa Berlaku SIM', 'Ukuran Sepatu',
+                'Kontak Darurat - Hubungan', 'Kontak Darurat - No Telp', 'Kontak Darurat - Alamat',
+                'Nama Pasangan', 'NIK Pasangan', 'TTL Pasangan', 'Anak ke 1', 'Anak ke 2', 'Anak ke 3'
+            ]);
+
+            foreach ($employees as $e) {
+                fputcsv($file, [
+                    $e->nik ?? '-',
+                    $e->name,
+                    $e->email,
+                    strtoupper($e->role),
+                    $e->department->name ?? 'General',
+                    $e->is_profile_completed ? 'LENGKAP' : 'BELUM LENGKAP',
+                    $e->profile_completeness . '%',
+                    $e->join_date ? $e->join_date->format('Y-m-d') : '-',
+                    $e->employee_status ?? '-',
+                    $e->position ?? '-',
+                    $e->education ?? '-',
+                    $e->contract_end_date ? $e->contract_end_date->format('Y-m-d') : '-',
+                    $e->ktp_number ?? '-',
+                    $e->gender ?? '-',
+                    $e->birth_place ?? '-',
+                    $e->birth_date ? $e->birth_date->format('Y-m-d') : '-',
+                    $e->phone_number ?? '-',
+                    $e->ktp_address ?? '-',
+                    $e->domicile_address ?? '-',
+                    $e->marital_status ?? '-',
+                    $e->mother_maiden_name ?? '-',
+                    $e->kk_number ?? '-',
+                    $e->blood_type ?? '-',
+                    $e->npwp ?? '-',
+                    $e->bpjs_kesehatan_number ?? '-',
+                    $e->bpjs_health_facility ?? '-',
+                    $e->bpjs_ketenagakerjaan_number ?? '-',
+                    $e->bank_name ?? '-',
+                    $e->bank_account_number ?? '-',
+                    $e->vehicle_plate_number ?? '-',
+                    $e->sim_number ?? '-',
+                    $e->sim_valid_until ? $e->sim_valid_until->format('Y-m-d') : '-',
+                    $e->shoe_size ?? '-',
+                    $e->emergency_contact_relationship ?? '-',
+                    $e->emergency_contact_phone ?? '-',
+                    $e->emergency_contact_address ?? '-',
+                    $e->spouse_name ?? '-',
+                    $e->spouse_ktp_number ?? '-',
+                    ($e->spouse_birth_place ? $e->spouse_birth_place . ', ' : '') . ($e->spouse_birth_date ? $e->spouse_birth_date->format('d/m/Y') : '-'),
+                    $e->child_1_name ?? '-',
+                    $e->child_2_name ?? '-',
+                    $e->child_3_name ?? '-',
+                ]);
+            }
+            fclose($file);
+        }, 200, $headers);
+    }
+
+    public function employeeBiodata(int $userId): Response
+    {
+        $user = Auth::user();
+        if (!$user->isAdmin()) {
+            abort(403, 'Akses khusus HRD.');
+        }
+
+        $employee = $this->userRepo->findById($userId);
+        if (!$employee) {
+            abort(404, 'Karyawan tidak ditemukan.');
+        }
+
+        $departments = $this->departmentRepo->getAll();
+
+        return Inertia::render('Profile/Biodata', [
+            'user' => $employee,
+            'departments' => $departments,
+            'isHrdView' => true,
+        ]);
+    }
+
+    public function updateEmployeeBiodata(Request $request, int $userId): RedirectResponse
+    {
+        $admin = Auth::user();
+        if (!$admin->isAdmin()) {
+            return back()->with('error', 'Akses khusus HRD.');
+        }
+
+        $employee = $this->userRepo->findById($userId);
+        if (!$employee) {
+            return back()->with('error', 'Karyawan tidak ditemukan.');
+        }
+
+        $validated = $request->validate([
+            // Data Pekerjaan (HRD can edit all)
+            'join_date' => 'nullable|date',
+            'employee_status' => 'nullable|string|max:50',
+            'position' => 'nullable|string|max:100',
+            'education' => 'nullable|string|max:100',
+            'contract_end_date' => 'nullable|date',
+            'department_id' => 'nullable|exists:departments,id',
+
+            // Data Pribadi
+            'ktp_number' => 'nullable|string|max:30',
+            'gender' => 'nullable|in:Laki-laki,Perempuan',
+            'birth_place' => 'nullable|string|max:100',
+            'birth_date' => 'nullable|date',
+            'phone_number' => 'nullable|string|max:30',
+            'ktp_address' => 'nullable|string|max:1000',
+            'domicile_address' => 'nullable|string|max:1000',
+            'marital_status' => 'nullable|string|max:50',
+            'mother_maiden_name' => 'nullable|string|max:150',
+            'kk_number' => 'nullable|string|max:30',
+            'blood_type' => 'nullable|in:A,B,AB,O',
+
+            // Keuangan & BPJS
+            'npwp' => 'nullable|string|max:50',
+            'bpjs_kesehatan_number' => 'nullable|string|max:50',
+            'bpjs_health_facility' => 'nullable|string|max:150',
+            'bpjs_ketenagakerjaan_number' => 'nullable|string|max:50',
+            'bank_name' => 'nullable|string|max:50',
+            'bank_account_number' => 'nullable|string|max:50',
+
+            // Logistik & Operasional
+            'vehicle_plate_number' => 'nullable|string|max:30',
+            'sim_number' => 'nullable|string|max:50',
+            'sim_valid_until' => 'nullable|date',
+            'shoe_size' => 'nullable|string|max:10',
+
+            // Kontak Darurat
+            'emergency_contact_name' => 'nullable|string|max:150',
+            'emergency_contact_relationship' => 'nullable|string|max:50',
+            'emergency_contact_phone' => 'nullable|string|max:30',
+            'emergency_contact_address' => 'nullable|string|max:1000',
+
+            // Data Pasangan & Anak
+            'spouse_name' => 'nullable|string|max:150',
+            'spouse_ktp_number' => 'nullable|string|max:30',
+            'spouse_birth_place' => 'nullable|string|max:100',
+            'spouse_birth_date' => 'nullable|date',
+            'child_1_name' => 'nullable|string|max:150',
+            'child_2_name' => 'nullable|string|max:150',
+            'child_3_name' => 'nullable|string|max:150',
+        ]);
+
+        $this->employeeService->updateEmployee($employee, $validated);
+
+        return Redirect::back()->with('success', "Data diri karyawan {$employee->name} berhasil diperbarui.");
+    }
+
+    public function printEmployeeBiodata(int $userId): Response
+    {
+        $admin = Auth::user();
+        if (!$admin->isAdmin()) {
+            abort(403, 'Akses khusus HRD.');
+        }
+
+        $employee = $this->userRepo->findById($userId);
+        if (!$employee) {
+            abort(404, 'Karyawan tidak ditemukan.');
+        }
+
+        return Inertia::render('Profile/PrintBiodata', [
+            'employee' => $employee->load('department'),
+        ]);
     }
 
     public function exportLeaveQuotas(Request $request): StreamedResponse

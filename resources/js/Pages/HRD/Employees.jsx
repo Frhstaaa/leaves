@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useForm, router } from '@inertiajs/react';
+import { useForm, router, Link } from '@inertiajs/react';
 import AuthenticatedLayout, { UserAvatar } from '@/Layouts/AuthenticatedLayout';
 import {
   Users,
@@ -24,7 +24,9 @@ import {
   UploadCloud,
   FileSpreadsheet,
   MoreVertical,
-  Sliders
+  Sliders,
+  FileText,
+  Printer
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -263,6 +265,15 @@ export default function HrdEmployees({ employees = [], departments = [], manager
           </div>
 
           <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
+            <a
+              href={route('hrd.employees.export-biodata')}
+              download
+              className="px-3.5 py-2.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-extrabold text-xs shadow-sm flex items-center space-x-2 transition-all duration-200"
+            >
+              <Download size={16} className="text-blue-600" />
+              <span>Ekspor Biodata (CSV)</span>
+            </a>
+
             <button
               onClick={() => setIsImportOpen(true)}
               className="px-4 py-2.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-extrabold text-xs shadow-sm flex items-center space-x-2 transition-all duration-200"
@@ -513,6 +524,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       <th className="py-3.5 px-4">Email</th>
                       <th className="py-3.5 px-4">Departemen</th>
                       <th className="py-3.5 px-4">Role System</th>
+                      <th className="py-3.5 px-4">Data Diri</th>
                       <th className="py-3.5 px-4">Alur Approval (Atasan 1 & 2)</th>
                       <th className="py-3.5 px-4">Kuota Cuti ({new Date().getFullYear()})</th>
                       <th className="py-3.5 px-4 text-right">Aksi HRD</th>
@@ -560,6 +572,22 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                             }`}>
                               {emp.role === 'superadmin' ? 'Superadmin' : emp.role === 'admin' ? 'HRD / Admin' : emp.role === 'manager' ? 'Manager' : 'Staf Karyawan'}
                             </span>
+                          </td>
+
+                          <td className="py-3.5 px-4">
+                            <div className="flex flex-col space-y-1">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                emp.is_profile_completed ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'
+                              }`}>
+                                {emp.is_profile_completed ? '✓ Lengkap' : 'Belum Lengkap'}
+                              </span>
+                              <div className="w-16 bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                <div
+                                  className="bg-emerald-500 h-full rounded-full"
+                                  style={{ width: `${Math.min(100, emp.profile_completeness || 0)}%` }}
+                                />
+                              </div>
+                            </div>
                           </td>
 
                           <td className="py-3.5 px-4 text-slate-600 font-medium">
@@ -624,14 +652,26 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                                     <MoreVertical size={15} />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuContent align="end" className="w-52">
                                   <DropdownMenuLabel>Aksi Karyawan</DropdownMenuLabel>
                                   <DropdownMenuItem onClick={() => handleOpenEditModal(emp)}>
                                     <Edit3 className="mr-2 h-4 w-4 text-emerald-600" />
                                     <span>Edit Profil & Approval</span>
                                   </DropdownMenuItem>
+                                  <DropdownMenuItem asChild>
+                                    <Link href={route('hrd.employees.biodata', emp.id)} className="flex items-center w-full">
+                                      <FileText className="mr-2 h-4 w-4 text-blue-600" />
+                                      <span>Form Data Diri (Detail)</span>
+                                    </Link>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem asChild>
+                                    <a href={route('hrd.employees.biodata.print', emp.id)} target="_blank" rel="noopener noreferrer" className="flex items-center w-full">
+                                      <Printer className="mr-2 h-4 w-4 text-purple-600" />
+                                      <span>Cetak Form Data Diri</span>
+                                    </a>
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleOpenQuotaModal(emp)}>
-                                    <Calendar className="mr-2 h-4 w-4 text-blue-600" />
+                                    <Calendar className="mr-2 h-4 w-4 text-teal-600" />
                                     <span>Atur Kuota Cuti</span>
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
