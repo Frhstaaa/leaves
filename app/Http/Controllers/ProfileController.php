@@ -37,6 +37,14 @@ class ProfileController extends Controller
         $user = $request->user();
 
         $validated = $request->validate([
+            // Data Pekerjaan
+            'join_date' => 'nullable|date',
+            'employee_status' => 'nullable|string|max:50',
+            'position' => 'nullable|string|max:100',
+            'education' => 'nullable|string|max:100',
+            'contract_end_date' => 'nullable|date',
+            'department_id' => 'nullable|exists:departments,id',
+
             // Data Pribadi
             'ktp_number' => 'nullable|string|max:30',
             'gender' => 'nullable|in:Laki-laki,Perempuan',
@@ -49,7 +57,6 @@ class ProfileController extends Controller
             'mother_maiden_name' => 'nullable|string|max:150',
             'kk_number' => 'nullable|string|max:30',
             'blood_type' => 'nullable|in:A,B,AB,O',
-            'education' => 'nullable|string|max:100',
 
             // Keuangan & BPJS
             'npwp' => 'nullable|string|max:50',

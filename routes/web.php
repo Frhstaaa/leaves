@@ -70,8 +70,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/hrd/employees/import', [HrdController::class, 'importEmployees'])->name('hrd.employees.import');
     Route::get('/hrd/employees/export-biodata', [HrdController::class, 'exportBiodataCsv'])->name('hrd.employees.export-biodata');
     Route::get('/hrd/employees/{userId}/biodata', [HrdController::class, 'employeeBiodata'])->name('hrd.employees.biodata');
-    Route::get('/hrd/employees/biodata/{userId}', [HrdController::class, 'employeeBiodata'])->name('hrd.employees.biodata.alt');
     Route::match(['put', 'post'], '/hrd/employees/{userId}/biodata', [HrdController::class, 'updateEmployeeBiodata'])->name('hrd.employees.biodata.update');
+    Route::match(['put', 'post'], '/hrd/employees/{userId}/biodata/update', [HrdController::class, 'updateEmployeeBiodata']);
     Route::match(['put', 'post'], '/hrd/employees/biodata/{userId}/update', [HrdController::class, 'updateEmployeeBiodata']);
     Route::match(['put', 'post'], '/hrd/employees/biodata/{userId}', [HrdController::class, 'updateEmployeeBiodata']);
     Route::get('/hrd/employees/{userId}/biodata/print', [HrdController::class, 'printEmployeeBiodata'])->name('hrd.employees.biodata.print');
