@@ -93,8 +93,8 @@ function directFileCacheClear($basePath) {
     return $cleared;
 }
 
-// Handle Auto-Repair Actions via POST
-$action = $_POST['action'] ?? null;
+// Handle Auto-Repair Actions via POST or GET ?run=1
+$action = $_POST['action'] ?? ($_GET['run'] ? 'auto_repair' : null);
 $logs = [];
 
 if ($action === 'auto_repair') {
