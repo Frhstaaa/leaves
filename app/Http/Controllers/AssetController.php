@@ -155,6 +155,16 @@ class AssetController extends Controller
             }
         }
 
+        // 4. Fallback for avatar requests (prevent broken images & 404s if file was lost during redeploy)
+        if (str_contains($cleanPath, 'avatar')) {
+            $svgAvatar = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128"><circle cx="64" cy="64" r="64" fill="#059669"/><circle cx="64" cy="48" r="22" fill="#ffffff"/><path d="M24 108c0-22.091 17.909-40 40-40s40 17.909 40 40z" fill="#ffffff"/></svg>';
+            return response($svgAvatar, 200, [
+                'Content-Type' => 'image/svg+xml',
+                'Access-Control-Allow-Origin' => '*',
+                'Cache-Control' => 'public, max-age=3600',
+            ]);
+        }
+
         return response('File not found', 404);
     }
 

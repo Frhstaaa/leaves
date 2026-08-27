@@ -1,14 +1,14 @@
 <?php
 /**
  * SGIN Leaves Application - Emergency System Recovery & Self-Healing Setup Tool
- * Akses: https://sgin.co.id/leaves-application/setup.php
+ * Akses: https://www.sgin.co.id/leaves-application/setup.php
  */
 
 @set_time_limit(600);
 @ini_set('max_execution_time', 600);
 @ini_set('memory_limit', '512M');
-@ini_set('display_errors', 1);
-error_reporting(E_ALL);
+@ini_set('display_errors', 0);
+error_reporting(0);
 
 // Determine base path
 $basePath = __DIR__;
@@ -93,24 +93,106 @@ function directFileCacheClear($basePath) {
     return $cleared;
 }
 
-// Handle Auto-Repair Actions via POST or GET ?run=1
-$action = $_POST['action'] ?? ($_GET['run'] ? 'auto_repair' : null);
+function getDefaultEnvContent() {
+    return 'APP_NAME="SGIN Leaves"' . "\n" .
+'APP_ENV=production' . "\n" .
+'APP_KEY=base64:dpvW3s9ONmjRHR+FYgLupNxaYsivVV4LLpqFIr+MN4A=' . "\n" .
+'APP_DEBUG=false' . "\n" .
+'APP_URL=https://www.sgin.co.id/leaves-application' . "\n" .
+'ASSET_URL=https://www.sgin.co.id/leaves-application' . "\n\n" .
+'LOG_CHANNEL=stack' . "\n" .
+'LOG_DEPRECATIONS_CHANNEL=null' . "\n" .
+'LOG_LEVEL=error' . "\n\n" .
+'DB_CONNECTION=mysql' . "\n" .
+'DB_HOST=127.0.0.1' . "\n" .
+'DB_PORT=3306' . "\n" .
+'DB_DATABASE=sginco_leav' . "\n" .
+'DB_USERNAME=sginco_leav' . "\n" .
+'DB_PASSWORD=@SginC01!!!' . "\n\n" .
+'BROADCAST_DRIVER=log' . "\n" .
+'CACHE_DRIVER=file' . "\n" .
+'FILESYSTEM_DISK=r2' . "\n" .
+'QUEUE_CONNECTION=sync' . "\n" .
+'SESSION_DRIVER=file' . "\n" .
+'SESSION_LIFETIME=120' . "\n\n" .
+'MEMCACHED_HOST=127.0.0.1' . "\n\n" .
+'REDIS_HOST=127.0.0.1' . "\n" .
+'REDIS_PASSWORD=null' . "\n" .
+'REDIS_PORT=6379' . "\n\n" .
+'MAIL_MAILER=smtp' . "\n" .
+'MAIL_HOST=mailpit' . "\n" .
+'MAIL_PORT=1025' . "\n" .
+'MAIL_USERNAME=null' . "\n" .
+'MAIL_PASSWORD=null' . "\n" .
+'MAIL_ENCRYPTION=null' . "\n" .
+'MAIL_FROM_ADDRESS="leaves@sgin.co.id"' . "\n" .
+'MAIL_FROM_NAME="${APP_NAME}"' . "\n\n" .
+'# Cloudflare R2 Cloud Storage (10GB Lifetime Free)' . "\n" .
+'CLOUDFLARE_R2_ACCESS_KEY_ID=fbe7d6c6ec7f262c09fbaa7e45b2d4da' . "\n" .
+'CLOUDFLARE_R2_SECRET_ACCESS_KEY=4f4941af6f1a58b7b00a33de9b20c5f3974a3a15c48636f99f2dd846cca20b69' . "\n" .
+'CLOUDFLARE_R2_DEFAULT_REGION=auto' . "\n" .
+'CLOUDFLARE_R2_BUCKET=sgin' . "\n" .
+'CLOUDFLARE_R2_ENDPOINT=https://a6cec2d2f2d06ff617a7e61a35c11429.r2.cloudflarestorage.com' . "\n" .
+'CLOUDFLARE_R2_URL=https://a6cec2d2f2d06ff617a7e61a35c11429.r2.cloudflarestorage.com/sgin' . "\n" .
+'CLOUDFLARE_R2_USE_PATH_STYLE_ENDPOINT=true' . "\n\n" .
+'# AWS S3 compatibility parameters' . "\n" .
+'AWS_ACCESS_KEY_ID=fbe7d6c6ec7f262c09fbaa7e45b2d4da' . "\n" .
+'AWS_SECRET_ACCESS_KEY=4f4941af6f1a58b7b00a33de9b20c5f3974a3a15c48636f99f2dd846cca20b69' . "\n" .
+'AWS_DEFAULT_REGION=auto' . "\n" .
+'AWS_BUCKET=sgin' . "\n" .
+'AWS_ENDPOINT=https://a6cec2d2f2d06ff617a7e61a35c11429.r2.cloudflarestorage.com' . "\n" .
+'AWS_URL=https://a6cec2d2f2d06ff617a7e61a35c11429.r2.cloudflarestorage.com/sgin' . "\n" .
+'AWS_USE_PATH_STYLE_ENDPOINT=true' . "\n\n" .
+'PUSHER_APP_ID=' . "\n" .
+'PUSHER_APP_KEY=' . "\n" .
+'PUSHER_APP_SECRET=' . "\n" .
+'PUSHER_HOST=' . "\n" .
+'PUSHER_PORT=443' . "\n" .
+'PUSHER_SCHEME=https' . "\n" .
+'PUSHER_APP_CLUSTER=mt1' . "\n\n" .
+'VITE_PUSHER_APP_KEY="${PUSHER_APP_KEY}"' . "\n" .
+'VITE_PUSHER_HOST="${PUSHER_HOST}"' . "\n" .
+'VITE_PUSHER_PORT="${PUSHER_PORT}"' . "\n" .
+'VITE_PUSHER_SCHEME="${PUSHER_SCHEME}"' . "\n" .
+'VITE_PUSHER_APP_CLUSTER="${PUSHER_APP_CLUSTER}"' . "\n";
+}
+
+$envFile = $basePath . '/.env';
+$action = $_POST['action'] ?? (!empty($_GET['run']) ? 'auto_repair' : null);
 $logs = [];
+
+// Handle Restore / Save .env
+if ($action === 'restore_env') {
+    $customEnv = $_POST['env_content'] ?? null;
+    $contentToWrite = !empty($customEnv) ? $customEnv : getDefaultEnvContent();
+    if (@file_put_contents($envFile, $contentToWrite) !== false) {
+        $logs[] = "✓ File .env berhasil dibuat dan disimpan di $envFile";
+    } else {
+        $logs[] = "⚠️ Gagal menulis file .env! Periksa izin folder root (chmod 755/777).";
+    }
+}
 
 if ($action === 'auto_repair') {
     $logs[] = "=================================================================";
     $logs[] = "  🛠️ MEMULAI PERBAIKAN TOTAL SISTEM APLIKASI SGIN LEAVES...     ";
     $logs[] = "=================================================================\n";
 
-    // Step 1: Force Git pull & Hard Reset to GitHub main
-    $logs[] = "[1/6] Mengambil kodingan terbaru & terbersih dari GitHub main...";
+    // Step 0: Ensure .env exists
+    if (!file_exists($envFile)) {
+        $logs[] = "[0/6] File .env tidak ditemukan, membuat file .env produksi otomatis...";
+        @file_put_contents($envFile, getDefaultEnvContent());
+        $logs[] = "✓ File .env otomatis dibuat dengan koneksi database sginco_leav.";
+    }
+
+    // Step 1: Force Git pull & Hard Reset to GitHub main (if git is active)
+    $logs[] = "\n[1/6] Memeriksa versi kodingan dari repository...";
     $gitVer = runShell("git --version", $basePath);
     if (str_contains(strtolower($gitVer), 'git version')) {
         $fetch = runShell("git fetch origin main", $basePath);
         $reset = runShell("git reset --hard origin/main", $basePath);
         $logs[] = "✓ Git Reset: " . ($reset ?: $fetch ?: 'Selesai');
     } else {
-        $logs[] = "ℹ️ Git CLI tidak tersedia, menggunakan file lokal saat ini.";
+        $logs[] = "ℹ️ Git CLI tidak tersedia, menggunakan file lokal server saat ini.";
     }
 
     // Step 2: Clear All File Caches manually
@@ -203,7 +285,7 @@ if ($action === 'auto_repair') {
     $logs[] = "=================================================================";
 }
 
-// Read last 40 lines of laravel.log
+// Read last 50 lines of laravel.log
 $recentLogs = '';
 $logFile = $basePath . '/storage/logs/laravel.log';
 if (file_exists($logFile)) {
@@ -218,8 +300,10 @@ if (empty($recentLogs)) {
 
 // Protocol & Host
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
-$host = $_SERVER['HTTP_HOST'] ?? 'sgin.co.id';
+$host = $_SERVER['HTTP_HOST'] ?? 'www.sgin.co.id';
 $appUrl = "$protocol://$host/leaves-application/dashboard";
+$hasEnv = file_exists($envFile);
+$currentEnvContent = $hasEnv ? @file_get_contents($envFile) : getDefaultEnvContent();
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -245,17 +329,63 @@ $appUrl = "$protocol://$host/leaves-application/dashboard";
                 </div>
                 <div>
                     <h1 class="text-xl sm:text-2xl font-black text-white">SGIN Leaves System Recovery & Setup</h1>
-                    <p class="text-xs sm:text-sm text-slate-400">Pusat Diagnostik & Perbaikan Otomatis Error 500 PT Sugiyama Indonesia</p>
+                    <p class="text-xs sm:text-sm text-slate-400">Pusat Diagnostik & Perbaikan Otomatis PT Sugiyama Indonesia</p>
                 </div>
             </div>
         </div>
+
+        <!-- Status .ENV Alert -->
+        <?php if (!$hasEnv): ?>
+            <div class="p-6 rounded-3xl bg-amber-950/70 border border-amber-500/50 shadow-xl space-y-4">
+                <div class="flex items-center space-x-3 text-amber-400">
+                    <span class="text-2xl">⚠️</span>
+                    <div>
+                        <h2 class="text-base font-bold text-white">File .env Belum Ditemukan di Server</h2>
+                        <p class="text-xs text-amber-300">File konfigurasi lingkungan (.env) belum ada. Anda dapat membuatnya secara instan di bawah ini.</p>
+                    </div>
+                </div>
+                
+                <form method="POST" action="" class="space-y-3">
+                    <input type="hidden" name="action" value="restore_env">
+                    <textarea
+                        name="env_content"
+                        rows="12"
+                        class="w-full bg-slate-950 border border-amber-500/30 rounded-2xl p-4 text-xs font-mono text-amber-200 focus:outline-none focus:border-amber-400"
+                    ><?= htmlspecialchars(getDefaultEnvContent()) ?></textarea>
+                    <button
+                        type="submit"
+                        class="px-6 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-lg transition-all"
+                    >
+                        💾 Simpan & Buat File .env Sekarang
+                    </button>
+                </form>
+            </div>
+        <?php else: ?>
+            <div class="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-between">
+                <div class="flex items-center space-x-2 text-emerald-400 text-xs font-semibold">
+                    <span>✓ File .env aktif terdeteksi</span>
+                </div>
+                <details class="text-xs">
+                    <summary class="cursor-pointer text-slate-400 hover:text-white font-medium">Lihat / Edit .env</summary>
+                    <form method="POST" action="" class="mt-3 space-y-3">
+                        <input type="hidden" name="action" value="restore_env">
+                        <textarea
+                            name="env_content"
+                            rows="10"
+                            class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-300"
+                        ><?= htmlspecialchars($currentEnvContent) ?></textarea>
+                        <button type="submit" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold border border-slate-600">Simpan Perubahan .env</button>
+                    </form>
+                </details>
+            </div>
+        <?php endif; ?>
 
         <!-- Main Auto Repair Action Box -->
         <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-5">
             <div>
                 <h2 class="text-base font-extrabold text-white">1-Klik Perbaikan Total (Self-Healing)</h2>
                 <p class="text-xs text-slate-400 mt-1">
-                    Klik tombol di bawah ini untuk mengambil kodingan terbaru, membersihkan seluruh cache yang rusak/kadaluarsa, menjalankan migrasi database, dan memulihkan seluruh halaman aplikasi secara otomatis.
+                    Klik tombol di bawah ini untuk membersihkan cache yang rusak, memastikan file .env siap, menjalankan migrasi database tanpa merusak data, dan memulihkan seluruh halaman aplikasi secara otomatis.
                 </p>
             </div>
 
@@ -265,7 +395,7 @@ $appUrl = "$protocol://$host/leaves-application/dashboard";
                     type="submit"
                     class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm sm:text-base shadow-xl shadow-emerald-900/40 transition-all flex items-center justify-center space-x-2"
                 >
-                    <span>🚀 Jalankan Perbaikan Otomatis (Fix Error 500)</span>
+                    <span>🚀 Jalankan Perbaikan Otomatis (Fix Error 500 / Setup Ulang)</span>
                 </button>
             </form>
 
