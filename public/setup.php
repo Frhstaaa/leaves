@@ -319,18 +319,97 @@ if ($action === 'auto_repair') {
         }
     }
 
-    // Step 5: Fix Storage Symlink
-    $logs[] = "\n[5/6] Memeriksa tautan storage publik...";
+    // Step 5: Fix Storage Structure, Symlinks & Restore Missing File Assets
+    $logs[] = "\n[5/6] Memeriksa tautan storage publik & file aset...";
     $pubStorage = $basePath . '/public/storage';
     $appStorage = $basePath . '/storage/app/public';
-    if (!file_exists($pubStorage) && !is_link($pubStorage)) {
+    $subDirs = ['avatars', 'logos', 'payslips'];
+
+    // 1. Ensure storage/app/public and all subdirectories exist
+    if (!is_dir($appStorage)) {
+        @mkdir($appStorage, 0777, true);
+    }
+    @chmod($appStorage, 0777);
+
+    foreach ($subDirs as $sd) {
+        $fullSub = $appStorage . '/' . $sd;
+        if (!is_dir($fullSub)) {
+            @mkdir($fullSub, 0777, true);
+        }
+        @chmod($fullSub, 0777);
+    }
+
+    // 2. Recreate symlink or mirror directories in public/storage
+    if (is_link($pubStorage)) {
+        @unlink($pubStorage);
+        @symlink($appStorage, $pubStorage);
+    } elseif (!file_exists($pubStorage)) {
         @symlink($appStorage, $pubStorage);
     }
+
+    // If public/storage is a real directory (Windows / non-symlink host), ensure subdirs exist there too
+    if (is_dir($pubStorage) && !is_link($pubStorage)) {
+        foreach ($subDirs as $sd) {
+            $pubSub = $pubStorage . '/' . $sd;
+            if (!is_dir($pubSub)) {
+                @mkdir($pubSub, 0777, true);
+            }
+            @chmod($pubSub, 0777);
+        }
+    }
+
     if ($app) {
         try {
             \Illuminate\Support\Facades\Artisan::call('storage:link');
             $logs[] = "✓ php artisan storage:link: " . trim(\Illuminate\Support\Facades\Artisan::output() ?: 'Siap');
         } catch (\Throwable $e) {}
+
+        // 3. Scan users in DB and generate valid image files for any missing avatars
+        try {
+            if (class_exists('\\App\\Models\\User')) {
+                $users = \App\Models\User::whereNotNull('avatar')->where('avatar', '!=', '')->get();
+                $restoredCount = 0;
+                foreach ($users as $u) {
+                    $clean = ltrim($u->avatar, '/');
+                    $targetPath = $appStorage . '/' . $clean;
+                    $pubTargetPath = $pubStorage . '/' . $clean;
+
+                    if (!file_exists($targetPath)) {
+                        $dir = dirname($targetPath);
+                        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+
+                        // Generate a valid 128x128 avatar WebP/PNG image file
+                        if (function_exists('imagecreatetruecolor')) {
+                            $im = @imagecreatetruecolor(128, 128);
+                            $bg = @imagecolorallocate($im, 5, 150, 105); // #059669 emerald
+                            $fg = @imagecolorallocate($im, 255, 255, 255);
+                            @imagefill($im, 0, 0, $bg);
+                            @imagefilledellipse($im, 64, 48, 44, 44, $fg);
+                            @imagefilledarc($im, 64, 115, 84, 84, 180, 360, $fg, IMG_ARC_PIE);
+                            if (function_exists('imagewebp') && str_ends_with(strtolower($clean), '.webp')) {
+                                @imagewebp($im, $targetPath, 85);
+                            } else {
+                                @imagepng($im, $targetPath);
+                            }
+                            @imagedestroy($im);
+
+                            // Copy to public/storage if not symlinked
+                            if (is_dir($pubStorage) && !is_link($pubStorage)) {
+                                $pubDir = dirname($pubTargetPath);
+                                if (!is_dir($pubDir)) @mkdir($pubDir, 0777, true);
+                                @copy($targetPath, $pubTargetPath);
+                            }
+                            $restoredCount++;
+                        }
+                    }
+                }
+                if ($restoredCount > 0) {
+                    $logs[] = "✓ Berhasil memulihkan $restoredCount file avatar gambar pada storage ($appStorage/avatars).";
+                }
+            }
+        } catch (\Throwable $e) {
+            $logs[] = "ℹ️ Avatar restore note: " . $e->getMessage();
+        }
     }
 
     // Step 6: Final Cache Generation
