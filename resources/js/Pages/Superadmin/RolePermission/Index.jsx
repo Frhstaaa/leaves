@@ -37,6 +37,13 @@ import {
   Building,
   FileSpreadsheet
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Icon mapper for categories
 const categoryIcons = {
