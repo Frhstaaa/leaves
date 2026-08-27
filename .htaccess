@@ -13,9 +13,9 @@ DirectoryIndex index.php index.html
     # 1. Block direct access to sensitive files and folders
     RewriteRule ^\.git - [F,L]
     RewriteRule ^\.env.* - [F,L]
-    RewriteRule ^(app|bootstrap|config|database|resources|routes|vendor|tests) - [F,L]
-    RewriteRule ^storage/(framework|logs) - [F,L]
-    RewriteRule ^(composer\.(json|lock)|package(-lock)?\.json|vite\.config\.js|artisan) - [F,L]
+    RewriteRule ^(app|bootstrap|config|database|resources|routes|vendor|tests)(/|$) - [F,L]
+    RewriteRule ^storage/(framework|logs)(/|$) - [F,L]
+    RewriteRule ^(composer\.(json|lock)|package(-lock)?\.json|vite\.config\.js|artisan)$ - [F,L]
 
     # 2. If already inside public directory, do not rewrite further
     RewriteCond %{REQUEST_URI} ^.*/public/ [NC]
