@@ -80,11 +80,6 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
-        'join_date' => 'date:Y-m-d',
-        'birth_date' => 'date:Y-m-d',
-        'contract_end_date' => 'date:Y-m-d',
-        'sim_valid_until' => 'date:Y-m-d',
-        'spouse_birth_date' => 'date:Y-m-d',
         'is_profile_completed' => 'boolean',
     ];
 
