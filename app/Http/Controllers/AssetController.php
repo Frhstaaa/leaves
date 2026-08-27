@@ -35,38 +35,47 @@ class AssetController extends Controller
             abort(404);
         }
         $cleanPath = ltrim(str_replace('\\', '/', $path), '/');
-        $filePath = public_path('build/' . $cleanPath);
-        if (!file_exists($filePath)) {
-            $filePath = base_path('public/build/' . $cleanPath);
+        
+        $candidates = [
+            public_path('build/' . $cleanPath),
+            base_path('public/build/' . $cleanPath),
+            base_path('build/' . $cleanPath),
+            dirname(dirname(__DIR__)) . '/public/build/' . $cleanPath,
+        ];
+
+        $targetFile = null;
+        foreach ($candidates as $c) {
+            if (file_exists($c) && is_file($c)) {
+                $targetFile = $c;
+                break;
+            }
         }
-        $real = realpath($filePath);
-        $publicBuild = realpath(public_path('build')) ?: realpath(base_path('public/build'));
-        if ($real && is_file($real) && $publicBuild && str_starts_with($real, $publicBuild)) {
-            $ext = strtolower(pathinfo($real, PATHINFO_EXTENSION));
+
+        if ($targetFile) {
+            $ext = strtolower(pathinfo($targetFile, PATHINFO_EXTENSION));
             $mimes = [
                 'js' => 'application/javascript; charset=utf-8',
                 'mjs' => 'application/javascript; charset=utf-8',
                 'css' => 'text/css; charset=utf-8',
                 'json' => 'application/json; charset=utf-8',
-                'webmanifest' => 'application/manifest+json; charset=utf-8',
-                'png' => 'image/png',
-                'webp' => 'image/webp',
-                'jpg' => 'image/jpeg',
-                'jpeg' => 'image/jpeg',
+                'map' => 'application/json; charset=utf-8',
                 'svg' => 'image/svg+xml',
-                'ico' => 'image/x-icon',
+                'webp' => 'image/webp',
+                'png' => 'image/png',
+                'jpg' => 'image/jpeg',
                 'woff2' => 'font/woff2',
                 'woff' => 'font/woff',
                 'ttf' => 'font/ttf',
             ];
-            $contentType = $mimes[$ext] ?? 'application/octet-stream';
-            return response(file_get_contents($real), 200, [
-                'Content-Type' => $contentType,
+            $mime = $mimes[$ext] ?? 'application/octet-stream';
+            return response(file_get_contents($targetFile), 200, [
+                'Content-Type' => $mime,
                 'Access-Control-Allow-Origin' => '*',
                 'Cache-Control' => 'public, max-age=31536000, immutable',
             ]);
         }
-        return response('File not found', 404);
+
+        return response('/* Asset not found: ' . $cleanPath . ' */', 404);
     }
 
     /**
