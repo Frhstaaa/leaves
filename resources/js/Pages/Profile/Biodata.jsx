@@ -41,36 +41,36 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
   const form = useForm({
     // 1. Data Pekerjaan
     join_date: user.join_date ? (typeof user.join_date === 'string' ? user.join_date.split('T')[0] : user.join_date) : '',
-    employee_status: user.employee_status || 'Tetap',
+    employee_status: user.employee_status || '',
     education: user.education || '',
-    position: user.position || user.role || '',
+    position: user.position || (user.role && user.role !== 'employee' ? user.role : ''),
     contract_end_date: user.contract_end_date ? (typeof user.contract_end_date === 'string' ? user.contract_end_date.split('T')[0] : user.contract_end_date) : '',
     department_id: user.department_id || '',
 
     // 2. Data Pribadi & Kependudukan
     ktp_number: user.ktp_number || '',
-    gender: user.gender || 'Laki-laki',
+    gender: user.gender || '',
     birth_place: user.birth_place || '',
     birth_date: user.birth_date ? (typeof user.birth_date === 'string' ? user.birth_date.split('T')[0] : user.birth_date) : '',
     phone_number: user.phone_number || '',
     ktp_address: user.ktp_address || '',
     domicile_address: user.domicile_address || '',
-    marital_status: user.marital_status || 'Belum Menikah',
+    marital_status: user.marital_status || '',
     mother_maiden_name: user.mother_maiden_name || '',
     kk_number: user.kk_number || '',
-    blood_type: user.blood_type || 'O',
+    blood_type: user.blood_type || '',
 
     // 3. Keuangan, BPJS & Logistik
     npwp: user.npwp || '',
     bpjs_kesehatan_number: user.bpjs_kesehatan_number || '',
     bpjs_health_facility: user.bpjs_health_facility || '',
     bpjs_ketenagakerjaan_number: user.bpjs_ketenagakerjaan_number || '',
-    bank_name: user.bank_name || 'BCA',
+    bank_name: user.bank_name || '',
     bank_account_number: user.bank_account_number || '',
     vehicle_plate_number: user.vehicle_plate_number || '',
     sim_number: user.sim_number || '',
     sim_valid_until: user.sim_valid_until ? (typeof user.sim_valid_until === 'string' ? user.sim_valid_until.split('T')[0] : user.sim_valid_until) : '',
-    shoe_size: user.shoe_size || '41',
+    shoe_size: user.shoe_size || '',
 
     // 4. Keluarga & Kontak Darurat
     emergency_contact_name: user.emergency_contact_name || '',
@@ -86,16 +86,35 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
     child_3_name: user.child_3_name || '',
   });
 
-  // Calculate live completeness locally
-  const requiredKeys = [
-    form.data.ktp_number, form.data.gender, form.data.birth_place, form.data.birth_date,
-    form.data.phone_number, form.data.ktp_address, form.data.domicile_address,
-    form.data.marital_status, form.data.mother_maiden_name, form.data.kk_number,
-    form.data.blood_type, form.data.education, form.data.bank_account_number,
-    form.data.emergency_contact_name, form.data.emergency_contact_phone
+  // Calculate live completeness locally using the EXACT same 23 fields as User model
+  const completenessFieldValues = [
+    user.name,
+    user.nik,
+    user.email,
+    user.department_id || form.data.department_id,
+    form.data.join_date,
+    form.data.employee_status,
+    form.data.education,
+    form.data.position,
+    form.data.ktp_number,
+    form.data.gender,
+    form.data.birth_place,
+    form.data.birth_date,
+    form.data.phone_number,
+    form.data.ktp_address,
+    form.data.domicile_address,
+    form.data.marital_status,
+    form.data.mother_maiden_name,
+    form.data.kk_number,
+    form.data.blood_type,
+    form.data.emergency_contact_name,
+    form.data.emergency_contact_relationship,
+    form.data.emergency_contact_phone,
+    form.data.bank_account_number,
   ];
-  const filledCount = requiredKeys.filter(val => val && String(val).trim() !== '').length;
-  const liveCompletenessPercent = Math.min(100, Math.round(((filledCount + 4) / (requiredKeys.length + 4)) * 100));
+
+  const filledCount = completenessFieldValues.filter(val => val !== null && val !== undefined && String(val).trim() !== '').length;
+  const liveCompletenessPercent = Math.min(100, Math.round((filledCount / completenessFieldValues.length) * 100));
 
   const copyKtpAddress = () => {
     form.setData('domicile_address', form.data.ktp_address);
@@ -355,6 +374,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                     disabled={!isHrdView && Boolean(user.employee_status)}
                     className={`w-full px-3.5 py-2.5 rounded-xl ${!isHrdView && Boolean(user.employee_status) ? 'bg-slate-100/90 cursor-not-allowed' : 'bg-slate-50 focus:bg-white'} border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all`}
                   >
+                    <option value="">-- Pilih Status Karyawan --</option>
                     <option value="Tetap">Karyawan Tetap (PKWTT)</option>
                     <option value="Kontrak">Karyawan Kontrak (PKWT)</option>
                     <option value="Magang">Magang / Internship</option>
@@ -469,6 +489,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                     onChange={(e) => form.setData('gender', e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                   >
+                    <option value="">-- Pilih Jenis Kelamin --</option>
                     <option value="Laki-laki">Laki-laki</option>
                     <option value="Perempuan">Perempuan</option>
                   </select>
@@ -505,6 +526,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                     onChange={(e) => form.setData('blood_type', e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-bold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                   >
+                    <option value="">-- Pilih Golongan Darah --</option>
                     <option value="A">Golongan Darah A</option>
                     <option value="B">Golongan Darah B</option>
                     <option value="AB">Golongan Darah AB</option>
@@ -545,6 +567,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                     onChange={(e) => form.setData('marital_status', e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 focus:bg-white border border-slate-200/90 text-slate-900 font-semibold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs sm:text-sm transition-all"
                   >
+                    <option value="">-- Pilih Status Perkawinan --</option>
                     <option value="Belum Menikah">Belum Menikah (Lajang)</option>
                     <option value="Menikah">Menikah (Kawin)</option>
                     <option value="Cerai Hidup">Cerai Hidup</option>
