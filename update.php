@@ -156,145 +156,138 @@ function syncFromGithub($basePath, $repo, $branch, $token = '') {
     $logs = [];
     $logs[] = "Menghubungkan ke GitHub Repository: https://github.com/$repo (Branch: $branch)";
 
-    // Method 1: Git CLI (if git command is available)
-    $gitAvailable = false;
-    if (function_exists('shell_exec')) {
-        $gitVersion = @shell_exec('git --version 2>&1');
-        if ($gitVersion && str_contains(strtolower($gitVersion), 'git version')) {
-            $gitAvailable = true;
-        }
-    }
+    // =====================================
+    // Method 1 (UTAMA): ZIP Download dari GitHub
+    // Lebih reliable karena tidak bergantung pada git
+    // dan PASTI mengunduh file terbaru termasuk public/build
+    // =====================================
+    $logs[] = "Mengunduh ZIP terbaru dari GitHub...";
+    $zipUrl = $token
+        ? "https://api.github.com/repos/$repo/zipball/$branch"
+        : "https://github.com/$repo/archive/refs/heads/$branch.zip";
 
-    if ($gitAvailable) {
-        $logs[] = "✓ Git CLI terdeteksi di server (" . trim($gitVersion) . ")";
-        
-        if (!is_dir($basePath . '/.git')) {
-            $logs[] = "Inisialisasi git repository lokal di $basePath...";
-            executeCommand("git init", $basePath);
-            $remoteUrl = $token 
-                ? "https://$token@github.com/$repo.git"
-                : "https://github.com/$repo.git";
-            executeCommand("git remote add origin " . escapeshellarg($remoteUrl), $basePath);
-        } else {
-            $remoteUrl = $token 
-                ? "https://$token@github.com/$repo.git"
-                : "https://github.com/$repo.git";
-            executeCommand("git remote set-url origin " . escapeshellarg($remoteUrl), $basePath);
-        }
-
-        $logs[] = "Menjalankan git fetch & hard-reset branch '$branch'...";
-        $fetchOutput = executeCommand("git fetch origin $branch", $basePath);
-        $resetOutput = executeCommand("git reset --hard origin/$branch", $basePath);
-        
-        $combinedOutput = trim(($fetchOutput ?: '') . "\n" . ($resetOutput ?: ''));
-        $logs[] = "Git Output:\n" . ($combinedOutput ?: "Berhasil sinkronisasi tanpa log tambahan.");
-        
-        if (str_contains($combinedOutput, 'HEAD is now at') || str_contains($combinedOutput, 'Updating') || str_contains($combinedOutput, 'Already up to date')) {
-            $logs[] = "✓ Kodingan berhasil diperbarui via Git CLI!";
-            return [true, implode("\n", $logs)];
-        }
-    }
-
-    // Method 2: Fallback to GitHub ZIP Archive Download
-    $logs[] = "Metode Git CLI tidak aktif / dibatasi, beralih ke unduhan ZIP dari GitHub API...";
-    $zipUrl = "https://github.com/$repo/archive/refs/heads/$branch.zip";
+    $curlHeaders = ['User-Agent: SGIN-Leaves-Updater/2.0'];
     if ($token) {
-        $zipUrl = "https://api.github.com/repos/$repo/zipball/$branch";
+        $curlHeaders[] = "Authorization: Bearer $token";
+        $curlHeaders[] = "Accept: application/vnd.github.v3+json";
     }
 
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $zipUrl);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'SGIN-Leaves-Updater');
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $curlHeaders);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    if ($token) {
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Authorization: Bearer $token",
-            "Accept: application/vnd.github.v3+json"
-        ]);
-    }
-
+    curl_setopt($ch, CURLOPT_TIMEOUT, 180);
     $zipData = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
     curl_close($ch);
 
-    if ($httpCode !== 200 || empty($zipData)) {
-        $logs[] = "✗ Gagal mengunduh file ZIP dari GitHub (HTTP Status: $httpCode).";
-        return [false, implode("\n", $logs)];
-    }
+    if ($httpCode === 200 && !empty($zipData)) {
+        $tempZip = $basePath . '/storage/github_update_temp.zip';
+        file_put_contents($tempZip, $zipData);
 
-    $tempZip = $basePath . '/storage/github_update_temp.zip';
-    file_put_contents($tempZip, $zipData);
-
-    $zip = new ZipArchive();
-    if ($zip->open($tempZip) === TRUE) {
         $extractPath = $basePath . '/storage/github_extracted';
+        // Bersihkan ekstraksi lama
         if (is_dir($extractPath)) {
-            $files = new RecursiveIteratorIterator(
+            $old = new RecursiveIteratorIterator(
                 new RecursiveDirectoryIterator($extractPath, RecursiveDirectoryIterator::SKIP_DOTS),
                 RecursiveIteratorIterator::CHILD_FIRST
             );
-            foreach ($files as $fileinfo) {
-                $todo = ($fileinfo->isDir() ? 'rmdir' : 'unlink');
-                @$todo($fileinfo->getRealPath());
+            foreach ($old as $f) {
+                $f->isDir() ? @rmdir($f->getPathname()) : @unlink($f->getPathname());
             }
+            @rmdir($extractPath);
         }
         @mkdir($extractPath, 0777, true);
-        $zip->extractTo($extractPath);
-        $zip->close();
-        @unlink($tempZip);
 
-        $extractedItems = scandir($extractPath);
-        $sourceDir = '';
-        foreach ($extractedItems as $item) {
-            if ($item !== '.' && $item !== '..' && is_dir($extractPath . '/' . $item)) {
-                $sourceDir = $extractPath . '/' . $item;
-                break;
-            }
-        }
+        $zip = new ZipArchive();
+        if ($zip->open($tempZip) === TRUE) {
+            $zip->extractTo($extractPath);
+            $zip->close();
+            @unlink($tempZip);
 
-        if (!$sourceDir) {
-            $sourceDir = $extractPath;
-        }
-
-        $ignoreList = ['.env', 'storage', 'public/storage', '.git', 'node_modules'];
-        $copyCount = 0;
-
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($sourceDir, RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::SELF_FIRST
-        );
-
-        foreach ($iterator as $item) {
-            $subPath = substr($item->getPathname(), strlen($sourceDir) + 1);
-            $destPath = $basePath . '/' . $subPath;
-
-            $skip = false;
-            foreach ($ignoreList as $ignored) {
-                if (str_starts_with($subPath, $ignored)) {
-                    $skip = true;
+            $sourceDir = '';
+            foreach (scandir($extractPath) as $item) {
+                if ($item !== '.' && $item !== '..' && is_dir("$extractPath/$item")) {
+                    $sourceDir = "$extractPath/$item";
                     break;
                 }
             }
-            if ($skip) continue;
+            if (!$sourceDir) $sourceDir = $extractPath;
 
-            if ($item->isDir()) {
-                if (!is_dir($destPath)) {
-                    @mkdir($destPath, 0777, true);
+            $ignoreList = ['.env', 'storage/', 'public/storage', '.git/', 'node_modules/'];
+            $copyCount = 0;
+
+            $iterator = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($sourceDir, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::SELF_FIRST
+            );
+
+            foreach ($iterator as $item) {
+                $subPath = str_replace('\\', '/', substr($item->getPathname(), strlen($sourceDir) + 1));
+                $destPath = $basePath . '/' . $subPath;
+
+                $skip = false;
+                foreach ($ignoreList as $ig) {
+                    if (str_starts_with($subPath, rtrim($ig, '/'))) { $skip = true; break; }
                 }
+                if ($skip) continue;
+
+                if ($item->isDir()) {
+                    if (!is_dir($destPath)) @mkdir($destPath, 0777, true);
+                } else {
+                    if (@copy($item->getPathname(), $destPath)) {
+                        @chmod($destPath, 0644);
+                        $copyCount++;
+                    }
+                }
+            }
+
+            $logs[] = "✓ ZIP Sync: Berhasil mengunduh & menyalin $copyCount file dari GitHub ($repo:$branch)!";
+            return [true, implode("\n", $logs)];
+        } else {
+            $logs[] = "⚠️ Gagal membuka file ZIP, beralih ke git...";
+            @unlink($tempZip);
+        }
+    } else {
+        $logs[] = "⚠️ ZIP download gagal (HTTP: $httpCode" . ($curlErr ? ", $curlErr" : '') . "), beralih ke git CLI...";
+    }
+
+    // =====================================
+    // Method 2 (FALLBACK): Git CLI
+    // =====================================
+    if (function_exists('shell_exec')) {
+        $gitVersion = @shell_exec('git --version 2>&1');
+        if ($gitVersion && str_contains(strtolower($gitVersion), 'git version')) {
+            $logs[] = "Menggunakan git CLI sebagai fallback (" . trim($gitVersion) . ")";
+
+            $remoteUrl = $token
+                ? "https://$token@github.com/$repo.git"
+                : "https://github.com/$repo.git";
+
+            if (!is_dir($basePath . '/.git')) {
+                executeCommand("git init", $basePath);
+                executeCommand("git remote add origin " . escapeshellarg($remoteUrl), $basePath);
             } else {
-                @copy($item->getPathname(), $destPath);
-                $copyCount++;
+                executeCommand("git remote set-url origin " . escapeshellarg($remoteUrl), $basePath);
+            }
+
+            $fetchOut = executeCommand("git fetch origin $branch 2>&1", $basePath);
+            $resetOut = executeCommand("git reset --hard origin/$branch 2>&1", $basePath);
+            $combined = trim(($fetchOut ?: '') . "\n" . ($resetOut ?: ''));
+            $logs[] = "Git Output:\n" . ($combined ?: "Berhasil.");
+
+            if (str_contains($combined, 'HEAD is now at') || str_contains($combined, 'Updating') || str_contains($combined, 'Already up to date')) {
+                $logs[] = "✓ Kodingan diperbarui via Git CLI!";
+                return [true, implode("\n", $logs)];
             }
         }
-
-        $logs[] = "✓ Berhasil mengekstrak dan memperbarui $copyCount file dari GitHub!";
-        return [true, implode("\n", $logs)];
-    } else {
-        $logs[] = "✗ Gagal membuka file zip update.";
-        return [false, implode("\n", $logs)];
     }
+
+    $logs[] = "✗ Semua metode sync gagal.";
+    return [false, implode("\n", $logs)];
 }
 
 function freeServerDiskSpace($basePath) {
