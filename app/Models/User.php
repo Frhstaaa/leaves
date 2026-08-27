@@ -140,7 +140,19 @@ class User extends Authenticatable
             return $this->avatar;
         }
 
-        return url('storage/' . ltrim($this->avatar, '/'));
+        $clean = ltrim($this->avatar, '/');
+
+        // Check local storage paths
+        if (file_exists(storage_path('app/public/' . $clean)) || file_exists(public_path('storage/' . $clean))) {
+            return url('storage/' . $clean);
+        }
+
+        // Check in Cloudflare R2
+        if (\App\Services\CloudflareR2::isConfigured() && \App\Services\CloudflareR2::exists($clean)) {
+            return url('storage/' . $clean);
+        }
+
+        return null;
     }
 
     public function department()
