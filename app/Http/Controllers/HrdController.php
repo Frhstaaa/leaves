@@ -473,110 +473,89 @@ class HrdController extends Controller
             $file = fopen('php://output', 'w');
             fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
-            $dbRoles = class_exists('\\Spatie\\Permission\\Models\\Role') ? \Spatie\Permission\Models\Role::pluck('name')->toArray() : [];
-            $roleOptions = array_unique(array_merge(['employee', 'manager', 'admin', 'superadmin'], $dbRoles));
-            $roleLabel = implode('/', $roleOptions);
+            $departments = $this->departmentRepo->getAll();
+            $deptList = $departments->map(fn($d) => "{$d->code}: {$d->name}")->implode(' | ');
+            if (empty($deptList)) {
+                $deptList = 'IT: Information Technology | HRD: Human Resources | PROD: Production | GA: General Affairs';
+            }
 
+            $dbRoles = class_exists('\\Spatie\\Permission\\Models\\Role') ? \Spatie\Permission\Models\Role::pluck('name')->toArray() : [];
+            $roleOptions = array_unique(array_merge(['employee', 'manager', 'supervisor', 'admin', 'superadmin'], $dbRoles));
+            $roleList = implode(' | ', $roleOptions);
+
+            // =========================================================================================================
+            // 1. HEADER PANDUAN & TUTORIAL PENGISIAN
+            // =========================================================================================================
+            fputcsv($file, ['# =========================================================================================================']);
+            fputcsv($file, ['# TEMPLATE IMPORT KARYAWAN CEPAT - PT SUGIYAMA INDONESIA (SGIN LEAVES APPLICATION)']);
+            fputcsv($file, ['# =========================================================================================================']);
+            fputcsv($file, ['# [PANDUAN & ATURAN PENGISIAN]:']);
+            fputcsv($file, ['# 1. KOLOM WAJIB DIISI : "Nama Lengkap Karyawan" dan "Email Login Akun".']);
+            fputcsv($file, ['# 2. KOLOM OPSIONAL     : NIK SGIN, Password, Role, Departemen, dan Status Karyawan boleh dikosongkan.']);
+            fputcsv($file, ['#    - NIK SGIN        : Kosongkan jika ingin dibuatkan nomor NIK unik otomatis oleh sistem.']);
+            fputcsv($file, ['#    - Password        : Kosongkan jika ingin password default ("password123").']);
+            fputcsv($file, ['#    - Role            : Kosongkan jika ingin role default ("employee").']);
+            fputcsv($file, ['#    - Departemen      : Tulis Kode atau Nama Departemen sesuai list di bawah.']);
+            fputcsv($file, ['#    - Status Karyawan : Pilih "Tetap", "Kontrak", "Magang", atau "Percobaan" (Default: "Tetap").']);
+            fputcsv($file, ['# 3. KELENGKAPAN BIODATA :']);
+            fputcsv($file, ['#    Data lanjutan (KTP, KK, BPJS, No HP, Alamat, Rekening Bank, dll.) TIDAK PERLU diisi pada saat import.']);
+            fputcsv($file, ['#    Karyawan dapat melengkapi data dirinya secara mandiri melalui menu "Form Data Diri Saya" setelah login.']);
+            fputcsv($file, ['#']);
+            fputcsv($file, ['# [DAFTAR KODE & NAMA DEPARTEMEN AKTIF]:']);
+            fputcsv($file, ["# -> {$deptList}"]);
+            fputcsv($file, ['#']);
+            fputcsv($file, ['# [DAFTAR ROLE YANG TERSEDIA]:']);
+            fputcsv($file, ["# -> {$roleList}"]);
+            fputcsv($file, ['#']);
+            fputcsv($file, ['# [PENTING] Masukkan data karyawan pada baris di bawah judul kolom berikut (Jangan ubah nama kolom):']);
+            fputcsv($file, ['# =========================================================================================================']);
+
+            // =========================================================================================================
+            // 2. 7 KOLOM UTAMA
+            // =========================================================================================================
             fputcsv($file, [
-                '[OPSIONAL] NIK SGIN (Kosongkan jika ingin otomatis)',
+                '[OPSIONAL] NIK SGIN',
                 '[WAJIB] Nama Lengkap Karyawan',
                 '[WAJIB] Email Login Akun',
-                '[OPSIONAL] Password (Default: password123)',
-                "[OPSIONAL] Role ({$roleLabel})",
-                '[OPSIONAL] Nama atau Kode Departemen',
-                '[OPSIONAL] NIK/Email Atasan 1 (Supervisor)',
-                '[OPSIONAL] NIK/Email Atasan 2 (Manager)',
-                '[OPSIONAL] Jatah Kuota Cuti (Default: 12)',
-                '[OPSIONAL] Tanggal Bergabung (YYYY-MM-DD)',
-                '[OPSIONAL] Status Karyawan (Tetap/Kontrak/Magang)',
-                '[OPSIONAL] Jabatan',
-                '[OPSIONAL] Pendidikan Terakhir (SMA/D3/S1)',
-                '[OPSIONAL] NIK KTP (16 Digit)',
-                '[OPSIONAL] Jenis Kelamin (Laki-laki/Perempuan)',
-                '[OPSIONAL] Tempat Lahir',
-                '[OPSIONAL] Tanggal Lahir (YYYY-MM-DD)',
-                '[OPSIONAL] Nomor HP / WhatsApp',
-                '[OPSIONAL] Alamat Lengkap KTP',
-                '[OPSIONAL] Alamat Domisili Saat Ini',
-                '[OPSIONAL] Status Perkawinan (Belum Menikah/Menikah)',
-                '[OPSIONAL] Nomor NPWP',
-                '[OPSIONAL] No BPJS Kesehatan',
-                '[OPSIONAL] Faskes BPJS Kesehatan Tk 1',
-                '[OPSIONAL] No BPJS TKU / Ketenagakerjaan',
-                '[OPSIONAL] Nama Bank (BCA/Mandiri/BNI/BRI)',
-                '[OPSIONAL] Nomor Rekening Bank',
-                '[OPSIONAL] No Pol Kendaraan',
-                '[OPSIONAL] Nomor SIM',
-                '[OPSIONAL] Masa Berlaku SIM (YYYY-MM-DD)',
-                '[OPSIONAL] Ukuran Sepatu Safety (36-46)',
-                '[OPSIONAL] Golongan Darah (A/B/AB/O)',
-                '[OPSIONAL] Nama Gadis Ibu Kandung',
-                '[OPSIONAL] Nomor Kartu Keluarga (No KK)',
-                '[OPSIONAL] Nama Suami / Istri',
-                '[OPSIONAL] NIK KTP Pasangan',
-                '[OPSIONAL] Tempat Lahir Pasangan',
-                '[OPSIONAL] Tanggal Lahir Pasangan (YYYY-MM-DD)',
-                '[OPSIONAL] Nama Anak ke 1',
-                '[OPSIONAL] Nama Anak ke 2',
-                '[OPSIONAL] Nama Anak ke 3'
+                '[OPSIONAL] Password Awal',
+                '[OPSIONAL] Role',
+                '[OPSIONAL] Departemen',
+                '[OPSIONAL] Status Karyawan'
             ]);
-            // Contoh 1: Import Cepat / Minimal (Hanya isi Nama, Email, dan Departemen. Kolom biodata lainnya dikosongkan untuk diisi mandiri oleh karyawan)
+
+            // =========================================================================================================
+            // 3. CONTOH DATA BARIS
+            // =========================================================================================================
             fputcsv($file, [
-                'EMP-101',
+                'SA-001',
                 'Ahmad Fauzi',
-                'ahmad.fauzi@sgin.co.id',
+                'ahmad.fauzi@sugiyama.co.id',
                 'password123',
                 'employee',
-                'Information Technology',
-                '',
-                '',
-                '12',
-                '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''
+                'IT',
+                'Tetap'
             ]);
-            // Contoh 2: Import Lengkap (Jika Admin sudah memiliki data diri lengkap sebelumnya)
+
             fputcsv($file, [
-                'EMP-102',
+                'SA-002',
                 'Budi Santoso',
-                'budi.santoso@sgin.co.id',
+                'budi.santoso@sugiyama.co.id',
                 'password123',
-                'employee',
-                'Information Technology',
-                '',
-                '',
-                '12',
-                '2023-01-15',
-                'Tetap',
-                'Staff IT',
-                'S1 Teknik Informatika',
-                '3201012345670001',
-                'Laki-laki',
-                'Karawang',
-                '1995-08-17',
-                '081234567890',
-                'Jl. Raya Sugiyama No. 12, Karawang',
-                'Jl. Melati No. 5, Karawang Barat',
-                'Menikah',
-                '12.345.678.9-408.000',
-                '0001234567890',
-                'Klinik Pratama Sugiyama',
-                '19012345678',
-                'BCA',
-                '8735012345',
-                'B 1234 SGI',
-                '950812345678',
-                '2028-08-17',
-                '42',
-                'O',
-                'Siti Aminah',
-                '3201012345670002',
-                'Dewi Lestari',
-                '3201015567890003',
-                'Bandung',
-                '1997-04-21',
-                'Dimas Pratama',
-                '',
-                ''
+                'supervisor',
+                'HRD',
+                'Tetap'
             ]);
+
+            fputcsv($file, [
+                '',
+                'Dewi Lestari',
+                'dewi.lestari@sugiyama.co.id',
+                '',
+                'employee',
+                'PROD',
+                'Kontrak'
+            ]);
+
             fclose($file);
         }, 200, $headers);
     }
@@ -593,27 +572,52 @@ class HrdController extends Controller
         }
 
         $successCount = 0;
-        $rowNumber = 0;
         $departments = $this->departmentRepo->getAll();
         $dbRoles = class_exists('\\Spatie\\Permission\\Models\\Role') ? \Spatie\Permission\Models\Role::pluck('name')->map(fn($r) => strtolower(trim($r)))->toArray() : [];
-        $validRoles = array_unique(array_merge(['employee', 'manager', 'admin', 'superadmin'], $dbRoles));
+        $validRoles = array_unique(array_merge(['employee', 'manager', 'admin', 'superadmin', 'supervisor'], $dbRoles));
 
         while (($row = fgetcsv($handle, 4000, ',')) !== false) {
-            $rowNumber++;
-            // Skip header row reliably
-            if ($rowNumber === 1 && preg_match('/(nik|nama|email|wajib|opsional)/i', ($row[0] ?? '') . ($row[1] ?? ''))) continue;
-            if (empty($row[1]) || empty($row[2])) continue;
-            // Also skip if values match column header names
-            if (preg_match('/(nama|email|wajib|opsional)/i', $row[1]) && preg_match('/(nama|email|wajib|opsional|login)/i', $row[2])) continue;
+            $col0 = trim($row[0] ?? '');
+            $col1 = trim($row[1] ?? '');
+            $col2 = trim($row[2] ?? '');
 
-            $nik = trim($row[0] ?? '') ?: 'EMP-' . date('Y') . '-' . rand(100, 999);
-            $name = trim($row[1]);
-            $email = trim($row[2]);
+            // Skip empty rows
+            if (empty($col0) && empty($col1) && empty($col2)) {
+                continue;
+            }
+
+            // Skip comments / tutorial rows
+            if (str_starts_with($col0, '#') || 
+                str_starts_with($col0, '=') || 
+                str_starts_with($col0, '-') || 
+                preg_match('/^(tutorial|panduan|petunjuk|daftar|catatan|kode)/i', $col0)) {
+                continue;
+            }
+
+            // Skip table header row
+            if (preg_match('/(nik|nama|email|wajib|opsional)/i', $col0 . $col1) && 
+                preg_match('/(nama|email|login|wajib|opsional)/i', $col1 . $col2)) {
+                continue;
+            }
+
+            // Check if name and email are present
+            if (empty($col1) || empty($col2)) {
+                continue;
+            }
+
+            // Skip if value matches header keywords
+            if (preg_match('/(nama|lengkap|wajib)/i', $col1) && preg_match('/(email|login|akun)/i', $col2)) {
+                continue;
+            }
+
+            $nik = $col0 ?: 'EMP-' . date('Y') . '-' . rand(100, 999);
+            $name = $col1;
+            $email = $col2;
             $password = trim($row[3] ?? '') ?: 'password123';
             $inputRole = strtolower(trim($row[4] ?? ''));
             $role = in_array($inputRole, $validRoles) ? $inputRole : 'employee';
             $deptInput = trim($row[5] ?? '');
-            $quota = isset($row[8]) && is_numeric($row[8]) ? (int) $row[8] : 12;
+            $statusInput = trim($row[6] ?? '') ?: 'Tetap';
 
             $deptId = null;
             if ($deptInput) {
@@ -621,59 +625,62 @@ class HrdController extends Controller
                 $deptId = $matched?->id;
             }
 
-            // Parsing optional biodata fields if present in CSV
             $userData = [
                 'nik' => $nik,
                 'name' => $name,
                 'password' => Hash::make($password),
                 'role' => $role,
                 'department_id' => $deptId,
+                'employee_status' => $statusInput,
             ];
 
-            if (!empty($row[9])) $userData['join_date'] = trim($row[9]);
-            if (!empty($row[10])) $userData['employee_status'] = trim($row[10]);
-            if (!empty($row[11])) $userData['position'] = trim($row[11]);
-            if (!empty($row[12])) $userData['education'] = trim($row[12]);
-            if (!empty($row[13])) $userData['ktp_number'] = trim($row[13]);
-            if (!empty($row[14])) $userData['gender'] = trim($row[14]);
-            if (!empty($row[15])) $userData['birth_place'] = trim($row[15]);
-            if (!empty($row[16])) $userData['birth_date'] = trim($row[16]);
-            if (!empty($row[17])) $userData['phone_number'] = trim($row[17]);
-            if (!empty($row[18])) $userData['ktp_address'] = trim($row[18]);
-            if (!empty($row[19])) $userData['domicile_address'] = trim($row[19]);
-            if (!empty($row[20])) $userData['marital_status'] = trim($row[20]);
-            if (!empty($row[21])) $userData['npwp'] = trim($row[21]);
-            if (!empty($row[22])) $userData['bpjs_kesehatan_number'] = trim($row[22]);
-            if (!empty($row[23])) $userData['bpjs_health_facility'] = trim($row[23]);
-            if (!empty($row[24])) $userData['bpjs_ketenagakerjaan_number'] = trim($row[24]);
-            if (!empty($row[25])) $userData['bank_name'] = trim($row[25]);
-            if (!empty($row[26])) $userData['bank_account_number'] = trim($row[26]);
-            if (!empty($row[27])) $userData['vehicle_plate_number'] = trim($row[27]);
-            if (!empty($row[28])) $userData['sim_number'] = trim($row[28]);
-            if (!empty($row[29])) $userData['sim_valid_until'] = trim($row[29]);
-            if (!empty($row[30])) $userData['shoe_size'] = trim($row[30]);
-            if (!empty($row[31])) $userData['blood_type'] = trim($row[31]);
-            if (!empty($row[32])) $userData['mother_maiden_name'] = trim($row[32]);
-            if (!empty($row[33])) $userData['kk_number'] = trim($row[33]);
-            if (!empty($row[34])) $userData['spouse_name'] = trim($row[34]);
-            if (!empty($row[35])) $userData['spouse_ktp_number'] = trim($row[35]);
-            if (!empty($row[36])) $userData['spouse_birth_place'] = trim($row[36]);
-            if (!empty($row[37])) $userData['spouse_birth_date'] = trim($row[37]);
-            if (!empty($row[38])) $userData['child_1_name'] = trim($row[38]);
-            if (!empty($row[39])) $userData['child_2_name'] = trim($row[39]);
-            if (!empty($row[40])) $userData['child_3_name'] = trim($row[40]);
+            // Backward compatibility for legacy full templates
+            if (isset($row[9]) && !empty($row[9])) $userData['join_date'] = trim($row[9]);
+            if (isset($row[11]) && !empty($row[11])) $userData['position'] = trim($row[11]);
+            if (isset($row[12]) && !empty($row[12])) $userData['education'] = trim($row[12]);
+            if (isset($row[13]) && !empty($row[13])) $userData['ktp_number'] = trim($row[13]);
+            if (isset($row[14]) && !empty($row[14])) $userData['gender'] = trim($row[14]);
+            if (isset($row[15]) && !empty($row[15])) $userData['birth_place'] = trim($row[15]);
+            if (isset($row[16]) && !empty($row[16])) $userData['birth_date'] = trim($row[16]);
+            if (isset($row[17]) && !empty($row[17])) $userData['phone_number'] = trim($row[17]);
+            if (isset($row[18]) && !empty($row[18])) $userData['ktp_address'] = trim($row[18]);
+            if (isset($row[19]) && !empty($row[19])) $userData['domicile_address'] = trim($row[19]);
+            if (isset($row[20]) && !empty($row[20])) $userData['marital_status'] = trim($row[20]);
+            if (isset($row[21]) && !empty($row[21])) $userData['npwp'] = trim($row[21]);
+            if (isset($row[22]) && !empty($row[22])) $userData['bpjs_kesehatan_number'] = trim($row[22]);
+            if (isset($row[23]) && !empty($row[23])) $userData['bpjs_health_facility'] = trim($row[23]);
+            if (isset($row[24]) && !empty($row[24])) $userData['bpjs_ketenagakerjaan_number'] = trim($row[24]);
+            if (isset($row[25]) && !empty($row[25])) $userData['bank_name'] = trim($row[25]);
+            if (isset($row[26]) && !empty($row[26])) $userData['bank_account_number'] = trim($row[26]);
+            if (isset($row[27]) && !empty($row[27])) $userData['vehicle_plate_number'] = trim($row[27]);
+            if (isset($row[28]) && !empty($row[28])) $userData['sim_number'] = trim($row[28]);
+            if (isset($row[29]) && !empty($row[29])) $userData['sim_valid_until'] = trim($row[29]);
+            if (isset($row[30]) && !empty($row[30])) $userData['shoe_size'] = trim($row[30]);
+            if (isset($row[31]) && !empty($row[31])) $userData['blood_type'] = trim($row[31]);
+            if (isset($row[32]) && !empty($row[32])) $userData['mother_maiden_name'] = trim($row[32]);
+            if (isset($row[33]) && !empty($row[33])) $userData['kk_number'] = trim($row[33]);
 
             $user = User::updateOrCreate(
                 ['email' => $email],
                 $userData
             );
 
-            $this->quotaService->setTotalQuota($user->id, $quota);
+            // Sync Spatie role
+            if (method_exists($user, 'syncRoles') && !empty($role)) {
+                try {
+                    if (class_exists('\\Spatie\\Permission\\Models\\Role')) {
+                        \Spatie\Permission\Models\Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
+                        $user->syncRoles([$role]);
+                    }
+                } catch (\Throwable $e) {}
+            }
+
+            $this->quotaService->setTotalQuota($user->id, 12);
             $successCount++;
         }
 
         fclose($handle);
-        return back()->with('success', "Import berhasil! {$successCount} data karyawan beserta data diri awal berhasil diproses.");
+        return back()->with('success', "Import berhasil! {$successCount} data karyawan berhasil diproses ke sistem.");
     }
 
     public function exportBiodataCsv(Request $request): StreamedResponse
