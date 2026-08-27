@@ -686,11 +686,11 @@ class HrdController extends Controller
                     'employee_status' => $statusInput,
                 ];
 
-                // Password handling: only set/update if provided or new user
+                // Password handling: explicitly hash using Hash::make for reliable login authentication
                 if (!empty($passwordInput)) {
-                    $userData['password'] = $passwordInput;
+                    $userData['password'] = Hash::make($passwordInput);
                 } elseif (!$existingUser) {
-                    $userData['password'] = 'password123';
+                    $userData['password'] = Hash::make('password123');
                 }
 
                 // Backward compatibility for legacy full templates

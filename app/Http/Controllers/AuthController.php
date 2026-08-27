@@ -23,13 +23,20 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
+        $request->validate([
+            'email' => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 
-        // Security: Rate Limiting by Email + Client IP (5 attempts per minute)
-        $throttleKey = Str::transliterate(Str::lower($request->input('email')) . '|' . $request->ip());
+        $loginInput = trim($request->input('email'));
+        $password = $request->input('password');
+
+        // Check if input is an email format or NIK
+        $isEmail = filter_var($loginInput, FILTER_VALIDATE_EMAIL);
+        $field = $isEmail ? 'email' : 'nik';
+
+        // Security: Rate Limiting by Login Identifier + Client IP (5 attempts per minute)
+        $throttleKey = Str::transliterate(Str::lower($loginInput) . '|' . $request->ip());
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             $seconds = RateLimiter::availableIn($throttleKey);
@@ -37,6 +44,11 @@ class AuthController extends Controller
                 'email' => "Terlalu banyak percobaan masuk yang salah. Silakan coba kembali dalam {$seconds} detik demi keamanan akun Anda.",
             ]);
         }
+
+        $credentials = [
+            $field => $loginInput,
+            'password' => $password,
+        ];
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             RateLimiter::clear($throttleKey);
@@ -47,7 +59,7 @@ class AuthController extends Controller
         RateLimiter::hit($throttleKey, 60);
 
         return back()->withErrors([
-            'email' => 'Email atau password yang Anda masukkan tidak cocok.',
+            'email' => 'Email / NIK atau kata sandi yang Anda masukkan tidak cocok.',
         ])->onlyInput('email');
     }
 

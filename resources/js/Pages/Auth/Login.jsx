@@ -160,26 +160,26 @@ export default function Login() {
                 Selamat Datang Kembali
               </h2>
               <p className="text-xs text-slate-500 font-medium max-w-xs mx-auto">
-                Silakan masuk menggunakan email akun perusahaan Anda.
+                Silakan masuk menggunakan Email atau NIK akun karyawan Anda.
               </p>
             </div>
 
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email Input */}
+              {/* Email / NIK Input */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Email Perusahaan
+                  Email atau NIK Karyawan
                 </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-emerald-600 transition-colors">
                     <Mail size={17} />
                   </div>
                   <input
-                    type="email"
+                    type="text"
                     value={data.email}
                     onChange={(e) => setData('email', e.target.value)}
-                    placeholder="nama@sgin.co.id"
+                    placeholder="nama@sgin.co.id atau NIK (SA-001)"
                     className={`w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-50 border ${
                       errors.email ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 focus:border-emerald-600'
                     } text-slate-900 placeholder-slate-400 text-xs sm:text-sm font-semibold focus:bg-white focus:ring-4 focus:ring-emerald-500/15 transition-all outline-none`}

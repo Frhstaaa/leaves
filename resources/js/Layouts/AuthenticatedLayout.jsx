@@ -219,11 +219,11 @@ export default function AuthenticatedLayout({ children, title }) {
   // Granular Permission & Role Helpers
   const userPermissions = user?.permissions || [];
   const isSuperadmin = Boolean(user?.is_superadmin || user?.role === 'superadmin' || user?.roles?.includes('superadmin'));
+  const can = (perm) => isSuperadmin || userPermissions.includes(perm);
+
   const isAdmin = Boolean(user?.is_admin || user?.role === 'admin' || user?.roles?.includes('admin') || isSuperadmin);
   const isManager = Boolean(user?.is_manager || user?.role === 'manager' || user?.roles?.includes('manager') || isAdmin);
   const isApprover = Boolean(user?.is_approver || isManager || isAdmin || pendingApprovalsCount > 0 || can('manage-approvals') || can('approve-leave-request'));
-
-  const can = (perm) => isSuperadmin || userPermissions.includes(perm);
 
   const handleDirectInstall = () => {
     const promptEvent = window.deferredPWAInstallPrompt;
