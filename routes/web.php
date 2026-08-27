@@ -106,7 +106,8 @@ Route::middleware(['auth'])->group(function () {
 
     // Profile & Biodata Routes
     Route::get('/profile/biodata', [\App\Http\Controllers\ProfileController::class, 'biodata'])->name('profile.biodata');
-    Route::put('/profile/biodata', [\App\Http\Controllers\ProfileController::class, 'updateBiodata'])->name('profile.biodata.update');
+    Route::match(['put', 'post'], '/profile/biodata', [\App\Http\Controllers\ProfileController::class, 'updateBiodata'])->name('profile.biodata.update');
+    Route::match(['put', 'post'], '/profile/biodata/update', [\App\Http\Controllers\ProfileController::class, 'updateBiodata']);
     Route::get('/profile/biodata/print', [\App\Http\Controllers\ProfileController::class, 'printBiodata'])->name('profile.biodata.print');
     Route::post('/profile/avatar', [\App\Http\Controllers\ProfileController::class, 'updateAvatar'])->name('profile.avatar');
     Route::put('/profile/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('profile.password');
