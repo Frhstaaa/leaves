@@ -40,11 +40,26 @@ foreach ($storageDirs as $dir) {
     @chmod($dir, 0777);
 }
 
-// Ensure all assets in public/build are readable
+// Ensure all assets in public/build are readable and mirrored to root build
 $buildAssets = glob($basePath . '/public/build/assets/*');
 if ($buildAssets) {
     foreach ($buildAssets as $f) {
         @chmod($f, 0777);
+    }
+}
+
+// Mirror public/build to root build/ to ensure zero 404 regardless of web server path resolution
+$rootBuild = $basePath . '/build';
+$pubBuild = $basePath . '/public/build';
+if (is_dir($pubBuild) && $rootBuild !== $pubBuild) {
+    if (!is_dir($rootBuild)) @mkdir($rootBuild, 0777, true);
+    if (!is_dir($rootBuild . '/assets')) @mkdir($rootBuild . '/assets', 0777, true);
+    @copy($pubBuild . '/manifest.json', $rootBuild . '/manifest.json');
+    if ($buildAssets) {
+        foreach ($buildAssets as $f) {
+            @copy($f, $rootBuild . '/assets/' . basename($f));
+            @chmod($rootBuild . '/assets/' . basename($f), 0777);
+        }
     }
 }
 

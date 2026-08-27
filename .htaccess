@@ -21,6 +21,10 @@ DirectoryIndex index.php index.html
     RewriteCond %{REQUEST_URI} ^.*/public/ [NC]
     RewriteRule ^ - [L]
 
+    # Explicitly route build and storage requests to public folder
+    RewriteRule ^build/(.*)$ public/build/$1 [L]
+    RewriteRule ^storage/(.*)$ public/storage/$1 [L]
+
     # 3. If file exists in current directory, serve directly
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
