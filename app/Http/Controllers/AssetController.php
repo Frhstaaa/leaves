@@ -35,47 +35,38 @@ class AssetController extends Controller
             abort(404);
         }
         $cleanPath = ltrim(str_replace('\\', '/', $path), '/');
-        
-        $candidates = [
-            public_path('build/' . $cleanPath),
-            base_path('public/build/' . $cleanPath),
-            base_path('build/' . $cleanPath),
-            dirname(dirname(__DIR__)) . '/public/build/' . $cleanPath,
-        ];
-
-        $targetFile = null;
-        foreach ($candidates as $c) {
-            if (file_exists($c) && is_file($c)) {
-                $targetFile = $c;
-                break;
-            }
+        $filePath = public_path('build/' . $cleanPath);
+        if (!file_exists($filePath)) {
+            $filePath = base_path('public/build/' . $cleanPath);
         }
-
-        if ($targetFile) {
-            $ext = strtolower(pathinfo($targetFile, PATHINFO_EXTENSION));
+        $real = realpath($filePath);
+        $publicBuild = realpath(public_path('build')) ?: realpath(base_path('public/build'));
+        if ($real && is_file($real) && $publicBuild && str_starts_with($real, $publicBuild)) {
+            $ext = strtolower(pathinfo($real, PATHINFO_EXTENSION));
             $mimes = [
                 'js' => 'application/javascript; charset=utf-8',
                 'mjs' => 'application/javascript; charset=utf-8',
                 'css' => 'text/css; charset=utf-8',
                 'json' => 'application/json; charset=utf-8',
-                'map' => 'application/json; charset=utf-8',
-                'svg' => 'image/svg+xml',
-                'webp' => 'image/webp',
+                'webmanifest' => 'application/manifest+json; charset=utf-8',
                 'png' => 'image/png',
+                'webp' => 'image/webp',
                 'jpg' => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'svg' => 'image/svg+xml',
+                'ico' => 'image/x-icon',
                 'woff2' => 'font/woff2',
                 'woff' => 'font/woff',
                 'ttf' => 'font/ttf',
             ];
-            $mime = $mimes[$ext] ?? 'application/octet-stream';
-            return response(file_get_contents($targetFile), 200, [
-                'Content-Type' => $mime,
+            $contentType = $mimes[$ext] ?? 'application/octet-stream';
+            return response(file_get_contents($real), 200, [
+                'Content-Type' => $contentType,
                 'Access-Control-Allow-Origin' => '*',
                 'Cache-Control' => 'public, max-age=31536000, immutable',
             ]);
         }
-
-        return response('/* Asset not found: ' . $cleanPath . ' */', 404);
+        return response('File not found', 404);
     }
 
     /**
@@ -162,16 +153,6 @@ class AssetController extends Controller
                     'Access-Control-Allow-Origin' => '*',
                 ]);
             }
-        }
-
-        // 4. Fallback for avatar requests (prevent broken images & 404s if file was lost during redeploy)
-        if (str_contains($cleanPath, 'avatar')) {
-            $svgAvatar = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128"><circle cx="64" cy="64" r="64" fill="#059669"/><circle cx="64" cy="48" r="22" fill="#ffffff"/><path d="M24 108c0-22.091 17.909-40 40-40s40 17.909 40 40z" fill="#ffffff"/></svg>';
-            return response($svgAvatar, 200, [
-                'Content-Type' => 'image/svg+xml',
-                'Access-Control-Allow-Origin' => '*',
-                'Cache-Control' => 'public, max-age=3600',
-            ]);
         }
 
         return response('File not found', 404);

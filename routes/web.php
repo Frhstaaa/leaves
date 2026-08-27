@@ -70,8 +70,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/hrd/employees/import', [HrdController::class, 'importEmployees'])->name('hrd.employees.import');
     Route::get('/hrd/employees/export-biodata', [HrdController::class, 'exportBiodataCsv'])->name('hrd.employees.export-biodata');
     Route::get('/hrd/employees/{userId}/biodata', [HrdController::class, 'employeeBiodata'])->name('hrd.employees.biodata');
+    Route::get('/hrd/employees/biodata/{userId}', [HrdController::class, 'employeeBiodata'])->name('hrd.employees.biodata.alt');
     Route::match(['put', 'post'], '/hrd/employees/{userId}/biodata', [HrdController::class, 'updateEmployeeBiodata'])->name('hrd.employees.biodata.update');
-    Route::match(['put', 'post'], '/hrd/employees/{userId}/biodata/update', [HrdController::class, 'updateEmployeeBiodata']);
     Route::match(['put', 'post'], '/hrd/employees/biodata/{userId}/update', [HrdController::class, 'updateEmployeeBiodata']);
     Route::match(['put', 'post'], '/hrd/employees/biodata/{userId}', [HrdController::class, 'updateEmployeeBiodata']);
     Route::get('/hrd/employees/{userId}/biodata/print', [HrdController::class, 'printEmployeeBiodata'])->name('hrd.employees.biodata.print');
@@ -106,15 +106,10 @@ Route::middleware(['auth'])->group(function () {
 
     // Profile & Biodata Routes
     Route::get('/profile/biodata', [\App\Http\Controllers\ProfileController::class, 'biodata'])->name('profile.biodata');
-    Route::match(['put', 'post'], '/profile/biodata', [\App\Http\Controllers\ProfileController::class, 'updateBiodata'])->name('profile.biodata.update');
-    Route::match(['put', 'post'], '/profile/biodata/update', [\App\Http\Controllers\ProfileController::class, 'updateBiodata']);
-    Route::match(['put', 'post'], '/biodata/update', [\App\Http\Controllers\ProfileController::class, 'updateBiodata']);
-    Route::match(['put', 'post'], '/biodata', [\App\Http\Controllers\ProfileController::class, 'updateBiodata']);
-    // Rute canonical baru — bebas konflik nama, tidak bergantung prefix subfolder
-    Route::post('/save-biodata', [\App\Http\Controllers\ProfileController::class, 'updateBiodata'])->name('profile.biodata.save');
+    Route::put('/profile/biodata', [\App\Http\Controllers\ProfileController::class, 'updateBiodata'])->name('profile.biodata.update');
     Route::get('/profile/biodata/print', [\App\Http\Controllers\ProfileController::class, 'printBiodata'])->name('profile.biodata.print');
     Route::post('/profile/avatar', [\App\Http\Controllers\ProfileController::class, 'updateAvatar'])->name('profile.avatar');
-    Route::match(['put', 'post'], '/profile/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('profile.password');
+    Route::put('/profile/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('profile.password');
 
     // Employee Payslips Portal
     Route::get('/payslips', [PayslipController::class, 'index'])->name('payslips.index');

@@ -124,23 +124,16 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Hardcode URL absolut dari window.location.origin
-    // Menghindari bug route() Ziggy di lingkungan subfolder cPanel hosting
-    const appBase = (typeof window !== 'undefined' && window.location.origin)
-      ? window.location.origin + '/leaves-application'
-      : '/leaves-application';
-
     const targetUrl = isHrdView
-      ? `${appBase}/hrd/employees/${user.id}/biodata`
-      : `${appBase}/profile/biodata`;
+      ? route('hrd.employees.biodata.update', user.id)
+      : route('profile.biodata.update');
 
-    form.post(targetUrl, {
+    form.put(targetUrl, {
       preserveScroll: true,
       onSuccess: () => {
         showToast('Data diri berhasil disimpan ke sistem PT SUGIYAMA INDONESIA!');
       },
-      onError: (errors) => {
-        console.error('Biodata submit errors:', errors);
+      onError: () => {
         showAlert({
           title: 'Periksa Isian Formulir',
           text: 'Terdapat beberapa data yang belum sesuai format. Silakan periksa pesan kesalahan pada formulir.',

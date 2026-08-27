@@ -1,14 +1,14 @@
 <?php
 /**
  * SGIN Leaves Application - Emergency System Recovery & Self-Healing Setup Tool
- * Akses: https://www.sgin.co.id/leaves-application/setup.php
+ * Akses: https://sgin.co.id/leaves-application/setup.php
  */
 
 @set_time_limit(600);
 @ini_set('max_execution_time', 600);
 @ini_set('memory_limit', '512M');
-@ini_set('display_errors', 0);
-error_reporting(0);
+@ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
 // Determine base path
 $basePath = __DIR__;
@@ -38,29 +38,6 @@ foreach ($storageDirs as $dir) {
         @mkdir($dir, 0777, true);
     }
     @chmod($dir, 0777);
-}
-
-// Ensure all assets in public/build are readable and mirrored to root build
-$buildAssets = glob($basePath . '/public/build/assets/*');
-if ($buildAssets) {
-    foreach ($buildAssets as $f) {
-        @chmod($f, 0777);
-    }
-}
-
-// Mirror public/build to root build/ to ensure zero 404 regardless of web server path resolution
-$rootBuild = $basePath . '/build';
-$pubBuild = $basePath . '/public/build';
-if (is_dir($pubBuild) && $rootBuild !== $pubBuild) {
-    if (!is_dir($rootBuild)) @mkdir($rootBuild, 0777, true);
-    if (!is_dir($rootBuild . '/assets')) @mkdir($rootBuild . '/assets', 0777, true);
-    @copy($pubBuild . '/manifest.json', $rootBuild . '/manifest.json');
-    if ($buildAssets) {
-        foreach ($buildAssets as $f) {
-            @copy($f, $rootBuild . '/assets/' . basename($f));
-            @chmod($rootBuild . '/assets/' . basename($f), 0777);
-        }
-    }
 }
 
 // 2. Safe execution helper
@@ -116,290 +93,24 @@ function directFileCacheClear($basePath) {
     return $cleared;
 }
 
-function getDefaultEnvContent() {
-    return 'APP_NAME="SGIN Leaves"' . "\n" .
-'APP_ENV=production' . "\n" .
-'APP_KEY=base64:dpvW3s9ONmjRHR+FYgLupNxaYsivVV4LLpqFIr+MN4A=' . "\n" .
-'APP_DEBUG=false' . "\n" .
-'APP_URL=https://www.sgin.co.id/leaves-application' . "\n" .
-'ASSET_URL=https://www.sgin.co.id/leaves-application' . "\n\n" .
-'LOG_CHANNEL=stack' . "\n" .
-'LOG_DEPRECATIONS_CHANNEL=null' . "\n" .
-'LOG_LEVEL=error' . "\n\n" .
-'DB_CONNECTION=mysql' . "\n" .
-'DB_HOST=127.0.0.1' . "\n" .
-'DB_PORT=3306' . "\n" .
-'DB_DATABASE=sginco_leav' . "\n" .
-'DB_USERNAME=sginco_leav' . "\n" .
-'DB_PASSWORD=@SginC01!!!' . "\n\n" .
-'BROADCAST_DRIVER=log' . "\n" .
-'CACHE_DRIVER=file' . "\n" .
-'FILESYSTEM_DISK=r2' . "\n" .
-'QUEUE_CONNECTION=sync' . "\n" .
-'SESSION_DRIVER=file' . "\n" .
-'SESSION_LIFETIME=120' . "\n\n" .
-'MEMCACHED_HOST=127.0.0.1' . "\n\n" .
-'REDIS_HOST=127.0.0.1' . "\n" .
-'REDIS_PASSWORD=null' . "\n" .
-'REDIS_PORT=6379' . "\n\n" .
-'MAIL_MAILER=smtp' . "\n" .
-'MAIL_HOST=mailpit' . "\n" .
-'MAIL_PORT=1025' . "\n" .
-'MAIL_USERNAME=null' . "\n" .
-'MAIL_PASSWORD=null' . "\n" .
-'MAIL_ENCRYPTION=null' . "\n" .
-'MAIL_FROM_ADDRESS="leaves@sgin.co.id"' . "\n" .
-'MAIL_FROM_NAME="${APP_NAME}"' . "\n\n" .
-'# Cloudflare R2 Cloud Storage (10GB Lifetime Free)' . "\n" .
-'CLOUDFLARE_R2_ACCESS_KEY_ID=fbe7d6c6ec7f262c09fbaa7e45b2d4da' . "\n" .
-'CLOUDFLARE_R2_SECRET_ACCESS_KEY=4f4941af6f1a58b7b00a33de9b20c5f3974a3a15c48636f99f2dd846cca20b69' . "\n" .
-'CLOUDFLARE_R2_DEFAULT_REGION=auto' . "\n" .
-'CLOUDFLARE_R2_BUCKET=sgin' . "\n" .
-'CLOUDFLARE_R2_ENDPOINT=https://a6cec2d2f2d06ff617a7e61a35c11429.r2.cloudflarestorage.com' . "\n" .
-'CLOUDFLARE_R2_URL=https://a6cec2d2f2d06ff617a7e61a35c11429.r2.cloudflarestorage.com/sgin' . "\n" .
-'CLOUDFLARE_R2_USE_PATH_STYLE_ENDPOINT=true' . "\n\n" .
-'# AWS S3 compatibility parameters' . "\n" .
-'AWS_ACCESS_KEY_ID=fbe7d6c6ec7f262c09fbaa7e45b2d4da' . "\n" .
-'AWS_SECRET_ACCESS_KEY=4f4941af6f1a58b7b00a33de9b20c5f3974a3a15c48636f99f2dd846cca20b69' . "\n" .
-'AWS_DEFAULT_REGION=auto' . "\n" .
-'AWS_BUCKET=sgin' . "\n" .
-'AWS_ENDPOINT=https://a6cec2d2f2d06ff617a7e61a35c11429.r2.cloudflarestorage.com' . "\n" .
-'AWS_URL=https://a6cec2d2f2d06ff617a7e61a35c11429.r2.cloudflarestorage.com/sgin' . "\n" .
-'AWS_USE_PATH_STYLE_ENDPOINT=true' . "\n\n" .
-'PUSHER_APP_ID=' . "\n" .
-'PUSHER_APP_KEY=' . "\n" .
-'PUSHER_APP_SECRET=' . "\n" .
-'PUSHER_HOST=' . "\n" .
-'PUSHER_PORT=443' . "\n" .
-'PUSHER_SCHEME=https' . "\n" .
-'PUSHER_APP_CLUSTER=mt1' . "\n\n" .
-'VITE_PUSHER_APP_KEY="${PUSHER_APP_KEY}"' . "\n" .
-'VITE_PUSHER_HOST="${PUSHER_HOST}"' . "\n" .
-'VITE_PUSHER_PORT="${PUSHER_PORT}"' . "\n" .
-'VITE_PUSHER_SCHEME="${PUSHER_SCHEME}"' . "\n" .
-'VITE_PUSHER_APP_CLUSTER="${PUSHER_APP_CLUSTER}"' . "\n";
-}
-
-$envFile = $basePath . '/.env';
-$action = $_POST['action'] ?? (!empty($_GET['run']) ? ($_GET['run'] === '1' ? 'auto_repair' : $_GET['run']) : null);
+// Handle Auto-Repair Actions via POST or GET ?run=1
+$action = $_POST['action'] ?? ($_GET['run'] ? 'auto_repair' : null);
 $logs = [];
-
-// ============================================================
-// Action: zip_sync — Download full ZIP dari GitHub langsung
-// Gunakan: https://sgin.co.id/leaves-application/public/setup.php?run=zip_sync
-// ============================================================
-if ($action === 'zip_sync') {
-    header('Content-Type: text/plain; charset=utf-8');
-    echo "=== ZIP SYNC dari GitHub Frhstaaa/leaves:main ===\n\n";
-    $repo = 'Frhstaaa/leaves';
-    $branch = 'main';
-    $zipUrl = "https://github.com/$repo/archive/refs/heads/$branch.zip";
-
-    echo "[1] Mengunduh ZIP dari $zipUrl ...\n";
-    if (!function_exists('curl_init')) { echo "[ERROR] cURL tidak tersedia.\n"; exit; }
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $zipUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'SGIN-ZIP-Sync/2.0');
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 180);
-    $zipData = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlErr  = curl_error($ch);
-    curl_close($ch);
-
-    echo "[2] HTTP Status: $httpCode | Ukuran: " . strlen($zipData) . " bytes\n";
-    if ($httpCode !== 200 || empty($zipData)) {
-        echo "[ERROR] Gagal download ZIP: $curlErr\n"; exit;
-    }
-
-    $tempZip = $basePath . '/storage/zip_sync_temp.zip';
-    file_put_contents($tempZip, $zipData);
-    echo "[3] ZIP disimpan ke $tempZip\n";
-
-    $extractPath = $basePath . '/storage/zip_sync_extracted';
-    if (is_dir($extractPath)) {
-        $old = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($extractPath, RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::CHILD_FIRST
-        );
-        foreach ($old as $f) { $f->isDir() ? @rmdir($f->getPathname()) : @unlink($f->getPathname()); }
-        @rmdir($extractPath);
-    }
-    @mkdir($extractPath, 0777, true);
-
-    $zip = new ZipArchive();
-    if ($zip->open($tempZip) !== TRUE) {
-        echo "[ERROR] Gagal membuka file ZIP.\n"; @unlink($tempZip); exit;
-    }
-    $zip->extractTo($extractPath);
-    $zip->close();
-    @unlink($tempZip);
-    echo "[4] ZIP berhasil diekstrak ke $extractPath\n";
-
-    $sourceDir = '';
-    foreach (scandir($extractPath) as $item) {
-        if ($item !== '.' && $item !== '..' && is_dir("$extractPath/$item")) {
-            $sourceDir = "$extractPath/$item"; break;
-        }
-    }
-    if (!$sourceDir) { echo "[ERROR] Tidak dapat menemukan folder root di ZIP.\n"; exit; }
-    echo "[5] Source dir: $sourceDir\n";
-
-    $ignoreList = ['.env', 'storage/', 'public/storage', '.git/', 'node_modules/'];
-    $count = 0;
-    $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($sourceDir, RecursiveDirectoryIterator::SKIP_DOTS),
-        RecursiveIteratorIterator::SELF_FIRST
-    );
-    foreach ($iterator as $item) {
-        $subPath = str_replace('\\', '/', substr($item->getPathname(), strlen($sourceDir) + 1));
-        $destPath = $basePath . '/' . $subPath;
-        $skip = false;
-        foreach ($ignoreList as $ig) {
-            if (str_starts_with($subPath, rtrim($ig, '/'))) { $skip = true; break; }
-        }
-        if ($skip) continue;
-        if ($item->isDir()) {
-            if (!is_dir($destPath)) @mkdir($destPath, 0777, true);
-        } else {
-            if (@copy($item->getPathname(), $destPath)) { @chmod($destPath, 0644); $count++; }
-        }
-    }
-    echo "[6] Berhasil menyalin $count file ke server!\n";
-    echo "\n=== SELESAI! Semua file terbaru dari GitHub sudah di-deploy ke server. ===\n";
-    echo "\nBuka halaman: https://www.sgin.co.id/leaves-application/dashboard\n";
-    exit;
-}
-
-// Handle Restore / Save .env
-if ($action === 'restore_env') {
-    $customEnv = $_POST['env_content'] ?? null;
-    $contentToWrite = !empty($customEnv) ? $customEnv : getDefaultEnvContent();
-    if (@file_put_contents($envFile, $contentToWrite) !== false) {
-        $logs[] = "✓ File .env berhasil dibuat dan disimpan di $envFile";
-    } else {
-        $logs[] = "⚠️ Gagal menulis file .env! Periksa izin folder root (chmod 755/777).";
-    }
-}
-
 
 if ($action === 'auto_repair') {
     $logs[] = "=================================================================";
     $logs[] = "  🛠️ MEMULAI PERBAIKAN TOTAL SISTEM APLIKASI SGIN LEAVES...     ";
     $logs[] = "=================================================================\n";
 
-    // Step 0: Ensure .env exists
-    if (!file_exists($envFile)) {
-        $logs[] = "[0/6] File .env tidak ditemukan, membuat file .env produksi otomatis...";
-        @file_put_contents($envFile, getDefaultEnvContent());
-        $logs[] = "✓ File .env otomatis dibuat dengan koneksi database sginco_leav.";
-    }
-
-    // Step 1: Download & Sync Full Repository dari GitHub (UTAMA — Selalu Dijalankan)
-    $logs[] = "\n[1/6] Mengunduh paket terbaru dari GitHub (Frhstaaa/leaves:main)...";
-    $repo = 'Frhstaaa/leaves';
-    $branch = 'main';
-    $zipUrl = "https://github.com/$repo/archive/refs/heads/$branch.zip";
-    $synced = false;
-
-    if (function_exists('curl_init')) {
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $zipUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_USERAGENT, 'SGIN-Leaves-Setup/2.0');
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 180);
-        $zipData = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch);
-        curl_close($ch);
-
-        if ($httpCode === 200 && !empty($zipData)) {
-            $tempZip = $basePath . '/storage/github_temp_download.zip';
-            @file_put_contents($tempZip, $zipData);
-
-            // Bersihkan direktori ekstraksi lama
-            $extractPath = $basePath . '/storage/github_extracted_repo';
-            if (is_dir($extractPath)) {
-                $oldFiles = new RecursiveIteratorIterator(
-                    new RecursiveDirectoryIterator($extractPath, RecursiveDirectoryIterator::SKIP_DOTS),
-                    RecursiveIteratorIterator::CHILD_FIRST
-                );
-                foreach ($oldFiles as $f) {
-                    $f->isDir() ? @rmdir($f->getPathname()) : @unlink($f->getPathname());
-                }
-                @rmdir($extractPath);
-            }
-            @mkdir($extractPath, 0777, true);
-
-            $zip = new ZipArchive();
-            if ($zip->open($tempZip) === TRUE) {
-                $zip->extractTo($extractPath);
-                $zip->close();
-                @unlink($tempZip);
-
-                // Temukan folder root dari ekstrak (biasanya leaves-main/)
-                $sourceDir = '';
-                foreach (scandir($extractPath) as $item) {
-                    if ($item !== '.' && $item !== '..' && is_dir("$extractPath/$item")) {
-                        $sourceDir = "$extractPath/$item";
-                        break;
-                    }
-                }
-
-                if ($sourceDir) {
-                    $ignoreList = ['.env', 'storage/', 'public/storage', '.git/', 'node_modules/'];
-                    $iterator = new RecursiveIteratorIterator(
-                        new RecursiveDirectoryIterator($sourceDir, RecursiveDirectoryIterator::SKIP_DOTS),
-                        RecursiveIteratorIterator::SELF_FIRST
-                    );
-                    $copiedCount = 0;
-                    foreach ($iterator as $item) {
-                        $subPath = str_replace('\\', '/', substr($item->getPathname(), strlen($sourceDir) + 1));
-                        $destPath = $basePath . '/' . $subPath;
-                        $skip = false;
-                        foreach ($ignoreList as $ig) {
-                            if (str_starts_with($subPath, rtrim($ig, '/'))) { $skip = true; break; }
-                        }
-                        if ($skip) continue;
-                        if ($item->isDir()) {
-                            if (!is_dir($destPath)) @mkdir($destPath, 0777, true);
-                        } else {
-                            if (@copy($item->getPathname(), $destPath)) {
-                                @chmod($destPath, 0644);
-                                $copiedCount++;
-                            }
-                        }
-                    }
-                    $logs[] = "✓ ZIP Sync: Berhasil mengekstrak & menyalin $copiedCount file dari GitHub repo ($repo branch: $branch)!";
-                    $synced = true;
-                } else {
-                    $logs[] = "⚠️ Gagal menemukan direktori root dalam ZIP GitHub.";
-                }
-            } else {
-                $logs[] = "⚠️ Gagal membuka file ZIP yang diunduh dari GitHub.";
-                @unlink($tempZip);
-            }
-        } else {
-            $logs[] = "⚠️ Gagal mengunduh ZIP dari GitHub (HTTP: $httpCode" . ($curlError ? ", Error: $curlError" : '') . "). Mencoba git...";
-        }
-    }
-
-    // Fallback: Jika ZIP gagal, coba git reset
-    if (!$synced) {
-        $gitVer = runShell("git --version", $basePath);
-        if (str_contains(strtolower($gitVer ?? ''), 'git version')) {
-            $fetch = runShell("git fetch origin $branch 2>&1", $basePath);
-            $reset = runShell("git reset --hard origin/$branch 2>&1", $basePath);
-            $logs[] = "✓ Git Fallback: " . trim($reset ?: $fetch ?: 'Selesai');
-            $synced = true;
-        } else {
-            $logs[] = "ℹ️ Git tidak tersedia. Menggunakan file lokal server saat ini.";
-        }
+    // Step 1: Force Git pull & Hard Reset to GitHub main
+    $logs[] = "[1/6] Mengambil kodingan terbaru & terbersih dari GitHub main...";
+    $gitVer = runShell("git --version", $basePath);
+    if (str_contains(strtolower($gitVer), 'git version')) {
+        $fetch = runShell("git fetch origin main", $basePath);
+        $reset = runShell("git reset --hard origin/main", $basePath);
+        $logs[] = "✓ Git Reset: " . ($reset ?: $fetch ?: 'Selesai');
+    } else {
+        $logs[] = "ℹ️ Git CLI tidak tersedia, menggunakan file lokal saat ini.";
     }
 
     // Step 2: Clear All File Caches manually
@@ -462,97 +173,18 @@ if ($action === 'auto_repair') {
         }
     }
 
-    // Step 5: Fix Storage Structure, Symlinks & Restore Missing File Assets
-    $logs[] = "\n[5/6] Memeriksa tautan storage publik & file aset...";
+    // Step 5: Fix Storage Symlink
+    $logs[] = "\n[5/6] Memeriksa tautan storage publik...";
     $pubStorage = $basePath . '/public/storage';
     $appStorage = $basePath . '/storage/app/public';
-    $subDirs = ['avatars', 'logos', 'payslips'];
-
-    // 1. Ensure storage/app/public and all subdirectories exist
-    if (!is_dir($appStorage)) {
-        @mkdir($appStorage, 0777, true);
-    }
-    @chmod($appStorage, 0777);
-
-    foreach ($subDirs as $sd) {
-        $fullSub = $appStorage . '/' . $sd;
-        if (!is_dir($fullSub)) {
-            @mkdir($fullSub, 0777, true);
-        }
-        @chmod($fullSub, 0777);
-    }
-
-    // 2. Recreate symlink or mirror directories in public/storage
-    if (is_link($pubStorage)) {
-        @unlink($pubStorage);
-        @symlink($appStorage, $pubStorage);
-    } elseif (!file_exists($pubStorage)) {
+    if (!file_exists($pubStorage) && !is_link($pubStorage)) {
         @symlink($appStorage, $pubStorage);
     }
-
-    // If public/storage is a real directory (Windows / non-symlink host), ensure subdirs exist there too
-    if (is_dir($pubStorage) && !is_link($pubStorage)) {
-        foreach ($subDirs as $sd) {
-            $pubSub = $pubStorage . '/' . $sd;
-            if (!is_dir($pubSub)) {
-                @mkdir($pubSub, 0777, true);
-            }
-            @chmod($pubSub, 0777);
-        }
-    }
-
     if ($app) {
         try {
             \Illuminate\Support\Facades\Artisan::call('storage:link');
             $logs[] = "✓ php artisan storage:link: " . trim(\Illuminate\Support\Facades\Artisan::output() ?: 'Siap');
         } catch (\Throwable $e) {}
-
-        // 3. Scan users in DB and generate valid image files for any missing avatars
-        try {
-            if (class_exists('\\App\\Models\\User')) {
-                $users = \App\Models\User::whereNotNull('avatar')->where('avatar', '!=', '')->get();
-                $restoredCount = 0;
-                foreach ($users as $u) {
-                    $clean = ltrim($u->avatar, '/');
-                    $targetPath = $appStorage . '/' . $clean;
-                    $pubTargetPath = $pubStorage . '/' . $clean;
-
-                    if (!file_exists($targetPath)) {
-                        $dir = dirname($targetPath);
-                        if (!is_dir($dir)) @mkdir($dir, 0777, true);
-
-                        // Generate a valid 128x128 avatar WebP/PNG image file
-                        if (function_exists('imagecreatetruecolor')) {
-                            $im = @imagecreatetruecolor(128, 128);
-                            $bg = @imagecolorallocate($im, 5, 150, 105); // #059669 emerald
-                            $fg = @imagecolorallocate($im, 255, 255, 255);
-                            @imagefill($im, 0, 0, $bg);
-                            @imagefilledellipse($im, 64, 48, 44, 44, $fg);
-                            @imagefilledarc($im, 64, 115, 84, 84, 180, 360, $fg, IMG_ARC_PIE);
-                            if (function_exists('imagewebp') && str_ends_with(strtolower($clean), '.webp')) {
-                                @imagewebp($im, $targetPath, 85);
-                            } else {
-                                @imagepng($im, $targetPath);
-                            }
-                            @imagedestroy($im);
-
-                            // Copy to public/storage if not symlinked
-                            if (is_dir($pubStorage) && !is_link($pubStorage)) {
-                                $pubDir = dirname($pubTargetPath);
-                                if (!is_dir($pubDir)) @mkdir($pubDir, 0777, true);
-                                @copy($targetPath, $pubTargetPath);
-                            }
-                            $restoredCount++;
-                        }
-                    }
-                }
-                if ($restoredCount > 0) {
-                    $logs[] = "✓ Berhasil memulihkan $restoredCount file avatar gambar pada storage ($appStorage/avatars).";
-                }
-            }
-        } catch (\Throwable $e) {
-            $logs[] = "ℹ️ Avatar restore note: " . $e->getMessage();
-        }
     }
 
     // Step 6: Final Cache Generation
@@ -571,7 +203,7 @@ if ($action === 'auto_repair') {
     $logs[] = "=================================================================";
 }
 
-// Read last 50 lines of laravel.log
+// Read last 40 lines of laravel.log
 $recentLogs = '';
 $logFile = $basePath . '/storage/logs/laravel.log';
 if (file_exists($logFile)) {
@@ -586,10 +218,8 @@ if (empty($recentLogs)) {
 
 // Protocol & Host
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
-$host = $_SERVER['HTTP_HOST'] ?? 'www.sgin.co.id';
+$host = $_SERVER['HTTP_HOST'] ?? 'sgin.co.id';
 $appUrl = "$protocol://$host/leaves-application/dashboard";
-$hasEnv = file_exists($envFile);
-$currentEnvContent = $hasEnv ? @file_get_contents($envFile) : getDefaultEnvContent();
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -615,63 +245,17 @@ $currentEnvContent = $hasEnv ? @file_get_contents($envFile) : getDefaultEnvConte
                 </div>
                 <div>
                     <h1 class="text-xl sm:text-2xl font-black text-white">SGIN Leaves System Recovery & Setup</h1>
-                    <p class="text-xs sm:text-sm text-slate-400">Pusat Diagnostik & Perbaikan Otomatis PT Sugiyama Indonesia</p>
+                    <p class="text-xs sm:text-sm text-slate-400">Pusat Diagnostik & Perbaikan Otomatis Error 500 PT Sugiyama Indonesia</p>
                 </div>
             </div>
         </div>
-
-        <!-- Status .ENV Alert -->
-        <?php if (!$hasEnv): ?>
-            <div class="p-6 rounded-3xl bg-amber-950/70 border border-amber-500/50 shadow-xl space-y-4">
-                <div class="flex items-center space-x-3 text-amber-400">
-                    <span class="text-2xl">⚠️</span>
-                    <div>
-                        <h2 class="text-base font-bold text-white">File .env Belum Ditemukan di Server</h2>
-                        <p class="text-xs text-amber-300">File konfigurasi lingkungan (.env) belum ada. Anda dapat membuatnya secara instan di bawah ini.</p>
-                    </div>
-                </div>
-                
-                <form method="POST" action="" class="space-y-3">
-                    <input type="hidden" name="action" value="restore_env">
-                    <textarea
-                        name="env_content"
-                        rows="12"
-                        class="w-full bg-slate-950 border border-amber-500/30 rounded-2xl p-4 text-xs font-mono text-amber-200 focus:outline-none focus:border-amber-400"
-                    ><?= htmlspecialchars(getDefaultEnvContent()) ?></textarea>
-                    <button
-                        type="submit"
-                        class="px-6 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-lg transition-all"
-                    >
-                        💾 Simpan & Buat File .env Sekarang
-                    </button>
-                </form>
-            </div>
-        <?php else: ?>
-            <div class="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-between">
-                <div class="flex items-center space-x-2 text-emerald-400 text-xs font-semibold">
-                    <span>✓ File .env aktif terdeteksi</span>
-                </div>
-                <details class="text-xs">
-                    <summary class="cursor-pointer text-slate-400 hover:text-white font-medium">Lihat / Edit .env</summary>
-                    <form method="POST" action="" class="mt-3 space-y-3">
-                        <input type="hidden" name="action" value="restore_env">
-                        <textarea
-                            name="env_content"
-                            rows="10"
-                            class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-300"
-                        ><?= htmlspecialchars($currentEnvContent) ?></textarea>
-                        <button type="submit" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold border border-slate-600">Simpan Perubahan .env</button>
-                    </form>
-                </details>
-            </div>
-        <?php endif; ?>
 
         <!-- Main Auto Repair Action Box -->
         <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-5">
             <div>
                 <h2 class="text-base font-extrabold text-white">1-Klik Perbaikan Total (Self-Healing)</h2>
                 <p class="text-xs text-slate-400 mt-1">
-                    Klik tombol di bawah ini untuk membersihkan cache yang rusak, memastikan file .env siap, menjalankan migrasi database tanpa merusak data, dan memulihkan seluruh halaman aplikasi secara otomatis.
+                    Klik tombol di bawah ini untuk mengambil kodingan terbaru, membersihkan seluruh cache yang rusak/kadaluarsa, menjalankan migrasi database, dan memulihkan seluruh halaman aplikasi secara otomatis.
                 </p>
             </div>
 
@@ -681,7 +265,7 @@ $currentEnvContent = $hasEnv ? @file_get_contents($envFile) : getDefaultEnvConte
                     type="submit"
                     class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm sm:text-base shadow-xl shadow-emerald-900/40 transition-all flex items-center justify-center space-x-2"
                 >
-                    <span>🚀 Jalankan Perbaikan Otomatis (Fix Error 500 / Setup Ulang)</span>
+                    <span>🚀 Jalankan Perbaikan Otomatis (Fix Error 500)</span>
                 </button>
             </form>
 

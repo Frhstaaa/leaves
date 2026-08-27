@@ -9,7 +9,6 @@ DirectoryIndex index.php index.html
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /leaves-application/
 
     # 1. Block direct access to sensitive files and folders
     RewriteRule ^\.git - [F,L]
@@ -22,9 +21,8 @@ DirectoryIndex index.php index.html
     RewriteCond %{REQUEST_URI} ^.*/public/ [NC]
     RewriteRule ^ - [L]
 
-    # 3. If file exists in current directory, serve directly
-    RewriteCond %{REQUEST_FILENAME} -f
-    RewriteRule ^ - [L]
+    # 3. Allow direct access to update.php and setup.php in root
+    RewriteRule ^(update\.php|setup\.php) - [L]
 
     # 4. Route root URL and all other requests to public folder
     RewriteRule ^$ public/ [L]

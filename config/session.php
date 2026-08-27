@@ -155,7 +155,7 @@ return [
     |
     */
 
-    'domain' => env('SESSION_DOMAIN', (isset($_SERVER['HTTP_HOST']) && str_contains($_SERVER['HTTP_HOST'], 'sgin.co.id')) ? '.sgin.co.id' : (str_contains(env('APP_URL', ''), 'sgin.co.id') ? '.sgin.co.id' : null)),
+    'domain' => env('SESSION_DOMAIN'),
 
     /*
     |--------------------------------------------------------------------------

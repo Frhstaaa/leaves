@@ -1034,9 +1034,6 @@ class HrdController extends Controller
             'user' => $employee,
             'departments' => $departments,
             'isHrdView' => true,
-        ])->toResponse(request())->withHeaders([
-            'Cache-Control' => 'no-store, no-cache, must-revalidate',
-            'Pragma' => 'no-cache',
         ]);
     }
 
@@ -1106,12 +1103,7 @@ class HrdController extends Controller
 
         $this->employeeService->updateEmployee($employee, $validated);
 
-        return Redirect::back()
-            ->with('success', "Data diri karyawan {$employee->name} berhasil diperbarui.")
-            ->withHeaders([
-                'Cache-Control' => 'no-store, no-cache, must-revalidate',
-                'Pragma' => 'no-cache',
-            ]);
+        return Redirect::back()->with('success', "Data diri karyawan {$employee->name} berhasil diperbarui.");
     }
 
     public function printEmployeeBiodata(int $userId): Response

@@ -140,19 +140,7 @@ class User extends Authenticatable
             return $this->avatar;
         }
 
-        $clean = ltrim($this->avatar, '/');
-
-        // Check local storage paths
-        if (file_exists(storage_path('app/public/' . $clean)) || file_exists(public_path('storage/' . $clean))) {
-            return url('storage/' . $clean);
-        }
-
-        // Check in Cloudflare R2
-        if (\App\Services\CloudflareR2::isConfigured() && \App\Services\CloudflareR2::exists($clean)) {
-            return url('storage/' . $clean);
-        }
-
-        return null;
+        return url('storage/' . ltrim($this->avatar, '/'));
     }
 
     public function department()
@@ -289,6 +277,15 @@ class User extends Authenticatable
         return $this->hasMany(Payslip::class);
     }
 
+    public function leaveQuotas()
+    {
+        return $this->hasMany(LeaveQuota::class);
+    }
+
+    public function currentQuota()
+    {
+        return $this->hasOne(LeaveQuota::class)->where('year', (int) date('Y'));
+    }
 
     public function getPendingApprovalsQuery()
     {
