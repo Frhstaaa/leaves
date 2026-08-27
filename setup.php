@@ -93,8 +93,75 @@ function directFileCacheClear($basePath) {
     return $cleared;
 }
 
+// 4. Ensure .env file exists and has APP_KEY
+function ensureEnvFile($basePath) {
+    $envPath = $basePath . '/.env';
+    $defaultAppKey = 'base64:fn2kAMl3S31maRCtRvzVAluYwEGHTrVblVjLr4rxokE=';
+    
+    if (!file_exists($envPath)) {
+        $envTemplate = <<<ENV
+APP_NAME="Form SGIN"
+APP_ENV=production
+APP_KEY={$defaultAppKey}
+APP_DEBUG=false
+APP_URL=https://www.sgin.co.id/leaves-application
+
+LOG_CHANNEL=stack
+LOG_DEPRECATIONS_CHANNEL=null
+LOG_LEVEL=error
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=sginco_leav
+DB_USERNAME=sginco_leav
+DB_PASSWORD="@SginC01!!!"
+
+BROADCAST_DRIVER=log
+CACHE_DRIVER=file
+FILESYSTEM_DISK=local
+QUEUE_CONNECTION=sync
+SESSION_DRIVER=file
+SESSION_LIFETIME=120
+
+MEMCACHED_HOST=127.0.0.1
+
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+
+MAIL_MAILER=smtp
+MAIL_HOST=mailpit
+MAIL_PORT=1025
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+MAIL_ENCRYPTION=null
+MAIL_FROM_ADDRESS="leaves@sgin.co.id"
+MAIL_FROM_NAME="\${APP_NAME}"
+ENV;
+        @file_put_contents($envPath, $envTemplate);
+        @chmod($envPath, 0644);
+        return "File .env baru berhasil dibuat otomatis dengan konfigurasi produksi & APP_KEY.";
+    } else {
+        $content = @file_get_contents($envPath);
+        if (!str_contains($content, 'APP_KEY=') || preg_match('/APP_KEY=\s*$/m', $content) || preg_match('/APP_KEY=\s*\r?\n/', $content)) {
+            if (str_contains($content, 'APP_KEY=')) {
+                $content = preg_replace('/APP_KEY=.*$/m', "APP_KEY={$defaultAppKey}", $content);
+            } else {
+                $content = "APP_KEY={$defaultAppKey}\n" . $content;
+            }
+            @file_put_contents($envPath, $content);
+            return "APP_KEY berhasil ditambahkan/diperbaiki di file .env.";
+        }
+    }
+    return "File .env valid.";
+}
+
+// Auto-run ensureEnvFile on script load to immediately resolve Error 500
+$envStatusMsg = ensureEnvFile($basePath);
+
 // Handle Auto-Repair Actions via POST or GET ?run=1
-$action = $_POST['action'] ?? ($_GET['run'] ? 'auto_repair' : null);
+$action = $_POST['action'] ?? (!empty($_GET['run']) ? 'auto_repair' : null);
 $logs = [];
 
 if ($action === 'auto_repair') {
@@ -102,8 +169,12 @@ if ($action === 'auto_repair') {
     $logs[] = "  🛠️ MEMULAI PERBAIKAN TOTAL SISTEM APLIKASI SGIN LEAVES...     ";
     $logs[] = "=================================================================\n";
 
+    // Step 0: Ensure .env is present
+    $logs[] = "[0/6] Memeriksa & memulihkan konfigurasi .env...";
+    $logs[] = "✓ Status .env: " . $envStatusMsg;
+
     // Step 1: Force Git pull & Hard Reset to GitHub main
-    $logs[] = "[1/6] Mengambil kodingan terbaru & terbersih dari GitHub main...";
+    $logs[] = "\n[1/6] Mengambil kodingan terbaru & terbersih dari GitHub main...";
     $gitVer = runShell("git --version", $basePath);
     if (str_contains(strtolower($gitVer), 'git version')) {
         $fetch = runShell("git fetch origin main", $basePath);
