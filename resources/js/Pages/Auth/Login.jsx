@@ -42,7 +42,20 @@ export default function Login() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    post(route('login'));
+    const csrfToken = typeof document !== 'undefined' ? document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') : '';
+    post(route('login'), {
+      data: {
+        ...data,
+        _token: csrfToken || undefined,
+      },
+      preserveScroll: true,
+      onError: (errs) => {
+        // If empty error object (typical of 419 / session timeout), auto-refresh once
+        if (errs && Object.keys(errs).length === 0) {
+          window.location.reload();
+        }
+      }
+    });
   };
 
   return (
