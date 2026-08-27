@@ -46,8 +46,6 @@ class SettingService
         $shortName = $settings['app_name'] ?? 'Form SGIN';
         $themeColor = $settings['theme_color'] ?? '#0FA172';
         $description = $settings['app_description'] ?? 'Sistem Informasi Pengajuan Cuti & Slip Gaji Karyawan PT. Sugiyama Indonesia';
-        $scheme = request()->getScheme() ?: (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http');
-        $host = request()->getHost() ?: ($_SERVER['HTTP_HOST'] ?? 'www.sgin.co.id');
         $uri = $_SERVER['REQUEST_URI'] ?? request()->getRequestUri();
 
         $subfolder = '';
@@ -57,16 +55,16 @@ class SettingService
             $subfolder = $m[1];
         }
 
-        $root = $scheme . '://' . $host . $subfolder;
-        $version = substr(md5(($settings['app_logo'] ?? '') . ($settings['app_name'] ?? '') . 'v8'), 0, 8);
+        $base = $subfolder ? $subfolder : '';
+        $version = substr(md5(($settings['app_logo'] ?? '') . ($settings['app_name'] ?? '') . 'v9'), 0, 8);
 
         return [
-            'id' => $root . '/?source=pwa',
+            'id' => $base . '/?source=pwa',
             'name' => $appName . ' - Cuti & Ketidakhadiran',
             'short_name' => $shortName,
             'description' => $description,
-            'start_url' => $root . '/login?source=pwa',
-            'scope' => $root . '/',
+            'start_url' => $base . '/login?source=pwa',
+            'scope' => $base . '/',
             'display' => 'standalone',
             'display_override' => ['window-controls-overlay', 'standalone', 'minimal-ui'],
             'background_color' => '#F5FAF7',
@@ -76,31 +74,31 @@ class SettingService
             'prefer_related_applications' => false,
             'icons' => [
                 [
-                    'src' => $root . "/icons/icon-180x180.png?v={$version}",
+                    'src' => $base . "/icons/icon-180x180.png?v={$version}",
                     'sizes' => '180x180',
                     'type' => 'image/png',
                     'purpose' => 'any',
                 ],
                 [
-                    'src' => $root . "/icons/icon-192x192.png?v={$version}",
+                    'src' => $base . "/icons/icon-192x192.png?v={$version}",
                     'sizes' => '192x192',
                     'type' => 'image/png',
                     'purpose' => 'any',
                 ],
                 [
-                    'src' => $root . "/icons/icon-maskable-192.png?v={$version}",
+                    'src' => $base . "/icons/icon-maskable-192.png?v={$version}",
                     'sizes' => '192x192',
                     'type' => 'image/png',
                     'purpose' => 'maskable',
                 ],
                 [
-                    'src' => $root . "/icons/icon-512x512.png?v={$version}",
+                    'src' => $base . "/icons/icon-512x512.png?v={$version}",
                     'sizes' => '512x512',
                     'type' => 'image/png',
                     'purpose' => 'any',
                 ],
                 [
-                    'src' => $root . "/icons/icon-maskable-512.png?v={$version}",
+                    'src' => $base . "/icons/icon-maskable-512.png?v={$version}",
                     'sizes' => '512x512',
                     'type' => 'image/png',
                     'purpose' => 'maskable',
@@ -111,15 +109,15 @@ class SettingService
                     'name' => 'Buat Pengajuan',
                     'short_name' => 'Pengajuan',
                     'description' => 'Buat pengajuan cuti atau izin baru',
-                    'url' => $root . '/leave-requests/create',
-                    'icons' => [['src' => $root . "/icons/icon-192x192.png?v={$version}", 'sizes' => '192x192']],
+                    'url' => $base . '/leave-requests/create',
+                    'icons' => [['src' => $base . "/icons/icon-192x192.png?v={$version}", 'sizes' => '192x192']],
                 ],
                 [
                     'name' => 'Persetujuan Team',
                     'short_name' => 'Approval',
                     'description' => 'Tinjau persetujuan cuti bawahan',
-                    'url' => $root . '/approvals',
-                    'icons' => [['src' => $root . "/icons/icon-192x192.png?v={$version}", 'sizes' => '192x192']],
+                    'url' => $base . '/approvals',
+                    'icons' => [['src' => $base . "/icons/icon-192x192.png?v={$version}", 'sizes' => '192x192']],
                 ],
             ],
         ];

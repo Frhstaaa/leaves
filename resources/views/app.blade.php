@@ -14,7 +14,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-    <script src="https://cdn.tailwindcss.com"></script>
 
     @php
         // Dynamically compute exact URL with subfolder prefix (e.g. https://www.sgin.co.id/leaves-application)

@@ -126,7 +126,8 @@ class User extends Authenticatable
 
         $filled = 0;
         foreach ($fields as $field) {
-            if (!empty($this->{$field})) {
+            $val = $this->getAttributeValue($field);
+            if ($val !== null && $val !== '') {
                 $filled++;
             }
         }

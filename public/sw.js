@@ -1,24 +1,22 @@
-// High-Performance Service Worker for Form SGIN PWA
-const CACHE_NAME = 'sgin-pwa-v7';
-const OFFLINE_URL = './';
+// High-Performance & Resilient Service Worker for Form SGIN PWA
+const CACHE_NAME = 'sgin-pwa-v8';
 
 const ASSETS_TO_CACHE = [
-  './manifest.webmanifest',
   './icons/icon-192x192.png',
   './icons/icon-512x512.png',
 ];
 
 // Install Event
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE).catch(() => {});
     })
   );
-  self.skipWaiting();
 });
 
-// Activate Event - Clean old caches
+// Activate Event - Clean old caches immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -29,9 +27,8 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 // Fetch Event
@@ -40,36 +37,9 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
-  // Bypass API, export, and download endpoints
+  // 1. Static immutable build assets (/build/assets/*) and Google Fonts: Cache-First
   if (
-    url.pathname.includes('/api/') ||
-    url.pathname.endsWith('/download') ||
-    url.pathname.endsWith('/export') ||
-    url.pathname.endsWith('/template') ||
-    url.pathname.endsWith('/print')
-  ) {
-    return;
-  }
-
-  // 1. Dynamic Network-First for Manifest & App Icons (Always fresh branding)
-  if (url.pathname.includes('manifest') || url.pathname.includes('app-icon') || url.pathname.includes('/icons/')) {
-    event.respondWith(
-      fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
-          }
-          return networkResponse;
-        })
-        .catch(() => caches.match(event.request))
-    );
-    return;
-  }
-
-  // 2. Cache-First for Immutable Build Assets (/build/assets/*) and Google Fonts
-  if (
-    url.pathname.includes('/build/') ||
+    url.pathname.includes('/build/assets/') ||
     url.hostname.includes('fonts.googleapis.com') ||
     url.hostname.includes('fonts.gstatic.com')
   ) {
@@ -90,22 +60,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Network-First with Cache Fallback for HTML & Inertia Navigation
-  event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        return networkResponse;
-      })
-      .catch(() => {
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
+  // 2. Static icons & manifest: Network-first with cache fallback
+  if (url.pathname.includes('/icons/') || url.pathname.includes('manifest')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
           }
-          if (event.request.mode === 'navigate') {
-            return caches.match(OFFLINE_URL);
-          }
-          return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
-        });
-      })
-  );
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // 3. For all other application navigation & dynamic Inertia requests:
+  // Let the browser handle standard network fetch directly.
 });
+
