@@ -155,6 +155,11 @@ class HrdController extends Controller
             'approver_2_id' => 'nullable|exists:users,id',
             'manager_id' => 'nullable|exists:users,id',
             'total_quota' => 'required|integer|min:0|max:100',
+            'remaining_quota' => 'nullable|integer|min:0|max:100',
+            'join_date' => 'nullable|date',
+            'position' => 'nullable|string|max:100',
+            'gender' => 'nullable|string|max:20',
+            'employee_status' => 'nullable|string|max:50',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
@@ -186,6 +191,11 @@ class HrdController extends Controller
             'approver_2_id' => 'nullable|exists:users,id',
             'manager_id' => 'nullable|exists:users,id',
             'total_quota' => 'required|integer|min:0|max:100',
+            'remaining_quota' => 'nullable|integer|min:0|max:100',
+            'join_date' => 'nullable|date',
+            'position' => 'nullable|string|max:100',
+            'gender' => 'nullable|string|max:20',
+            'employee_status' => 'nullable|string|max:50',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
@@ -225,6 +235,7 @@ class HrdController extends Controller
 
         $validated = $request->validate([
             'total_quota' => 'required|integer|min:0|max:100',
+            'remaining_quota' => 'nullable|integer|min:0|max:100',
         ]);
 
         $employee = $this->userRepo->findById($userId);
@@ -232,9 +243,10 @@ class HrdController extends Controller
             return back()->with('error', 'Karyawan tidak ditemukan.');
         }
 
-        $quota = $this->quotaService->setTotalQuota($employee->id, (int) $validated['total_quota']);
+        $remaining = isset($validated['remaining_quota']) && $validated['remaining_quota'] !== '' ? (int) $validated['remaining_quota'] : null;
+        $quota = $this->quotaService->setQuota($employee->id, (int) $validated['total_quota'], $remaining);
 
-        return redirect()->back()->with('success', "Kuota cuti {$employee->name} berhasil diubah menjadi {$quota->total_quota} hari (Sisa: {$quota->remaining_quota} hari).");
+        return redirect()->back()->with('success', "Kuota cuti {$employee->name} berhasil diperbarui (Total: {$quota->total_quota} hari, Sisa: {$quota->remaining_quota} hari).");
     }
 
     public function overrideStatus(Request $request, int $id): RedirectResponse
@@ -492,15 +504,18 @@ class HrdController extends Controller
             fputcsv($file, ['# [PANDUAN & ATURAN PENGISIAN]:']);
             fputcsv($file, ['# 1. TAMBAH KARYAWAN BARU : Wajib isi "Nama Lengkap Karyawan" dan "Email Login Akun". Kolom lain opsional.']);
             fputcsv($file, ['# 2. UPDATE MASSAL KARYAWAN : Cukup masukkan NIK atau Email karyawan lama, lalu isi kolom Jabatan,']);
-            fputcsv($file, ['#    Jenis Kelamin, Departemen, dll. Password lama karyawan TIDAK AKAN BERUBAH jika kolom Password dikosongkan.']);
+            fputcsv($file, ['#    Jenis Kelamin, Tanggal Bergabung, Kuota Cuti, Departemen, dll. Password TIDAK AKAN BERUBAH jika dikosongkan.']);
             fputcsv($file, ['# 3. KETERANGAN KOLOM:']);
-            fputcsv($file, ['#    - NIK SGIN        : Kosongkan jika ingin dibuatkan nomor NIK unik otomatis oleh sistem.']);
-            fputcsv($file, ['#    - Password        : Kosongkan jika ingin password default ("password123") atau mempertahankan password lama.']);
-            fputcsv($file, ['#    - Role            : Kosongkan jika ingin role default ("employee").']);
-            fputcsv($file, ['#    - Departemen      : Tulis Kode atau Nama Departemen sesuai list di bawah.']);
-            fputcsv($file, ['#    - Jabatan         : Tulis nama jabatan (Contoh: "Staff IT", "Operator Produksi", "Leader QC", dll).']);
-            fputcsv($file, ['#    - Jenis Kelamin   : Tulis "Laki-laki" / "L" atau "Perempuan" / "P".']);
-            fputcsv($file, ['#    - Status Karyawan : Pilih "Tetap", "Kontrak", "Magang", atau "Percobaan" (Default: "Tetap").']);
+            fputcsv($file, ['#    - NIK SGIN          : Kosongkan jika ingin dibuatkan nomor NIK unik otomatis oleh sistem.']);
+            fputcsv($file, ['#    - Password          : Kosongkan jika ingin password default ("password123") atau mempertahankan password lama.']);
+            fputcsv($file, ['#    - Role              : Kosongkan jika ingin role default ("employee").']);
+            fputcsv($file, ['#    - Departemen        : Tulis Kode atau Nama Departemen sesuai list di bawah.']);
+            fputcsv($file, ['#    - Jabatan / Posisi  : Tulis nama jabatan (Contoh: "Staff IT", "Operator Produksi", "Leader QC", dll).']);
+            fputcsv($file, ['#    - Jenis Kelamin     : Tulis "Laki-laki" / "L" atau "Perempuan" / "P".']);
+            fputcsv($file, ['#    - Tanggal Bergabung : Format YYYY-MM-DD (Contoh: 2024-01-15) atau DD/MM/YYYY (Contoh: 15/01/2024).']);
+            fputcsv($file, ['#    - Total Jatah Kuota : Total jatah cuti tahunan (Default: 12 hari).']);
+            fputcsv($file, ['#    - Sisa Kuota Tahun Ini : Sisa hari cuti tahun berjalan yang masih dimiliki karyawan.']);
+            fputcsv($file, ['#    - Status Karyawan   : Pilih "Tetap", "Kontrak", "Magang", atau "Percobaan" (Default: "Tetap").']);
             fputcsv($file, ['#']);
             fputcsv($file, ['# [DAFTAR KODE & NAMA DEPARTEMEN AKTIF]:']);
             fputcsv($file, ["# -> {$deptList}"]);
@@ -512,7 +527,7 @@ class HrdController extends Controller
             fputcsv($file, ['# =========================================================================================================']);
 
             // =========================================================================================================
-            // 2. 9 KOLOM UTAMA (LENGKAP DENGAN JABATAN & JENIS KELAMIN)
+            // 2. 12 KOLOM UTAMA LENGKAP
             // =========================================================================================================
             fputcsv($file, [
                 '[OPSIONAL] NIK SGIN',
@@ -523,6 +538,9 @@ class HrdController extends Controller
                 '[OPSIONAL] Departemen',
                 '[OPSIONAL] Jabatan / Posisi',
                 '[OPSIONAL] Jenis Kelamin (Laki-laki / Perempuan)',
+                '[OPSIONAL] Tanggal Bergabung (YYYY-MM-DD)',
+                '[OPSIONAL] Total Jatah Kuota (Default: 12)',
+                '[OPSIONAL] Sisa Kuota Cuti Tahun Ini',
                 '[OPSIONAL] Status Karyawan'
             ]);
 
@@ -538,6 +556,9 @@ class HrdController extends Controller
                 'IT',
                 'Staff IT & Support',
                 'Laki-laki',
+                '2023-05-10',
+                '12',
+                '8',
                 'Tetap'
             ]);
 
@@ -550,6 +571,9 @@ class HrdController extends Controller
                 'HRD',
                 'Supervisor HRD & GA',
                 'Perempuan',
+                '2022-02-01',
+                '14',
+                '10',
                 'Tetap'
             ]);
 
@@ -562,6 +586,9 @@ class HrdController extends Controller
                 'PROD',
                 'Operator Produksi',
                 'Laki-laki',
+                '2024-01-15',
+                '12',
+                '12',
                 'Kontrak'
             ]);
 
@@ -630,6 +657,20 @@ class HrdController extends Controller
                 return null;
             };
 
+            $normalizeDate = function($val) {
+                if (empty($val)) return null;
+                $v = trim($val);
+                if ($v === '-' || $v === '0000-00-00') return null;
+                try {
+                    if (preg_match('/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/', $v, $m)) {
+                        return sprintf('%04d-%02d-%02d', $m[3], $m[2], $m[1]);
+                    }
+                    return \Carbon\Carbon::parse($v)->format('Y-m-d');
+                } catch (\Throwable $e) {
+                    return null;
+                }
+            };
+
             while (($row = fgetcsv($handle, 4000, $delimiter)) !== false) {
                 $col0 = trim($row[0] ?? '');
                 $col1 = trim($row[1] ?? '');
@@ -671,16 +712,30 @@ class HrdController extends Controller
                 $role = in_array($inputRole, $validRoles) ? $inputRole : null;
                 $deptInput = trim($row[5] ?? '');
 
-                // Parsing Jabatan, Gender, and Status based on columns
+                // Parsing Jabatan, Gender, Join Date, Quotas, and Status based on columns
                 $col6 = trim($row[6] ?? '');
                 $col7 = trim($row[7] ?? '');
                 $col8 = trim($row[8] ?? '');
+                $col9 = trim($row[9] ?? '');
+                $col10 = trim($row[10] ?? '');
+                $col11 = trim($row[11] ?? '');
 
                 $positionInput = null;
                 $genderInput = null;
+                $joinDateInput = null;
+                $totalQuotaInput = null;
+                $remainingQuotaInput = null;
                 $statusInput = null;
 
-                if (isset($row[7]) || isset($row[8])) {
+                if (isset($row[9]) || isset($row[10]) || isset($row[11])) {
+                    // 12-column format
+                    $positionInput = $col6 ?: null;
+                    $genderInput = $normalizeGender($col7);
+                    $joinDateInput = $normalizeDate($col8);
+                    $totalQuotaInput = is_numeric($col9) ? (int) $col9 : null;
+                    $remainingQuotaInput = is_numeric($col10) ? (int) $col10 : null;
+                    $statusInput = $col11 ?: 'Tetap';
+                } elseif (isset($row[7]) || isset($row[8])) {
                     // 9-column format
                     $positionInput = $col6 ?: null;
                     $genderInput = $normalizeGender($col7);
@@ -743,6 +798,7 @@ class HrdController extends Controller
                     if (!empty($statusInput)) $updateData['employee_status'] = $statusInput;
                     if (!empty($positionInput)) $updateData['position'] = $positionInput;
                     if (!empty($genderInput)) $updateData['gender'] = $genderInput;
+                    if (!empty($joinDateInput)) $updateData['join_date'] = $joinDateInput;
                     
                     // Only update password if explicitly provided in CSV
                     if (!empty($passwordInput)) {
@@ -750,7 +806,7 @@ class HrdController extends Controller
                     }
 
                     // Backward compatibility for legacy full templates
-                    if (isset($row[9]) && !empty($row[9])) $updateData['join_date'] = trim($row[9]);
+                    if (isset($row[9]) && empty($totalQuotaInput)) $updateData['join_date'] = $normalizeDate($row[9]);
                     if (isset($row[11]) && !empty($row[11])) $updateData['position'] = trim($row[11]);
                     if (isset($row[12]) && !empty($row[12])) $updateData['education'] = trim($row[12]);
                     if (isset($row[13]) && !empty($row[13])) $updateData['ktp_number'] = trim($row[13]);
@@ -777,6 +833,13 @@ class HrdController extends Controller
 
                     $existingUser->update($updateData);
                     $savedUser = $existingUser;
+
+                    // Update Quotas if specified
+                    if ($totalQuotaInput !== null || $remainingQuotaInput !== null) {
+                        $targetTotal = $totalQuotaInput ?? ($existingUser->currentQuota?->total_quota ?? 12);
+                        $this->quotaService->setQuota($existingUser->id, $targetTotal, $remainingQuotaInput);
+                    }
+
                     $updatedCount++;
                 } else {
                     // Create new employee
@@ -789,11 +852,12 @@ class HrdController extends Controller
                         'employee_status' => $statusInput ?: 'Tetap',
                         'position' => $positionInput,
                         'gender' => $genderInput,
+                        'join_date' => $joinDateInput,
                         'password' => !empty($passwordInput) ? Hash::make($passwordInput) : Hash::make('password123'),
                     ];
 
                     // Backward compatibility for legacy full templates
-                    if (isset($row[9]) && !empty($row[9])) $userData['join_date'] = trim($row[9]);
+                    if (isset($row[9]) && empty($totalQuotaInput)) $userData['join_date'] = $normalizeDate($row[9]);
                     if (isset($row[11]) && !empty($row[11])) $userData['position'] = trim($row[11]);
                     if (isset($row[12]) && !empty($row[12])) $userData['education'] = trim($row[12]);
                     if (isset($row[13]) && !empty($row[13])) $userData['ktp_number'] = trim($row[13]);
@@ -819,7 +883,9 @@ class HrdController extends Controller
                     if (isset($row[33]) && !empty($row[33])) $userData['kk_number'] = trim($row[33]);
 
                     $savedUser = User::create($userData);
-                    $this->quotaService->setTotalQuota($savedUser->id, 12);
+
+                    $targetTotal = $totalQuotaInput ?? 12;
+                    $this->quotaService->setQuota($savedUser->id, $targetTotal, $remainingQuotaInput);
                     $createdCount++;
                 }
 

@@ -151,7 +151,12 @@ export default function HrdEmployees({ employees = [], departments = [], manager
     approver_1_id: '',
     approver_2_id: '',
     manager_id: '',
+    position: '',
+    gender: '',
+    employee_status: 'Tetap',
+    join_date: new Date().toISOString().split('T')[0],
     total_quota: 12,
+    remaining_quota: 12,
     avatar: null,
   });
 
@@ -167,13 +172,19 @@ export default function HrdEmployees({ employees = [], departments = [], manager
     approver_1_id: '',
     approver_2_id: '',
     manager_id: '',
+    position: '',
+    gender: '',
+    employee_status: 'Tetap',
+    join_date: '',
     total_quota: 12,
+    remaining_quota: 12,
     avatar: null,
   });
 
   // Form for Quick Quota Edit
   const quotaForm = useForm({
     total_quota: 12,
+    remaining_quota: 12,
   });
 
   // Filter Actions
@@ -213,7 +224,12 @@ export default function HrdEmployees({ employees = [], departments = [], manager
       approver_1_id: '',
       approver_2_id: '',
       manager_id: '',
+      position: '',
+      gender: '',
+      employee_status: 'Tetap',
+      join_date: new Date().toISOString().split('T')[0],
       total_quota: 12,
+      remaining_quota: 12,
       avatar: null,
     });
     setAddAvatarPreview(null);
@@ -252,7 +268,12 @@ export default function HrdEmployees({ employees = [], departments = [], manager
       approver_1_id: emp.approver_1_id || '',
       approver_2_id: emp.approver_2_id || emp.manager_id || '',
       manager_id: emp.approver_2_id || emp.manager_id || '',
-      total_quota: emp.current_quota?.total_quota || 12,
+      position: emp.position || '',
+      gender: emp.gender || '',
+      employee_status: emp.employee_status || 'Tetap',
+      join_date: emp.join_date ? (typeof emp.join_date === 'string' ? emp.join_date.split('T')[0] : emp.join_date) : '',
+      total_quota: emp.current_quota?.total_quota ?? 12,
+      remaining_quota: emp.current_quota?.remaining_quota ?? 12,
       avatar: null,
     });
     setEditAvatarPreview(null);
@@ -278,7 +299,8 @@ export default function HrdEmployees({ employees = [], departments = [], manager
   const handleOpenQuotaModal = (emp) => {
     setQuotaEmployee(emp);
     quotaForm.setData({
-      total_quota: emp.current_quota?.total_quota || 12,
+      total_quota: emp.current_quota?.total_quota ?? 12,
+      remaining_quota: emp.current_quota?.remaining_quota ?? 12,
     });
   };
 
@@ -473,9 +495,21 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                           <UserAvatar user={emp} size="w-10 h-10" textSize="text-xs" />
                           <div>
                             <h4 className="font-extrabold text-slate-900 text-sm truncate">{emp.name}</h4>
-                            <span className="font-mono text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 inline-block mt-0.5">
-                              {emp.nik || 'EMP-???'}
-                            </span>
+                            <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                              <span className="font-mono text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 inline-block">
+                                {emp.nik || 'EMP-???'}
+                              </span>
+                              {emp.position && (
+                                <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200 inline-block">
+                                  {emp.position}
+                                </span>
+                              )}
+                              {emp.join_date && (
+                                <span className="text-[9px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded inline-block">
+                                  Gabung: {new Date(emp.join_date).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                         {(() => {
@@ -592,9 +626,21 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                               <UserAvatar user={emp} size="w-9 h-9" textSize="text-xs" />
                               <div>
                                 <span className="font-extrabold text-slate-900 text-xs block">{emp.name}</span>
-                                <span className="font-mono text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 inline-block mt-0.5">
-                                  {emp.nik || 'EMP-???'}
-                                </span>
+                                <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                                  <span className="font-mono text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 inline-block">
+                                    {emp.nik || 'EMP-???'}
+                                  </span>
+                                  {emp.position && (
+                                    <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200 inline-block">
+                                      {emp.position}
+                                    </span>
+                                  )}
+                                  {emp.join_date && (
+                                    <span className="text-[9px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded inline-block" title={`Bergabung: ${emp.join_date}`}>
+                                      📅 {new Date(emp.join_date).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -889,6 +935,60 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   </div>
                 </div>
 
+                {/* Jabatan & Jenis Kelamin */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="min-w-0">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Jabatan / Posisi</label>
+                    <input
+                      type="text"
+                      value={addForm.data.position}
+                      onChange={(e) => addForm.setData('position', e.target.value)}
+                      placeholder="Contoh: Staff IT, Operator, QC"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Jenis Kelamin</label>
+                    <select
+                      value={addForm.data.gender}
+                      onChange={(e) => addForm.setData('gender', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                    >
+                      <option value="">-- Pilih Jenis Kelamin --</option>
+                      <option value="Laki-laki">Laki-laki</option>
+                      <option value="Perempuan">Perempuan</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Tanggal Bergabung & Status Karyawan */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="min-w-0">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Tanggal Bergabung</label>
+                    <input
+                      type="date"
+                      value={addForm.data.join_date}
+                      onChange={(e) => addForm.setData('join_date', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Status Karyawan</label>
+                    <select
+                      value={addForm.data.employee_status}
+                      onChange={(e) => addForm.setData('employee_status', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                    >
+                      <option value="Tetap">Tetap</option>
+                      <option value="Kontrak">Kontrak</option>
+                      <option value="Magang">Magang</option>
+                      <option value="Percobaan">Percobaan</option>
+                    </select>
+                  </div>
+                </div>
+
                 {/* Approval Flow Configuration */}
                 <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -1003,16 +1103,37 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   )}
                 </div>
 
-                <div className="min-w-0">
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Jatah Kuota Cuti (Hari / Thn)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={addForm.data.total_quota}
-                    onChange={(e) => addForm.setData('total_quota', e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                  />
+                {/* Kuota Cuti Tahunan & Sisa Kuota */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="min-w-0">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Total Jatah Kuota (Hari / Thn)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={addForm.data.total_quota}
+                      onChange={(e) => addForm.setData((prev) => ({
+                        ...prev,
+                        total_quota: e.target.value,
+                        remaining_quota: prev.remaining_quota === prev.total_quota ? e.target.value : prev.remaining_quota
+                      }))}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      required
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Sisa Kuota Cuti Awal (Hari)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={addForm.data.remaining_quota}
+                      onChange={(e) => addForm.setData('remaining_quota', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      required
+                    />
+                  </div>
                 </div>
 
                 </div>
@@ -1162,6 +1283,60 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   </div>
                 </div>
 
+                {/* Jabatan & Jenis Kelamin */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="min-w-0">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Jabatan / Posisi</label>
+                    <input
+                      type="text"
+                      value={editForm.data.position}
+                      onChange={(e) => editForm.setData('position', e.target.value)}
+                      placeholder="Contoh: Staff IT, Operator, QC"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Jenis Kelamin</label>
+                    <select
+                      value={editForm.data.gender}
+                      onChange={(e) => editForm.setData('gender', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                    >
+                      <option value="">-- Pilih Jenis Kelamin --</option>
+                      <option value="Laki-laki">Laki-laki</option>
+                      <option value="Perempuan">Perempuan</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Tanggal Bergabung & Status Karyawan */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="min-w-0">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Tanggal Bergabung</label>
+                    <input
+                      type="date"
+                      value={editForm.data.join_date}
+                      onChange={(e) => editForm.setData('join_date', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Status Karyawan</label>
+                    <select
+                      value={editForm.data.employee_status}
+                      onChange={(e) => editForm.setData('employee_status', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                    >
+                      <option value="Tetap">Tetap</option>
+                      <option value="Kontrak">Kontrak</option>
+                      <option value="Magang">Magang</option>
+                      <option value="Percobaan">Percobaan</option>
+                    </select>
+                  </div>
+                </div>
+
                 {/* Approval Flow Configuration */}
                 <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -1276,16 +1451,33 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   )}
                 </div>
 
-                <div className="min-w-0">
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Total Jatah Kuota Cuti</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={editForm.data.total_quota}
-                    onChange={(e) => editForm.setData('total_quota', e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                  />
+                {/* Kuota Cuti Tahunan & Sisa Kuota */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="min-w-0">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Total Jatah Kuota (Hari / Thn)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={editForm.data.total_quota}
+                      onChange={(e) => editForm.setData('total_quota', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      required
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Sisa Kuota Cuti Saat Ini (Hari)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={editForm.data.remaining_quota}
+                      onChange={(e) => editForm.setData('remaining_quota', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      required
+                    />
+                  </div>
                 </div>
 
                 </div>
@@ -1330,21 +1522,42 @@ export default function HrdEmployees({ employees = [], departments = [], manager
               </div>
 
               <form onSubmit={handleQuotaSubmit} className="space-y-4">
-                <div className="min-w-0">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Total Jatah Kuota Cuti (Hari / Tahun {new Date().getFullYear()})
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={quotaForm.data.total_quota}
-                    onChange={(e) => quotaForm.setData('total_quota', e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-black text-sm sm:text-base focus:bg-white focus:border-emerald-500 outline-none"
-                    required
-                  />
-                  <p className="text-[11px] text-slate-500 mt-1">Sisa kuota akan otomatis dihitung berdasarkan jumlah cuti yang sudah terpakai.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="min-w-0">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Total Jatah Kuota
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={quotaForm.data.total_quota}
+                      onChange={(e) => quotaForm.setData('total_quota', e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-black text-sm focus:bg-white focus:border-emerald-500 outline-none"
+                      required
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">Hari / Tahun {new Date().getFullYear()}</p>
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Sisa Kuota Cuti
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={quotaForm.data.remaining_quota}
+                      onChange={(e) => quotaForm.setData('remaining_quota', e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-black text-sm focus:bg-white focus:border-emerald-500 outline-none"
+                      required
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">Sisa hari aktif</p>
+                  </div>
                 </div>
+                <p className="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                  💡 Anda dapat menyesuaikan total jatah tahunan dan sisa kuota cuti karyawan tahun ini secara langsung.
+                </p>
 
                 <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
                   <button
@@ -1424,8 +1637,8 @@ export default function HrdEmployees({ employees = [], departments = [], manager
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <div>
-                    <span className="text-xs font-black text-slate-900 uppercase tracking-wider block">Langkah 1: Format Template CSV (9 Kolom)</span>
-                    <span className="text-[11px] text-slate-500">Bisa untuk tambah karyawan baru ATAU update massal Jabatan & Jenis Kelamin karyawan lama.</span>
+                    <span className="text-xs font-black text-slate-900 uppercase tracking-wider block">Langkah 1: Format Template CSV (12 Kolom Lengkap)</span>
+                    <span className="text-[11px] text-slate-500">Mendukung tambah staf baru maupun update massal Tanggal Bergabung, Kuota Cuti, Jabatan & Jenis Kelamin.</span>
                   </div>
                   <a
                     href={route('hrd.employees.template')}
@@ -1437,11 +1650,11 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   </a>
                 </div>
 
-                {/* 9 Columns Guide with distinct colors */}
+                {/* 12 Columns Guide with distinct colors */}
                 <div className="space-y-2.5 text-xs">
                   <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-black uppercase tracking-wider text-slate-700">Struktur 9 Kolom Template:</span>
+                      <span className="text-[11px] font-black uppercase tracking-wider text-slate-700">Struktur 12 Kolom Template:</span>
                       <span className="text-[10px] font-bold text-slate-400">Urutan Kolom</span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
@@ -1451,9 +1664,12 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       <span className="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 text-[10px] font-bold">4. Password (Opsional)</span>
                       <span className="px-2 py-0.5 rounded-lg bg-purple-50 text-purple-800 border border-purple-200 text-[10px] font-bold">5. Role (Opsional)</span>
                       <span className="px-2 py-0.5 rounded-lg bg-teal-50 text-teal-800 border border-teal-200 text-[10px] font-bold">6. Departemen (Opsional)</span>
-                      <span className="px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-300 text-[10px] font-black">7. Jabatan / Posisi (Opsional) 💼</span>
+                      <span className="px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-300 text-[10px] font-black">7. Jabatan / Posisi 💼</span>
                       <span className="px-2 py-0.5 rounded-lg bg-pink-50 text-pink-900 border border-pink-300 text-[10px] font-black">8. Jenis Kelamin (L/P) 👤</span>
-                      <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold">9. Status Karyawan (Opsional)</span>
+                      <span className="px-2 py-0.5 rounded-lg bg-sky-50 text-sky-900 border border-sky-300 text-[10px] font-black">9. Tanggal Bergabung 📅</span>
+                      <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-300 text-[10px] font-black">10. Total Jatah Kuota (Thn) 🎯</span>
+                      <span className="px-2 py-0.5 rounded-lg bg-lime-50 text-lime-900 border border-lime-300 text-[10px] font-black">11. Sisa Kuota Cuti ⏳</span>
+                      <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-800 border border-slate-200 text-[10px] font-bold">12. Status Karyawan</span>
                     </div>
                   </div>
 
@@ -1463,7 +1679,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       <span>💡 Tips Update Massal Karyawan Lama:</span>
                     </span>
                     <p className="text-[11px] text-blue-800 leading-relaxed">
-                      Untuk update Jabatan & Jenis Kelamin sekaligus, masukkan <strong>Email</strong> atau <strong>NIK</strong> karyawan yang sudah ada di Excel/CSV lalu isi kolom <strong>Jabatan</strong> & <strong>Jenis Kelamin</strong>. Password lama karyawan <strong>tidak akan berubah/reset</strong> jika kolom password dikosongkan.
+                      Cukup masukkan <strong>Email</strong> atau <strong>NIK</strong> karyawan yang sudah ada di CSV, lalu isi kolom <strong>Tanggal Bergabung</strong>, <strong>Total Kuota</strong>, <strong>Sisa Kuota</strong>, <strong>Jabatan</strong>, atau <strong>Jenis Kelamin</strong>. Password lama karyawan <strong>tidak akan ter-reset</strong> jika kolom password dikosongkan.
                     </p>
                   </div>
 

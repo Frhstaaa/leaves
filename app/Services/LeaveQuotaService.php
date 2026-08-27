@@ -65,29 +65,33 @@ class LeaveQuotaService
     }
 
     /**
-     * Update total quota allowance for an employee.
+     * Update total quota and optionally remaining quota for an employee.
      */
-    public function setTotalQuota(int $userId, int $totalQuota, ?int $year = null): LeaveQuota
+    public function setQuota(int $userId, int $totalQuota, ?int $remainingQuota = null, ?int $year = null): LeaveQuota
     {
         $year = $year ?: (int) date('Y');
 
-        return DB::transaction(function () use ($userId, $totalQuota, $year) {
+        return DB::transaction(function () use ($userId, $totalQuota, $remainingQuota, $year) {
             $quota = LeaveQuota::firstOrCreate(
                 ['user_id' => $userId, 'year' => $year],
                 ['total_quota' => $totalQuota, 'used_quota' => 0, 'remaining_quota' => $totalQuota]
             );
 
-            $used = (int) LeaveRequest::where('user_id', $userId)
-                ->where('status', 'approved')
-                ->whereYear('start_date', $year)
-                ->where('unit', 'hari')
-                ->whereHas('category', function ($q) {
-                    $q->where('deducts_quota', true)
-                      ->orWhereRaw('LOWER(name) IN (?, ?)', ['cuti tahunan', 'cuti haid']);
-                })
-                ->sum('amount');
-
-            $remaining = max(0, $totalQuota - $used);
+            if ($remainingQuota !== null) {
+                $remaining = max(0, min($totalQuota, $remainingQuota));
+                $used = max(0, $totalQuota - $remaining);
+            } else {
+                $used = (int) LeaveRequest::where('user_id', $userId)
+                    ->where('status', 'approved')
+                    ->whereYear('start_date', $year)
+                    ->where('unit', 'hari')
+                    ->whereHas('category', function ($q) {
+                        $q->where('deducts_quota', true)
+                          ->orWhereRaw('LOWER(name) IN (?, ?)', ['cuti tahunan', 'cuti haid']);
+                    })
+                    ->sum('amount');
+                $remaining = max(0, $totalQuota - $used);
+            }
 
             $quota->update([
                 'total_quota' => $totalQuota,
@@ -97,6 +101,14 @@ class LeaveQuotaService
 
             return $quota;
         });
+    }
+
+    /**
+     * Update total quota allowance for an employee.
+     */
+    public function setTotalQuota(int $userId, int $totalQuota, ?int $year = null): LeaveQuota
+    {
+        return $this->setQuota($userId, $totalQuota, null, $year);
     }
 
     /**
