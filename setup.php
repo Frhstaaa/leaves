@@ -192,28 +192,21 @@ if ($action === 'auto_repair') {
         $logs[] = "✓ File .env otomatis dibuat dengan koneksi database sginco_leav.";
     }
 
-    // Step 1: Force Git pull & Hard Reset to GitHub main (if git is active) or download from GitHub API
-    $logs[] = "\n[1/6] Mengambil kodingan terbaru & terbersih dari GitHub main...";
+    // Step 1: Direct GitHub Repository ZIP Sync (Guaranteed 100% File Update)
+    $logs[] = "\n[1/6] Mengunduh dan menyinkronkan seluruh file terbaru dari GitHub (Frhstaaa/leaves:main)...";
+    $repo = 'Frhstaaa/leaves';
+    $branch = 'main';
+    $zipUrl = "https://github.com/$repo/archive/refs/heads/$branch.zip";
     $synced = false;
-    $gitVer = runShell("git --version", $basePath);
-    if (str_contains(strtolower($gitVer), 'git version')) {
-        $fetch = runShell("git fetch origin main", $basePath);
-        $reset = runShell("git reset --hard origin/main", $basePath);
-        $logs[] = "✓ Git Reset: " . ($reset ?: $fetch ?: 'Selesai');
-        $synced = true;
-    }
-    
-    if (!$synced && function_exists('curl_init')) {
-        $repo = 'Frhstaaa/leaves';
-        $branch = 'main';
-        $zipUrl = "https://github.com/$repo/archive/refs/heads/$branch.zip";
+
+    if (function_exists('curl_init')) {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $zipUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_USERAGENT, 'SGIN-Leaves-Setup');
+        curl_setopt($ch, CURLOPT_USERAGENT, 'SGIN-Leaves-Setup-Direct');
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 120);
         $zipData = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
@@ -259,9 +252,19 @@ if ($action === 'auto_repair') {
                             $copiedCount++;
                         }
                     }
-                    $logs[] = "✓ GitHub Auto-Pull: Berhasil menarik $copiedCount file terbaru dari GitHub repo ($repo)!";
+                    $logs[] = "✓ GitHub Direct Sync: Berhasil mengekstrak dan memperbarui $copiedCount file dari repo $repo!";
+                    $synced = true;
                 }
             }
+        }
+    }
+
+    if (!$synced) {
+        $gitVer = runShell("git --version", $basePath);
+        if (str_contains(strtolower($gitVer), 'git version')) {
+            $fetch = runShell("git fetch origin main", $basePath);
+            $reset = runShell("git reset --hard origin/main", $basePath);
+            $logs[] = "✓ Git Reset: " . ($reset ?: $fetch ?: 'Selesai');
         } else {
             $logs[] = "ℹ️ Menggunakan kodingan file lokal server saat ini.";
         }
