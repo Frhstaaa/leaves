@@ -183,6 +183,10 @@ $envStatusMsg = ensureEnvFile($basePath);
 // 5. Database Connection Tester (Tests 127.0.0.1 and localhost)
 // ----------------------------------------------------------------------------
 function testDatabaseConnection($basePath) {
+    if (function_exists('mysqli_report')) {
+        @mysqli_report(MYSQLI_REPORT_OFF);
+    }
+
     $envContent = file_exists($basePath . '/.env') ? file_get_contents($basePath . '/.env') : '';
     preg_match('/DB_HOST=(.*)/', $envContent, $mHost);
     preg_match('/DB_PORT=(.*)/', $envContent, $mPort);
@@ -211,36 +215,45 @@ function testDatabaseConnection($basePath) {
         return $results;
     }
 
-    // Try current configured host first
-    $mysqli = @new mysqli($h, $u, $pass, $d, (int)$p);
-    if (!$mysqli->connect_errno) {
-        $results['connected'] = true;
-        $res = $mysqli->query("SELECT COUNT(*) as c FROM information_schema.tables WHERE table_schema = '$d'");
-        $results['tables_count'] = $res ? ($res->fetch_assoc()['c'] ?? 0) : 0;
-        $results['message'] = "Terhubung dengan sukses ke host '$h' ($d - {$results['tables_count']} tabel aktif).";
-        $mysqli->close();
-        return $results;
+    $errMsg = '';
+
+    // 1. Try current configured host first
+    try {
+        $mysqli = @new mysqli($h, $u, $pass, $d, (int)$p);
+        if ($mysqli && !$mysqli->connect_errno) {
+            $results['connected'] = true;
+            $res = $mysqli->query("SELECT COUNT(*) as c FROM information_schema.tables WHERE table_schema = '$d'");
+            $results['tables_count'] = $res ? ($res->fetch_assoc()['c'] ?? 0) : 0;
+            $results['message'] = "Terhubung dengan sukses ke host '$h' ($d - {$results['tables_count']} tabel aktif).";
+            $mysqli->close();
+            return $results;
+        }
+        $errMsg = $mysqli ? $mysqli->connect_error : 'Koneksi gagal';
+    } catch (\Throwable $e) {
+        $errMsg = $e->getMessage();
     }
 
-    $errMsg = $mysqli->connect_error;
-
-    // If current host failed, test alternative host (e.g. localhost vs 127.0.0.1)
+    // 2. If current host failed, test alternative host (e.g. localhost vs 127.0.0.1)
     $altHost = ($h === '127.0.0.1') ? 'localhost' : '127.0.0.1';
-    $mysqliAlt = @new mysqli($altHost, $u, $pass, $d, (int)$p);
-    if (!$mysqliAlt->connect_errno) {
-        $resAlt = $mysqliAlt->query("SELECT COUNT(*) as c FROM information_schema.tables WHERE table_schema = '$d'");
-        $altTables = $resAlt ? ($resAlt->fetch_assoc()['c'] ?? 0) : 0;
-        $mysqliAlt->close();
-        
-        // Auto-fix host in .env
-        $newEnv = preg_replace('/DB_HOST=.*$/m', "DB_HOST={$altHost}", $envContent);
-        @file_put_contents($basePath . '/.env', $newEnv);
+    try {
+        $mysqliAlt = @new mysqli($altHost, $u, $pass, $d, (int)$p);
+        if ($mysqliAlt && !$mysqliAlt->connect_errno) {
+            $resAlt = $mysqliAlt->query("SELECT COUNT(*) as c FROM information_schema.tables WHERE table_schema = '$d'");
+            $altTables = $resAlt ? ($resAlt->fetch_assoc()['c'] ?? 0) : 0;
+            $mysqliAlt->close();
+            
+            // Auto-fix host in .env
+            $newEnv = preg_replace('/DB_HOST=.*$/m', "DB_HOST={$altHost}", $envContent);
+            @file_put_contents($basePath . '/.env', $newEnv);
 
-        $results['connected'] = true;
-        $results['active_host'] = $altHost;
-        $results['tables_count'] = $altTables;
-        $results['message'] = "Koneksi berhasil dialihkan otomatis dari '$h' ke '$altHost' ($d - $altTables tabel).";
-        return $results;
+            $results['connected'] = true;
+            $results['active_host'] = $altHost;
+            $results['tables_count'] = $altTables;
+            $results['message'] = "Koneksi berhasil dialihkan otomatis dari '$h' ke '$altHost' ($d - $altTables tabel).";
+            return $results;
+        }
+    } catch (\Throwable $e) {
+        // Alt host also failed
     }
 
     $results['message'] = "Akses database ditolak: $errMsg. Pastikan user '$u' telah dihubungkan ke basis data '$d' dengan 'ALL PRIVILEGES' di cPanel MySQL.";

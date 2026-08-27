@@ -583,6 +583,9 @@ if (file_exists($manifestPath)) {
 $dbStatus = 'Belum dicek';
 $dbConnected = false;
 try {
+    if (function_exists('mysqli_report')) {
+        @mysqli_report(MYSQLI_REPORT_OFF);
+    }
     $envContent = file_exists($basePath . '/.env') ? file_get_contents($basePath . '/.env') : '';
     preg_match('/DB_HOST=(.*)/', $envContent, $mHost);
     preg_match('/DB_PORT=(.*)/', $envContent, $mPort);
@@ -598,14 +601,14 @@ try {
 
     if ($h && $d && $u) {
         $mysqli = @new mysqli($h, $u, $pass, $d, (int)$p);
-        if ($mysqli->connect_errno) {
-            $dbStatus = "Koneksi Gagal: " . $mysqli->connect_error;
-        } else {
+        if ($mysqli && !$mysqli->connect_errno) {
             $dbConnected = true;
             $res = $mysqli->query("SELECT COUNT(*) as c FROM information_schema.tables WHERE table_schema = '$d'");
             $rowCount = $res ? ($res->fetch_assoc()['c'] ?? 0) : 0;
             $dbStatus = "Terhubung ($d, $rowCount Tabel Aktif)";
             $mysqli->close();
+        } else {
+            $dbStatus = "Koneksi Gagal: " . ($mysqli ? $mysqli->connect_error : 'Error');
         }
     }
 } catch (\Throwable $e) {
