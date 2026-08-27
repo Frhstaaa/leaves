@@ -184,15 +184,79 @@ if ($action === 'auto_repair') {
         $logs[] = "✓ File .env otomatis dibuat dengan koneksi database sginco_leav.";
     }
 
-    // Step 1: Force Git pull & Hard Reset to GitHub main (if git is active)
-    $logs[] = "\n[1/6] Memeriksa versi kodingan dari repository...";
+    // Step 1: Force Git pull & Hard Reset to GitHub main (if git is active) or download from GitHub API
+    $logs[] = "\n[1/6] Mengambil kodingan terbaru & terbersih dari GitHub main...";
+    $synced = false;
     $gitVer = runShell("git --version", $basePath);
     if (str_contains(strtolower($gitVer), 'git version')) {
         $fetch = runShell("git fetch origin main", $basePath);
         $reset = runShell("git reset --hard origin/main", $basePath);
         $logs[] = "✓ Git Reset: " . ($reset ?: $fetch ?: 'Selesai');
-    } else {
-        $logs[] = "ℹ️ Git CLI tidak tersedia, menggunakan file lokal server saat ini.";
+        $synced = true;
+    }
+    
+    if (!$synced && function_exists('curl_init')) {
+        $repo = 'Frhstaaa/leaves';
+        $branch = 'main';
+        $zipUrl = "https://github.com/$repo/archive/refs/heads/$branch.zip";
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $zipUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'SGIN-Leaves-Setup');
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        $zipData = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode === 200 && !empty($zipData)) {
+            $tempZip = $basePath . '/storage/github_setup_temp.zip';
+            @file_put_contents($tempZip, $zipData);
+            $zip = new ZipArchive();
+            if ($zip->open($tempZip) === TRUE) {
+                $extractPath = $basePath . '/storage/github_setup_extracted';
+                @mkdir($extractPath, 0777, true);
+                $zip->extractTo($extractPath);
+                $zip->close();
+                @unlink($tempZip);
+
+                $extractedItems = scandir($extractPath);
+                $sourceDir = '';
+                foreach ($extractedItems as $item) {
+                    if ($item !== '.' && $item !== '..' && is_dir($extractPath . '/' . $item)) {
+                        $sourceDir = $extractPath . '/' . $item;
+                        break;
+                    }
+                }
+                if ($sourceDir) {
+                    $ignoreList = ['.env', 'storage', 'public/storage', '.git', 'node_modules'];
+                    $iterator = new RecursiveIteratorIterator(
+                        new RecursiveDirectoryIterator($sourceDir, RecursiveDirectoryIterator::SKIP_DOTS),
+                        RecursiveIteratorIterator::SELF_FIRST
+                    );
+                    $copiedCount = 0;
+                    foreach ($iterator as $item) {
+                        $subPath = substr($item->getPathname(), strlen($sourceDir) + 1);
+                        $destPath = $basePath . '/' . $subPath;
+                        $skip = false;
+                        foreach ($ignoreList as $ignored) {
+                            if (str_starts_with($subPath, $ignored)) { $skip = true; break; }
+                        }
+                        if ($skip) continue;
+                        if ($item->isDir()) {
+                            if (!is_dir($destPath)) @mkdir($destPath, 0777, true);
+                        } else {
+                            @copy($item->getPathname(), $destPath);
+                            $copiedCount++;
+                        }
+                    }
+                    $logs[] = "✓ GitHub Auto-Pull: Berhasil menarik $copiedCount file terbaru dari GitHub repo ($repo)!";
+                }
+            }
+        } else {
+            $logs[] = "ℹ️ Menggunakan kodingan file lokal server saat ini.";
+        }
     }
 
     // Step 2: Clear All File Caches manually
