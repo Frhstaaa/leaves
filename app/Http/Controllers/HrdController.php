@@ -954,6 +954,17 @@ class HrdController extends Controller
                 'Nama Pasangan', 'NIK Pasangan', 'TTL Pasangan', 'Anak ke 1', 'Anak ke 2', 'Anak ke 3'
             ]);
 
+            $formatDateStr = function ($val, $format = 'Y-m-d') {
+                if (empty($val)) return '-';
+                if ($val instanceof \DateTimeInterface) return $val->format($format);
+                if (is_string($val)) {
+                    $clean = trim($val);
+                    if ($clean === '' || $clean === '0000-00-00') return '-';
+                    return substr($clean, 0, 10);
+                }
+                return '-';
+            };
+
             foreach ($employees as $e) {
                 fputcsv($file, [
                     $e->nik ?? '-',
@@ -963,15 +974,15 @@ class HrdController extends Controller
                     $e->department->name ?? 'General',
                     $e->is_profile_completed ? 'LENGKAP' : 'BELUM LENGKAP',
                     $e->profile_completeness . '%',
-                    $e->join_date ? $e->join_date->format('Y-m-d') : '-',
+                    $formatDateStr($e->join_date),
                     $e->employee_status ?? '-',
                     $e->position ?? '-',
                     $e->education ?? '-',
-                    $e->contract_end_date ? $e->contract_end_date->format('Y-m-d') : '-',
+                    $formatDateStr($e->contract_end_date),
                     $e->ktp_number ?? '-',
                     $e->gender ?? '-',
                     $e->birth_place ?? '-',
-                    $e->birth_date ? $e->birth_date->format('Y-m-d') : '-',
+                    $formatDateStr($e->birth_date),
                     $e->phone_number ?? '-',
                     $e->ktp_address ?? '-',
                     $e->domicile_address ?? '-',
@@ -987,14 +998,14 @@ class HrdController extends Controller
                     $e->bank_account_number ?? '-',
                     $e->vehicle_plate_number ?? '-',
                     $e->sim_number ?? '-',
-                    $e->sim_valid_until ? $e->sim_valid_until->format('Y-m-d') : '-',
+                    $formatDateStr($e->sim_valid_until),
                     $e->shoe_size ?? '-',
                     $e->emergency_contact_relationship ?? '-',
                     $e->emergency_contact_phone ?? '-',
                     $e->emergency_contact_address ?? '-',
                     $e->spouse_name ?? '-',
                     $e->spouse_ktp_number ?? '-',
-                    ($e->spouse_birth_place ? $e->spouse_birth_place . ', ' : '') . ($e->spouse_birth_date ? $e->spouse_birth_date->format('d/m/Y') : '-'),
+                    ($e->spouse_birth_place ? $e->spouse_birth_place . ', ' : '') . $formatDateStr($e->spouse_birth_date, 'd/m/Y'),
                     $e->child_1_name ?? '-',
                     $e->child_2_name ?? '-',
                     $e->child_3_name ?? '-',

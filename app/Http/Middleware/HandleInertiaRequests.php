@@ -38,6 +38,16 @@ class HandleInertiaRequests extends Middleware
             $user->load('department');
         }
 
+        $formatDate = function ($val) {
+            if (empty($val)) return null;
+            if ($val instanceof \DateTimeInterface) return $val->format('Y-m-d');
+            if (is_string($val)) {
+                $clean = trim($val);
+                return ($clean === '' || $clean === '0000-00-00') ? null : substr($clean, 0, 10);
+            }
+            return null;
+        };
+
         return array_merge(parent::share($request), [
             'auth' => [
                 'user' => $user ? [
@@ -58,15 +68,15 @@ class HandleInertiaRequests extends Middleware
                     'avatar' => $user->avatar_url,
                     'profile_completeness' => $user->profile_completeness,
                     'is_profile_completed' => (bool) $user->is_profile_completed,
-                    'join_date' => $user->join_date ? $user->join_date->format('Y-m-d') : null,
+                    'join_date' => $formatDate($user->join_date),
                     'employee_status' => $user->employee_status,
                     'education' => $user->education,
                     'position' => $user->position,
-                    'contract_end_date' => $user->contract_end_date ? $user->contract_end_date->format('Y-m-d') : null,
+                    'contract_end_date' => $formatDate($user->contract_end_date),
                     'ktp_number' => $user->ktp_number,
                     'gender' => $user->gender,
                     'birth_place' => $user->birth_place,
-                    'birth_date' => $user->birth_date ? $user->birth_date->format('Y-m-d') : null,
+                    'birth_date' => $formatDate($user->birth_date),
                     'phone_number' => $user->phone_number,
                     'ktp_address' => $user->ktp_address,
                     'domicile_address' => $user->domicile_address,
@@ -82,7 +92,7 @@ class HandleInertiaRequests extends Middleware
                     'bank_account_number' => $user->bank_account_number,
                     'vehicle_plate_number' => $user->vehicle_plate_number,
                     'sim_number' => $user->sim_number,
-                    'sim_valid_until' => $user->sim_valid_until ? $user->sim_valid_until->format('Y-m-d') : null,
+                    'sim_valid_until' => $formatDate($user->sim_valid_until),
                     'shoe_size' => $user->shoe_size,
                     'emergency_contact_name' => $user->emergency_contact_name,
                     'emergency_contact_relationship' => $user->emergency_contact_relationship,
@@ -91,7 +101,7 @@ class HandleInertiaRequests extends Middleware
                     'spouse_name' => $user->spouse_name,
                     'spouse_ktp_number' => $user->spouse_ktp_number,
                     'spouse_birth_place' => $user->spouse_birth_place,
-                    'spouse_birth_date' => $user->spouse_birth_date ? $user->spouse_birth_date->format('Y-m-d') : null,
+                    'spouse_birth_date' => $formatDate($user->spouse_birth_date),
                     'child_1_name' => $user->child_1_name,
                     'child_2_name' => $user->child_2_name,
                     'child_3_name' => $user->child_3_name,
