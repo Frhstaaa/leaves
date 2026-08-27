@@ -842,6 +842,7 @@ class HrdController extends Controller
             abort(404, 'Karyawan tidak ditemukan.');
         }
 
+        $employee->loadMissing(['department', 'manager', 'approver1', 'approver2']);
         $departments = $this->departmentRepo->getAll();
 
         return Inertia::render('Profile/Biodata', [
