@@ -162,9 +162,9 @@ export default function Dashboard({
         )}
 
         {/* ========================================================================= */}
-        {/* 2. MANAGER / ADMIN ALERT CARD (SHADCN CARD WITH WARNING BADGE)            */}
+        {/* 2. MANAGER / ADMIN / APPROVER ALERT CARD                                  */}
         {/* ========================================================================= */}
-        {(isManager || isAdmin) && managerPendingCount > 0 && (
+        {managerPendingCount > 0 && (
           <motion.div variants={itemVariants}>
             <Card className="border-amber-300 bg-amber-50/70 shadow-xs overflow-hidden">
               <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

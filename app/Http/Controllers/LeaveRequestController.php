@@ -299,7 +299,7 @@ class LeaveRequestController extends Controller
 
         // Authorization: Only owner, assigned manager/approver, or admin
         $isOwner = (int) $leaveRequest->user_id === (int) $user->id;
-        $canView = $isOwner || $user->isAdmin() || $user->isManager();
+        $canView = $isOwner || $user->isAdmin() || $user->isApprover();
 
         if (!$canView) {
             return response()->json(['message' => 'Anda tidak memiliki hak akses untuk melihat data pengajuan ini.'], 403);

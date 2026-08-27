@@ -34,7 +34,7 @@ class DashboardController extends Controller
         $teamRequests = [];
         $hrdMetrics = [];
 
-        if ($user->isManager() && !$user->isAdmin()) {
+        if ($user->isApprover() || $user->isAdmin()) {
             $managerPendingCount = $this->leaveRequestRepo->countPendingApprovalsForUser($user);
         }
 

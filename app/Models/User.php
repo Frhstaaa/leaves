@@ -198,6 +198,57 @@ class User extends Authenticatable
         return $this->role === 'employee' || $this->hasRole('employee');
     }
 
+    public function isManager(): bool
+    {
+        if ($this->role === 'manager' || $this->hasRole('manager')) {
+            return true;
+        }
+
+        if (!in_array($this->role, ['employee', 'admin', 'superadmin']) && !empty($this->role)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin' || $this->hasRole('admin') || $this->isSuperadmin();
+    }
+
+    public function isApprover(): bool
+    {
+        if ($this->isAdmin() || $this->isManager()) {
+            return true;
+        }
+
+        if (method_exists($this, 'hasPermissionTo')) {
+            try {
+                if ($this->can('approve-leave-request') || $this->can('manage-approvals')) {
+                    return true;
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        // Check if user is assigned as approver_1_id, approver_2_id, or manager_id in any department
+        $isDeptApprover = Department::where('approver_1_id', $this->id)
+            ->orWhere('approver_2_id', $this->id)
+            ->orWhere('manager_id', $this->id)
+            ->exists();
+
+        if ($isDeptApprover) {
+            return true;
+        }
+
+        // Check if user is assigned as direct approver for any employee
+        $isUserApprover = User::where('approver_1_id', $this->id)
+            ->orWhere('approver_2_id', $this->id)
+            ->orWhere('manager_id', $this->id)
+            ->exists();
+
+        return $isUserApprover;
+    }
+
     public function getEffectiveApprover1()
     {
         if ($this->approver1) {
@@ -224,16 +275,6 @@ class User extends Authenticatable
             return $this->department->manager;
         }
         return null;
-    }
-
-    public function isManager(): bool
-    {
-        return $this->role === 'manager' || $this->hasRole('manager');
-    }
-
-    public function isAdmin(): bool
-    {
-        return $this->role === 'admin' || $this->hasRole('admin') || $this->isSuperadmin();
     }
 
     public function payslips()
@@ -278,7 +319,7 @@ class User extends Authenticatable
                 });
         }
 
-        if ($this->isManager()) {
+        if ($this->isApprover()) {
             return LeaveRequest::where('status', 'pending')
                 ->where(function ($q) {
                     $q->where(function ($sub) {
@@ -315,7 +356,7 @@ class User extends Authenticatable
 
     public function getPendingApprovalsCount(): int
     {
-        if (!$this->isManager() && !$this->isAdmin()) {
+        if (!$this->isApprover() && !$this->isAdmin()) {
             return 0;
         }
 
@@ -324,7 +365,7 @@ class User extends Authenticatable
 
     public function getPendingApprovalsList(int $limit = 5)
     {
-        if (!$this->isManager() && !$this->isAdmin()) {
+        if (!$this->isApprover() && !$this->isAdmin()) {
             return collect();
         }
 

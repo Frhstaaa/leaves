@@ -250,6 +250,7 @@ export default function AuthenticatedLayout({ children, title }) {
   const isSuperadmin = Boolean(user?.is_superadmin || user?.role === 'superadmin' || user?.roles?.includes('superadmin'));
   const isAdmin = Boolean(user?.is_admin || user?.role === 'admin' || user?.roles?.includes('admin') || isSuperadmin);
   const isManager = Boolean(user?.is_manager || user?.role === 'manager' || user?.roles?.includes('manager') || isAdmin);
+  const isApprover = Boolean(user?.is_approver || isManager || isAdmin || pendingApprovalsCount > 0 || can('manage-approvals') || can('approve-leave-request'));
 
   const can = (perm) => isSuperadmin || userPermissions.includes(perm);
 
@@ -319,7 +320,7 @@ export default function AuthenticatedLayout({ children, title }) {
     },
     {
       title: 'TIM & PERSETUJUAN',
-      show: can('manage-approvals') || isManager || isAdmin,
+      show: isApprover,
       items: [
         {
           name: 'Persetujuan Team',
@@ -327,7 +328,7 @@ export default function AuthenticatedLayout({ children, title }) {
           href: route('approvals.index'),
           icon: CheckSquare,
           active: isApproval,
-          show: can('manage-approvals') || isManager || isAdmin,
+          show: isApprover,
           badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : null,
         },
       ],

@@ -32,8 +32,8 @@ class ApprovalController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user->isManager() && !$user->isAdmin()) {
-            return redirect()->route('dashboard')->with('error', 'Akses hanya untuk Atasan / Manager & HRD.');
+        if (!$user->isApprover() && !$user->isAdmin()) {
+            return redirect()->route('dashboard')->with('error', 'Akses hanya untuk Atasan / Approver & HRD.');
         }
 
         $filters = [

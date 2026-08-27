@@ -51,6 +51,7 @@ class HandleInertiaRequests extends Middleware
                     'is_superadmin' => $user->isSuperadmin(),
                     'is_admin' => $user->isAdmin(),
                     'is_manager' => $user->isManager(),
+                    'is_approver' => $user->isApprover(),
                     'department_id' => $user->department_id,
                     'department_name' => $user->department ? $user->department->name : 'General',
                     'department' => $user->department,
