@@ -124,9 +124,26 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    const targetUrl = isHrdView
-      ? route('hrd.employees.biodata.update', user.id)
-      : route('profile.biodata.update');
+    let targetUrl;
+    if (isHrdView) {
+      targetUrl = `/leaves-application/hrd/employees/${user.id}/biodata`;
+      try {
+        if (typeof route === 'function') {
+          targetUrl = route().has('hrd.employees.biodata.update')
+            ? route('hrd.employees.biodata.update', user.id)
+            : (route().has('subfolder.hrd.employees.biodata.update') ? route('subfolder.hrd.employees.biodata.update', user.id) : targetUrl);
+        }
+      } catch (err) {}
+    } else {
+      targetUrl = `/leaves-application/profile/biodata`;
+      try {
+        if (typeof route === 'function') {
+          targetUrl = route().has('profile.biodata.update')
+            ? route('profile.biodata.update')
+            : (route().has('subfolder.profile.biodata.update') ? route('subfolder.profile.biodata.update') : targetUrl);
+        }
+      } catch (err) {}
+    }
 
     form.post(targetUrl, {
       preserveScroll: true,
