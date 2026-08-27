@@ -23,9 +23,9 @@
 @ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-define('GITHUB_REPO', 'Frhstaaa/leaves');
-define('GITHUB_BRANCH', 'main');
-define('WEBHOOK_SECRET', 'sgin-secret-webhook-key');
+if (!defined('GITHUB_REPO')) define('GITHUB_REPO', 'Frhstaaa/leaves');
+if (!defined('GITHUB_BRANCH')) define('GITHUB_BRANCH', 'main');
+if (!defined('WEBHOOK_SECRET')) define('WEBHOOK_SECRET', 'sgin-secret-webhook-key');
 
 // Determine base path
 $basePath = __DIR__;
