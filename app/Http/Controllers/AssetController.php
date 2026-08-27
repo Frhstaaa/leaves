@@ -1,0 +1,182 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\CloudflareR2;
+use Illuminate\Http\Response;
+
+class AssetController extends Controller
+{
+    /**
+     * Serve Service Worker javascript
+     */
+    public function serviceWorker()
+    {
+        $path = public_path('sw.js');
+        if (!file_exists($path)) {
+            $path = base_path('public/sw.js');
+        }
+        if (file_exists($path)) {
+            return response(file_get_contents($path), 200, [
+                'Content-Type' => 'application/javascript; charset=utf-8',
+                'Service-Worker-Allowed' => '/',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            ]);
+        }
+        return response('// sw.js not found', 404);
+    }
+
+    /**
+     * Serve Vite build assets with correct mime types & CORS
+     */
+    public function buildAsset(string $path)
+    {
+        if (str_contains($path, '..') || str_contains($path, "\0")) {
+            abort(404);
+        }
+        $cleanPath = ltrim(str_replace('\\', '/', $path), '/');
+        $filePath = public_path('build/' . $cleanPath);
+        if (!file_exists($filePath)) {
+            $filePath = base_path('public/build/' . $cleanPath);
+        }
+        $real = realpath($filePath);
+        $publicBuild = realpath(public_path('build')) ?: realpath(base_path('public/build'));
+        if ($real && is_file($real) && $publicBuild && str_starts_with($real, $publicBuild)) {
+            $ext = strtolower(pathinfo($real, PATHINFO_EXTENSION));
+            $mimes = [
+                'js' => 'application/javascript; charset=utf-8',
+                'mjs' => 'application/javascript; charset=utf-8',
+                'css' => 'text/css; charset=utf-8',
+                'json' => 'application/json; charset=utf-8',
+                'webmanifest' => 'application/manifest+json; charset=utf-8',
+                'png' => 'image/png',
+                'webp' => 'image/webp',
+                'jpg' => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'svg' => 'image/svg+xml',
+                'ico' => 'image/x-icon',
+                'woff2' => 'font/woff2',
+                'woff' => 'font/woff',
+                'ttf' => 'font/ttf',
+            ];
+            $contentType = $mimes[$ext] ?? 'application/octet-stream';
+            return response(file_get_contents($real), 200, [
+                'Content-Type' => $contentType,
+                'Access-Control-Allow-Origin' => '*',
+                'Cache-Control' => 'public, max-age=31536000, immutable',
+            ]);
+        }
+        return response('File not found', 404);
+    }
+
+    /**
+     * Serve local storage or proxy Cloudflare R2 files
+     */
+    public function storageProxy(string $path)
+    {
+        if (str_contains($path, '..') || str_contains($path, "\0")) {
+            abort(404);
+        }
+        $cleanPath = ltrim(str_replace('\\', '/', $path), '/');
+
+        // 1. Check local files
+        $localCandidates = [
+            storage_path('app/public/' . $cleanPath),
+            public_path('storage/' . $cleanPath),
+            base_path('public/storage/' . $cleanPath),
+        ];
+        $allowedRoots = array_filter([
+            realpath(storage_path('app/public')),
+            realpath(public_path('storage')),
+            realpath(base_path('public/storage')),
+        ]);
+
+        foreach ($localCandidates as $loc) {
+            $real = realpath($loc);
+            if ($real && is_file($real)) {
+                $isSafe = false;
+                foreach ($allowedRoots as $root) {
+                    if ($root && str_starts_with($real, $root)) {
+                        $isSafe = true;
+                        break;
+                    }
+                }
+                if ($isSafe) {
+                    $ext = strtolower(pathinfo($real, PATHINFO_EXTENSION));
+                    $mimes = [
+                        'png' => 'image/png',
+                        'webp' => 'image/webp',
+                        'jpg' => 'image/jpeg',
+                        'jpeg' => 'image/jpeg',
+                        'svg' => 'image/svg+xml',
+                        'pdf' => 'application/pdf',
+                    ];
+                    return response(file_get_contents($real), 200, [
+                        'Content-Type' => $mimes[$ext] ?? 'application/octet-stream',
+                        'Access-Control-Allow-Origin' => '*',
+                        'Cache-Control' => 'public, max-age=86400',
+                    ]);
+                }
+            }
+        }
+
+        // 2. Check in Cloudflare R2
+        if (CloudflareR2::isConfigured() && CloudflareR2::exists($cleanPath)) {
+            $content = CloudflareR2::get($cleanPath);
+            if ($content !== null) {
+                $ext = strtolower(pathinfo($cleanPath, PATHINFO_EXTENSION));
+                $mimes = [
+                    'png' => 'image/png',
+                    'webp' => 'image/webp',
+                    'jpg' => 'image/jpeg',
+                    'jpeg' => 'image/jpeg',
+                    'svg' => 'image/svg+xml',
+                    'pdf' => 'application/pdf',
+                ];
+                return response($content, 200, [
+                    'Content-Type' => $mimes[$ext] ?? 'application/octet-stream',
+                    'Access-Control-Allow-Origin' => '*',
+                    'Cache-Control' => 'public, max-age=86400',
+                ]);
+            }
+        }
+
+        // 3. Fallback for logos
+        if (str_contains($cleanPath, 'logo')) {
+            $masterLogo = public_path('icons/company_logo_master.png');
+            if (!file_exists($masterLogo)) {
+                $masterLogo = base_path('public/icons/company_logo_master.png');
+            }
+            if (file_exists($masterLogo)) {
+                return response(file_get_contents($masterLogo), 200, [
+                    'Content-Type' => 'image/png',
+                    'Access-Control-Allow-Origin' => '*',
+                ]);
+            }
+        }
+
+        return response('File not found', 404);
+    }
+
+    /**
+     * Serve static app icon
+     */
+    public function iconAsset(string $filename)
+    {
+        if (str_contains($filename, '..') || str_contains($filename, "\0")) {
+            abort(404);
+        }
+        $cleanFilename = basename($filename);
+        $path = public_path('icons/' . $cleanFilename);
+        $real = realpath($path);
+        $iconsDir = realpath(public_path('icons'));
+        if ($real && is_file($real) && $iconsDir && str_starts_with($real, $iconsDir)) {
+            return response(file_get_contents($real), 200, [
+                'Content-Type' => 'image/png',
+                'Access-Control-Allow-Origin' => '*',
+                'Cache-Control' => 'public, max-age=31536000, immutable',
+            ]);
+        }
+        return response('Icon not found', 404);
+    }
+}

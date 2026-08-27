@@ -1,11 +1,13 @@
 <?php
 
 use App\Http\Controllers\ApprovalController;
+use App\Http\Controllers\AssetController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HrdController;
 use App\Http\Controllers\LeaveRequestController;
 use App\Http\Controllers\PayslipController;
+use App\Http\Controllers\SettingController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -17,168 +19,19 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [AuthController::class, 'showLogin']);
 
 // Service Worker Route (Ensures sw.js is always reachable in subfolders)
-Route::get('/sw.js', function () {
-    $path = public_path('sw.js');
-    if (!file_exists($path)) {
-        $path = base_path('public/sw.js');
-    }
-    if (file_exists($path)) {
-        return response(file_get_contents($path), 200, [
-            'Content-Type' => 'application/javascript; charset=utf-8',
-            'Service-Worker-Allowed' => '/',
-            'Cache-Control' => 'no-cache, no-store, must-revalidate',
-        ]);
-    }
-    return response('// sw.js not found', 404);
-});
+Route::get('/sw.js', [AssetController::class, 'serviceWorker']);
 
 // Vite Build Assets Direct Route (Guarantees JS/CSS are served with 200 OK & CORS)
-Route::get('/build/{path}', function ($path) {
-    if (str_contains($path, '..') || str_contains($path, "\0")) {
-        abort(404);
-    }
-    $cleanPath = ltrim(str_replace('\\', '/', $path), '/');
-    $filePath = public_path('build/' . $cleanPath);
-    if (!file_exists($filePath)) {
-        $filePath = base_path('public/build/' . $cleanPath);
-    }
-    $real = realpath($filePath);
-    $publicBuild = realpath(public_path('build')) ?: realpath(base_path('public/build'));
-    if ($real && is_file($real) && $publicBuild && str_starts_with($real, $publicBuild)) {
-        $ext = strtolower(pathinfo($real, PATHINFO_EXTENSION));
-        $mimes = [
-            'js' => 'application/javascript; charset=utf-8',
-            'mjs' => 'application/javascript; charset=utf-8',
-            'css' => 'text/css; charset=utf-8',
-            'json' => 'application/json; charset=utf-8',
-            'webmanifest' => 'application/manifest+json; charset=utf-8',
-            'png' => 'image/png',
-            'webp' => 'image/webp',
-            'jpg' => 'image/jpeg',
-            'jpeg' => 'image/jpeg',
-            'svg' => 'image/svg+xml',
-            'ico' => 'image/x-icon',
-            'woff2' => 'font/woff2',
-            'woff' => 'font/woff',
-            'ttf' => 'font/ttf',
-        ];
-        $contentType = $mimes[$ext] ?? 'application/octet-stream';
-        return response(file_get_contents($real), 200, [
-            'Content-Type' => $contentType,
-            'Access-Control-Allow-Origin' => '*',
-            'Cache-Control' => 'public, max-age=31536000, immutable',
-        ]);
-    }
-    return response('File not found', 404);
-})->where('path', '.*');
+Route::get('/build/{path}', [AssetController::class, 'buildAsset'])->where('path', '.*');
 
 // Storage Direct & Cloudflare R2 Proxy Route with Master Fallback
-Route::get('/storage/{path}', function ($path) {
-    if (str_contains($path, '..') || str_contains($path, "\0")) {
-        abort(404);
-    }
-    $cleanPath = ltrim(str_replace('\\', '/', $path), '/');
-
-    // 1. Check local file in storage/app/public or public/storage
-    $localCandidates = [
-        storage_path('app/public/' . $cleanPath),
-        public_path('storage/' . $cleanPath),
-        base_path('public/storage/' . $cleanPath),
-    ];
-    $allowedRoots = array_filter([
-        realpath(storage_path('app/public')),
-        realpath(public_path('storage')),
-        realpath(base_path('public/storage')),
-    ]);
-
-    foreach ($localCandidates as $loc) {
-        $real = realpath($loc);
-        if ($real && is_file($real)) {
-            $isSafe = false;
-            foreach ($allowedRoots as $root) {
-                if ($root && str_starts_with($real, $root)) {
-                    $isSafe = true;
-                    break;
-                }
-            }
-            if ($isSafe) {
-                $ext = strtolower(pathinfo($real, PATHINFO_EXTENSION));
-                $mimes = [
-                    'png' => 'image/png',
-                    'webp' => 'image/webp',
-                    'jpg' => 'image/jpeg',
-                    'jpeg' => 'image/jpeg',
-                    'svg' => 'image/svg+xml',
-                    'pdf' => 'application/pdf',
-                ];
-                return response(file_get_contents($real), 200, [
-                    'Content-Type' => $mimes[$ext] ?? 'application/octet-stream',
-                    'Access-Control-Allow-Origin' => '*',
-                    'Cache-Control' => 'public, max-age=86400',
-                ]);
-            }
-        }
-    }
-
-    // 2. Check in Cloudflare R2
-    if (\App\Services\CloudflareR2::isConfigured() && \App\Services\CloudflareR2::exists($cleanPath)) {
-        $content = \App\Services\CloudflareR2::get($cleanPath);
-        if ($content !== null) {
-            $ext = strtolower(pathinfo($cleanPath, PATHINFO_EXTENSION));
-            $mimes = [
-                'png' => 'image/png',
-                'webp' => 'image/webp',
-                'jpg' => 'image/jpeg',
-                'jpeg' => 'image/jpeg',
-                'svg' => 'image/svg+xml',
-                'pdf' => 'application/pdf',
-            ];
-            return response($content, 200, [
-                'Content-Type' => $mimes[$ext] ?? 'application/octet-stream',
-                'Access-Control-Allow-Origin' => '*',
-                'Cache-Control' => 'public, max-age=86400',
-            ]);
-        }
-    }
-
-    // 3. Fallback for logos
-    if (str_contains($cleanPath, 'logo')) {
-        $masterLogo = public_path('icons/company_logo_master.png');
-        if (!file_exists($masterLogo)) {
-            $masterLogo = base_path('public/icons/company_logo_master.png');
-        }
-        if (file_exists($masterLogo)) {
-            return response(file_get_contents($masterLogo), 200, [
-                'Content-Type' => 'image/png',
-                'Access-Control-Allow-Origin' => '*',
-            ]);
-        }
-    }
-
-    return response('File not found', 404);
-})->where('path', '.*');
+Route::get('/storage/{path}', [AssetController::class, 'storageProxy'])->where('path', '.*');
 
 // PWA Manifest & Dynamic App Icon Routes
-Route::get('/manifest.webmanifest', [\App\Http\Controllers\SettingController::class, 'manifest'])->name('pwa.manifest');
-Route::get('/manifest.json', [\App\Http\Controllers\SettingController::class, 'manifest']);
-Route::get('/app-icon/{size?}', [\App\Http\Controllers\SettingController::class, 'getAppIcon'])->name('pwa.icon');
-Route::get('/icons/{filename}', function ($filename) {
-    if (str_contains($filename, '..') || str_contains($filename, "\0")) {
-        abort(404);
-    }
-    $cleanFilename = basename($filename);
-    $path = public_path('icons/' . $cleanFilename);
-    $real = realpath($path);
-    $iconsDir = realpath(public_path('icons'));
-    if ($real && is_file($real) && $iconsDir && str_starts_with($real, $iconsDir)) {
-        return response(file_get_contents($real), 200, [
-            'Content-Type' => 'image/png',
-            'Access-Control-Allow-Origin' => '*',
-            'Cache-Control' => 'public, max-age=31536000, immutable',
-        ]);
-    }
-    return response('Icon not found', 404);
-})->where('filename', '.*');
+Route::get('/manifest.webmanifest', [SettingController::class, 'manifest'])->name('pwa.manifest');
+Route::get('/manifest.json', [SettingController::class, 'manifest']);
+Route::get('/app-icon/{size?}', [SettingController::class, 'getAppIcon'])->name('pwa.icon');
+Route::get('/icons/{filename}', [AssetController::class, 'iconAsset'])->where('filename', '.*');
 
 // Authentication Routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');

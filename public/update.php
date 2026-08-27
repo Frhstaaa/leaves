@@ -519,20 +519,24 @@ if ($actionExecuted) {
                         }
 
                         try {
-                            \Illuminate\Support\Facades\Artisan::call('db:seed', [
-                                '--class' => 'Database\\Seeders\\RolePermissionSeeder',
-                                '--force' => true,
-                            ]);
-                            echo "✓ Role & Permissions untuk semua menu baru berhasil disinkronkan ke database!\n\n";
+                            if (class_exists('Database\\Seeders\\RolePermissionSeeder')) {
+                                \Illuminate\Support\Facades\Artisan::call('db:seed', [
+                                    '--class' => 'Database\\Seeders\\RolePermissionSeeder',
+                                    '--force' => true,
+                                ]);
+                                echo "✓ Role & Permissions untuk semua menu baru berhasil disinkronkan ke database!\n\n";
+                            }
                         } catch (\Throwable $e) {
-                            echo "ℹ️ Seeder status: " . $e->getMessage() . "\n\n";
+                            echo "ℹ️ Seeder notice: " . $e->getMessage() . "\n\n";
                         }
 
                         try {
-                            \App\Models\LeaveQuota::syncAllUsers();
-                            echo "✓ Sinkronisasi kuota cuti karyawan berhasil diperbarui (Cuti Tahunan & Cuti Haid memotong kuota, kategori lain bebas kuota)!\n\n";
+                            if (class_exists('\\App\\Models\\LeaveQuota')) {
+                                \App\Models\LeaveQuota::syncAllUsers();
+                                echo "✓ Sinkronisasi kuota cuti karyawan berhasil diperbarui (Cuti Tahunan & Cuti Haid memotong kuota, kategori lain bebas kuota)!\n\n";
+                            }
                         } catch (\Throwable $e) {
-                            echo "ℹ️ Sync quota status: " . $e->getMessage() . "\n\n";
+                            echo "ℹ️ Sync quota notice: " . $e->getMessage() . "\n\n";
                         }
                     }
 
@@ -555,7 +559,7 @@ if ($actionExecuted) {
                             include_once($basePath . '/generate_pwa_assets.php');
                             echo "✓ Icon PWA dan manifest siap.\n";
                         } catch (\Throwable $e) {
-                            echo "ℹ️ PWA generator: " . $e->getMessage() . "\n";
+                            echo "ℹ️ PWA generator notice: " . $e->getMessage() . "\n";
                         }
                     }
                     echo "✓ Storage link siap.\n\n";
@@ -570,7 +574,11 @@ if ($actionExecuted) {
                         try {
                             \Illuminate\Support\Facades\Artisan::call('optimize:clear');
                             \Illuminate\Support\Facades\Artisan::call('config:cache');
-                            \Illuminate\Support\Facades\Artisan::call('route:cache');
+                            try {
+                                \Illuminate\Support\Facades\Artisan::call('route:cache');
+                            } catch (\Throwable $re) {
+                                \Illuminate\Support\Facades\Artisan::call('route:clear');
+                            }
                             echo "✓ Cache production berhasil diperbarui.\n\n";
                         } catch (\Throwable $e) {
                             echo "ℹ️ Cache status: " . $e->getMessage() . "\n\n";
