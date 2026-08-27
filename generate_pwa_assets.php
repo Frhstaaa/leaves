@@ -169,12 +169,12 @@ if (class_exists('\\App\\Models\\Setting')) {
 $v = time();
 
 $manifest = [
-    'id' => 'https://www.sgin.co.id/leaves-application/?source=pwa',
+    'id' => './?source=pwa',
     'name' => $appName . ' - Cuti & Ketidakhadiran',
     'short_name' => $appName,
     'description' => $appDesc,
-    'start_url' => 'https://www.sgin.co.id/leaves-application/login?source=pwa',
-    'scope' => 'https://www.sgin.co.id/leaves-application/',
+    'start_url' => './login?source=pwa',
+    'scope' => './',
     'display' => 'standalone',
     'display_override' => ['window-controls-overlay', 'standalone', 'minimal-ui'],
     'background_color' => '#F5FAF7',
@@ -184,31 +184,31 @@ $manifest = [
     'prefer_related_applications' => false,
     'icons' => [
         [
-            'src' => "https://www.sgin.co.id/leaves-application/icons/icon-180x180.png?v={$v}",
+            'src' => './icons/icon-180x180.png',
             'sizes' => '180x180',
             'type' => 'image/png',
             'purpose' => 'any'
         ],
         [
-            'src' => "https://www.sgin.co.id/leaves-application/icons/icon-192x192.png?v={$v}",
+            'src' => './icons/icon-192x192.png',
             'sizes' => '192x192',
             'type' => 'image/png',
             'purpose' => 'any'
         ],
         [
-            'src' => "https://www.sgin.co.id/leaves-application/icons/icon-maskable-192.png?v={$v}",
+            'src' => './icons/icon-maskable-192.png',
             'sizes' => '192x192',
             'type' => 'image/png',
             'purpose' => 'maskable'
         ],
         [
-            'src' => "https://www.sgin.co.id/leaves-application/icons/icon-512x512.png?v={$v}",
+            'src' => './icons/icon-512x512.png',
             'sizes' => '512x512',
             'type' => 'image/png',
             'purpose' => 'any'
         ],
         [
-            'src' => "https://www.sgin.co.id/leaves-application/icons/icon-maskable-512.png?v={$v}",
+            'src' => './icons/icon-maskable-512.png',
             'sizes' => '512x512',
             'type' => 'image/png',
             'purpose' => 'maskable'
@@ -219,15 +219,15 @@ $manifest = [
             'name' => 'Buat Pengajuan',
             'short_name' => 'Pengajuan',
             'description' => 'Buat pengajuan cuti atau izin baru',
-            'url' => 'https://www.sgin.co.id/leaves-application/leave-requests/create',
-            'icons' => [['src' => "https://www.sgin.co.id/leaves-application/icons/icon-192x192.png?v={$v}", 'sizes' => '192x192']]
+            'url' => './leave-requests/create',
+            'icons' => [['src' => './icons/icon-192x192.png', 'sizes' => '192x192']]
         ],
         [
             'name' => 'Persetujuan Team',
             'short_name' => 'Approval',
             'description' => 'Tinjau persetujuan cuti bawahan',
-            'url' => 'https://www.sgin.co.id/leaves-application/approvals',
-            'icons' => [['src' => "https://www.sgin.co.id/leaves-application/icons/icon-192x192.png?v={$v}", 'sizes' => '192x192']]
+            'url' => './approvals',
+            'icons' => [['src' => './icons/icon-192x192.png', 'sizes' => '192x192']]
         ]
     ]
 ];
@@ -235,4 +235,4 @@ $manifest = [
 $jsonContent = json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 file_put_contents($baseDir . '/public/manifest.webmanifest', $jsonContent);
 file_put_contents($baseDir . '/public/manifest.json', $jsonContent);
-echo "✓ Manifest and static PWA assets synced with company branding.\n";
+echo "✓ Manifest and static PWA assets synced with relative paths.\n";

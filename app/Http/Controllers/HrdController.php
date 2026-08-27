@@ -285,32 +285,53 @@ class HrdController extends Controller
     public function storeDepartment(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:departments,name',
+            'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:departments,code',
             'manager_id' => 'nullable',
             'approver_1_id' => 'nullable',
             'approver_2_id' => 'nullable',
-            'approval_type' => 'required|in:3_tier,2_tier,1_tier,custom',
+            'approval_type' => 'nullable|in:3_tier,2_tier,1_tier,custom',
             'description' => 'nullable|string|max:1000',
         ]);
 
-        $managerId = (!empty($validated['manager_id']) && $validated['manager_id'] !== '0') ? (int) $validated['manager_id'] : null;
-        $approver1Id = (!empty($validated['approver_1_id']) && $validated['approver_1_id'] !== '0') ? (int) $validated['approver_1_id'] : null;
-        $approver2Id = (!empty($validated['approver_2_id']) && $validated['approver_2_id'] !== '0') ? (int) $validated['approver_2_id'] : null;
+        $sanitizer = function($val) {
+            if (empty($val) || $val === '0' || $val === 'none' || !is_numeric($val)) return null;
+            $intVal = (int) $val;
+            return ($intVal > 0 && \App\Models\User::where('id', $intVal)->exists()) ? $intVal : null;
+        };
+
+        $managerId = $sanitizer($validated['manager_id'] ?? null);
+        $approver1Id = $sanitizer($validated['approver_1_id'] ?? null);
+        $approver2Id = $sanitizer($validated['approver_2_id'] ?? null);
 
         if ($managerId && !$approver2Id) $approver2Id = $managerId;
 
-        $dept = $this->departmentRepo->create([
+        $createData = [
             'name' => trim($validated['name']),
             'code' => strtoupper(trim($validated['code'])),
             'manager_id' => $managerId,
-            'approver_1_id' => $approver1Id,
-            'approver_2_id' => $approver2Id,
-            'approval_type' => $validated['approval_type'],
-            'description' => $validated['description'] ?? null,
-        ]);
+        ];
 
-        return redirect()->back()->with('success', "Departemen '{$dept->name}' ({$dept->code}) berhasil ditambahkan!");
+        if (\Illuminate\Support\Facades\Schema::hasColumn('departments', 'approver_1_id')) {
+            $createData['approver_1_id'] = $approver1Id;
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('departments', 'approver_2_id')) {
+            $createData['approver_2_id'] = $approver2Id;
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('departments', 'approval_type')) {
+            $createData['approval_type'] = $validated['approval_type'] ?? '3_tier';
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('departments', 'description')) {
+            $createData['description'] = $validated['description'] ?? null;
+        }
+
+        try {
+            $dept = $this->departmentRepo->create($createData);
+            return redirect()->back()->with('success', "Departemen '{$dept->name}' ({$dept->code}) berhasil ditambahkan!");
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Store Department Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal menambahkan departemen: ' . $e->getMessage());
+        }
     }
 
     public function updateDepartment(Request $request, int $id): RedirectResponse
@@ -321,32 +342,53 @@ class HrdController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:departments,name,' . $dept->id,
+            'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:departments,code,' . $dept->id,
             'manager_id' => 'nullable',
             'approver_1_id' => 'nullable',
             'approver_2_id' => 'nullable',
-            'approval_type' => 'required|in:3_tier,2_tier,1_tier,custom',
+            'approval_type' => 'nullable|in:3_tier,2_tier,1_tier,custom',
             'description' => 'nullable|string|max:1000',
         ]);
 
-        $managerId = (!empty($validated['manager_id']) && $validated['manager_id'] !== '0') ? (int) $validated['manager_id'] : null;
-        $approver1Id = (!empty($validated['approver_1_id']) && $validated['approver_1_id'] !== '0') ? (int) $validated['approver_1_id'] : null;
-        $approver2Id = (!empty($validated['approver_2_id']) && $validated['approver_2_id'] !== '0') ? (int) $validated['approver_2_id'] : null;
+        $sanitizer = function($val) {
+            if (empty($val) || $val === '0' || $val === 'none' || !is_numeric($val)) return null;
+            $intVal = (int) $val;
+            return ($intVal > 0 && \App\Models\User::where('id', $intVal)->exists()) ? $intVal : null;
+        };
+
+        $managerId = $sanitizer($validated['manager_id'] ?? null);
+        $approver1Id = $sanitizer($validated['approver_1_id'] ?? null);
+        $approver2Id = $sanitizer($validated['approver_2_id'] ?? null);
 
         if ($managerId && !$approver2Id) $approver2Id = $managerId;
 
-        $this->departmentRepo->update($dept, [
+        $updateData = [
             'name' => trim($validated['name']),
             'code' => strtoupper(trim($validated['code'])),
             'manager_id' => $managerId,
-            'approver_1_id' => $approver1Id,
-            'approver_2_id' => $approver2Id,
-            'approval_type' => $validated['approval_type'],
-            'description' => $validated['description'] ?? null,
-        ]);
+        ];
 
-        return redirect()->back()->with('success', "Departemen '{$dept->name}' berhasil diperbarui!");
+        if (\Illuminate\Support\Facades\Schema::hasColumn('departments', 'approver_1_id')) {
+            $updateData['approver_1_id'] = $approver1Id;
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('departments', 'approver_2_id')) {
+            $updateData['approver_2_id'] = $approver2Id;
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('departments', 'approval_type')) {
+            $updateData['approval_type'] = $validated['approval_type'] ?? '3_tier';
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('departments', 'description')) {
+            $updateData['description'] = $validated['description'] ?? null;
+        }
+
+        try {
+            $this->departmentRepo->update($dept, $updateData);
+            return redirect()->back()->with('success', "Departemen '{$dept->name}' berhasil diperbarui!");
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Update Department Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal memperbarui departemen: ' . $e->getMessage());
+        }
     }
 
     public function destroyDepartment(int $id): RedirectResponse

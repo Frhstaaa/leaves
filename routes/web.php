@@ -209,6 +209,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/hrd/departments', [HrdController::class, 'storeDepartment'])->name('hrd.departments.store');
     Route::match(['put', 'post'], '/hrd/departments/{id}/update', [HrdController::class, 'updateDepartment'])->name('hrd.departments.update');
     Route::match(['put', 'post'], '/hrd/departments/{id}', [HrdController::class, 'updateDepartment'])->name('hrd.departments.update.direct');
+    Route::match(['put', 'post'], '/departments/{id}/update', [HrdController::class, 'updateDepartment']);
+    Route::match(['put', 'post'], '/departments/{id}', [HrdController::class, 'updateDepartment']);
     Route::delete('/hrd/departments/{id}', [HrdController::class, 'destroyDepartment'])->name('hrd.departments.destroy');
     Route::get('/hrd/employees', [HrdController::class, 'employees'])->name('hrd.employees');
     Route::get('/hrd/employees/template', [HrdController::class, 'downloadTemplate'])->name('hrd.employees.template');
