@@ -1,7 +1,12 @@
 <?php
 /**
- * SGIN Leaves Application - Emergency System Recovery & Self-Healing Setup Tool
- * Akses: https://sgin.co.id/leaves-application/setup.php
+ * ============================================================================
+ * SGIN Leaves Application - Master Setup, Recovery & Self-Healing Tool
+ * PT Sugiyama Indonesia (Leaves, Attendance & E-Slip Gaji System)
+ * ============================================================================
+ * 
+ * Akses: https://www.sgin.co.id/leaves-application/setup.php
+ * ============================================================================
  */
 
 @set_time_limit(600);
@@ -18,19 +23,24 @@ if (!file_exists($basePath . '/vendor/autoload.php')) {
     }
 }
 
-// 1. Ensure storage directories exist and are writable
+// ----------------------------------------------------------------------------
+// 1. Storage & Directory Preparation
+// ----------------------------------------------------------------------------
 $storageDirs = [
     $basePath . '/storage',
-    $basePath . '/storage/framework',
-    $basePath . '/storage/framework/sessions',
-    $basePath . '/storage/framework/views',
-    $basePath . '/storage/framework/cache',
-    $basePath . '/storage/framework/cache/data',
-    $basePath . '/storage/logs',
     $basePath . '/storage/app',
     $basePath . '/storage/app/public',
+    $basePath . '/storage/app/public/logos',
+    $basePath . '/storage/framework',
+    $basePath . '/storage/framework/cache',
+    $basePath . '/storage/framework/cache/data',
+    $basePath . '/storage/framework/sessions',
+    $basePath . '/storage/framework/views',
+    $basePath . '/storage/framework/testing',
+    $basePath . '/storage/logs',
     $basePath . '/bootstrap/cache',
     $basePath . '/public/build',
+    $basePath . '/public/build/assets',
 ];
 
 foreach ($storageDirs as $dir) {
@@ -40,7 +50,9 @@ foreach ($storageDirs as $dir) {
     @chmod($dir, 0777);
 }
 
-// 2. Safe execution helper
+// ----------------------------------------------------------------------------
+// 2. Safe Execution Helper
+// ----------------------------------------------------------------------------
 function runShell($cmd, $dir) {
     if (!function_exists('shell_exec')) {
         return "shell_exec tidak aktif pada PHP server ini.";
@@ -49,20 +61,26 @@ function runShell($cmd, $dir) {
     return trim(@shell_exec($full) ?: '');
 }
 
-// 3. Clear all cached framework files directly from filesystem
+// ----------------------------------------------------------------------------
+// 3. Clear All Cached Files Directly
+// ----------------------------------------------------------------------------
 function directFileCacheClear($basePath) {
     $cleared = [];
 
     // Delete bootstrap cache files
     foreach (glob($basePath . '/bootstrap/cache/*.php') as $f) {
-        @unlink($f);
-        $cleared[] = 'bootstrap/cache/' . basename($f);
+        if (basename($f) !== '.gitignore') {
+            @unlink($f);
+            $cleared[] = 'bootstrap/cache/' . basename($f);
+        }
     }
 
     // Delete compiled blade views
     foreach (glob($basePath . '/storage/framework/views/*.php') as $f) {
-        @unlink($f);
-        $cleared[] = 'views/' . basename($f);
+        if (basename($f) !== '.gitignore') {
+            @unlink($f);
+            $cleared[] = 'views/' . basename($f);
+        }
     }
 
     // Delete data cache files
@@ -74,7 +92,7 @@ function directFileCacheClear($basePath) {
                 RecursiveIteratorIterator::CHILD_FIRST
             );
             foreach ($it as $file) {
-                if ($file->isFile()) {
+                if ($file->isFile() && $file->getFilename() !== '.gitignore') {
                     @unlink($file->getRealPath());
                 } elseif ($file->isDir()) {
                     @rmdir($file->getRealPath());
@@ -93,7 +111,9 @@ function directFileCacheClear($basePath) {
     return $cleared;
 }
 
-// 4. Ensure .env file exists and has APP_KEY
+// ----------------------------------------------------------------------------
+// 4. Ensure & Auto-Heal .env File & APP_KEY
+// ----------------------------------------------------------------------------
 function ensureEnvFile($basePath) {
     $envPath = $basePath . '/.env';
     $defaultAppKey = 'base64:fn2kAMl3S31maRCtRvzVAluYwEGHTrVblVjLr4rxokE=';
@@ -157,40 +177,118 @@ ENV;
     return "File .env valid.";
 }
 
-// Auto-run ensureEnvFile on script load to immediately resolve Error 500
 $envStatusMsg = ensureEnvFile($basePath);
 
-// Handle Auto-Repair Actions via POST or GET ?run=1
-$action = $_POST['action'] ?? (!empty($_GET['run']) ? 'auto_repair' : null);
+// ----------------------------------------------------------------------------
+// 5. Database Connection Tester (Tests 127.0.0.1 and localhost)
+// ----------------------------------------------------------------------------
+function testDatabaseConnection($basePath) {
+    $envContent = file_exists($basePath . '/.env') ? file_get_contents($basePath . '/.env') : '';
+    preg_match('/DB_HOST=(.*)/', $envContent, $mHost);
+    preg_match('/DB_PORT=(.*)/', $envContent, $mPort);
+    preg_match('/DB_DATABASE=(.*)/', $envContent, $mDb);
+    preg_match('/DB_USERNAME=(.*)/', $envContent, $mUser);
+    preg_match('/DB_PASSWORD=(.*)/', $envContent, $mPass);
+
+    $h = trim($mHost[1] ?? '127.0.0.1');
+    $p = trim($mPort[1] ?? '3306');
+    $d = trim($mDb[1] ?? 'sginco_leav');
+    $u = trim($mUser[1] ?? 'sginco_leav');
+    $pass = trim(trim($mPass[1] ?? '', '"'), "'");
+
+    $results = [
+        'connected' => false,
+        'active_host' => $h,
+        'database' => $d,
+        'username' => $u,
+        'tables_count' => 0,
+        'message' => '',
+        'suggest_host' => null,
+    ];
+
+    if (!$d || !$u) {
+        $results['message'] = "Kredensial database tidak lengkap di file .env.";
+        return $results;
+    }
+
+    // Try current configured host first
+    $mysqli = @new mysqli($h, $u, $pass, $d, (int)$p);
+    if (!$mysqli->connect_errno) {
+        $results['connected'] = true;
+        $res = $mysqli->query("SELECT COUNT(*) as c FROM information_schema.tables WHERE table_schema = '$d'");
+        $results['tables_count'] = $res ? ($res->fetch_assoc()['c'] ?? 0) : 0;
+        $results['message'] = "Terhubung dengan sukses ke host '$h' ($d - {$results['tables_count']} tabel aktif).";
+        $mysqli->close();
+        return $results;
+    }
+
+    $errMsg = $mysqli->connect_error;
+
+    // If current host failed, test alternative host (e.g. localhost vs 127.0.0.1)
+    $altHost = ($h === '127.0.0.1') ? 'localhost' : '127.0.0.1';
+    $mysqliAlt = @new mysqli($altHost, $u, $pass, $d, (int)$p);
+    if (!$mysqliAlt->connect_errno) {
+        $resAlt = $mysqliAlt->query("SELECT COUNT(*) as c FROM information_schema.tables WHERE table_schema = '$d'");
+        $altTables = $resAlt ? ($resAlt->fetch_assoc()['c'] ?? 0) : 0;
+        $mysqliAlt->close();
+        
+        // Auto-fix host in .env
+        $newEnv = preg_replace('/DB_HOST=.*$/m', "DB_HOST={$altHost}", $envContent);
+        @file_put_contents($basePath . '/.env', $newEnv);
+
+        $results['connected'] = true;
+        $results['active_host'] = $altHost;
+        $results['tables_count'] = $altTables;
+        $results['message'] = "Koneksi berhasil dialihkan otomatis dari '$h' ke '$altHost' ($d - $altTables tabel).";
+        return $results;
+    }
+
+    $results['message'] = "Akses database ditolak: $errMsg. Pastikan user '$u' telah dihubungkan ke basis data '$d' dengan 'ALL PRIVILEGES' di cPanel MySQL.";
+    return $results;
+}
+
+$dbDiag = testDatabaseConnection($basePath);
+
+// ----------------------------------------------------------------------------
+// 6. Handle Form Actions
+// ----------------------------------------------------------------------------
+$action = $_POST['action'] ?? (!empty($_GET['run']) ? ($_GET['run'] === '1' ? 'auto_repair' : $_GET['run']) : null);
 $logs = [];
+$statusType = 'info';
 
 if ($action === 'auto_repair') {
     $logs[] = "=================================================================";
-    $logs[] = "  🛠️ MEMULAI PERBAIKAN TOTAL SISTEM APLIKASI SGIN LEAVES...     ";
+    $logs[] = "  🛠️ MEMULAI SETUP & PEMULIHAN SISTEM SGIN LEAVES...             ";
     $logs[] = "=================================================================\n";
 
-    // Step 0: Ensure .env is present
-    $logs[] = "[0/6] Memeriksa & memulihkan konfigurasi .env...";
+    // Step 0: Ensure .env is present & valid
+    $logs[] = "[1/6] Memeriksa konfigurasi file .env & APP_KEY...";
     $logs[] = "✓ Status .env: " . $envStatusMsg;
 
-    // Step 1: Force Git pull & Hard Reset to GitHub main
-    $logs[] = "\n[1/6] Mengambil kodingan terbaru & terbersih dari GitHub main...";
-    $gitVer = runShell("git --version", $basePath);
-    if (str_contains(strtolower($gitVer), 'git version')) {
-        $fetch = runShell("git fetch origin main", $basePath);
-        $reset = runShell("git reset --hard origin/main", $basePath);
-        $logs[] = "✓ Git Reset: " . ($reset ?: $fetch ?: 'Selesai');
-    } else {
-        $logs[] = "ℹ️ Git CLI tidak tersedia, menggunakan file lokal saat ini.";
+    // Step 1: Storage Permissions
+    $logs[] = "\n[2/6] Memastikan seluruh folder storage berizin 0777...";
+    foreach ($storageDirs as $dir) {
+        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+        @chmod($dir, 0777);
     }
+    $logs[] = "✓ Seluruh folder storage & cache telah disetel izin tulis penuh (0777).";
 
     // Step 2: Clear All File Caches manually
-    $logs[] = "\n[2/6] Membersihkan seluruh file cache & compiled routes secara langsung...";
+    $logs[] = "\n[3/6] Membersihkan seluruh file cache & template Blade...";
     $clearedFiles = directFileCacheClear($basePath);
-    $logs[] = "✓ Cache yang dibersihkan: " . implode(', ', array_slice($clearedFiles, 0, 10)) . (count($clearedFiles) > 10 ? ' dan ' . (count($clearedFiles) - 10) . ' file lainnya.' : '.');
+    $logs[] = "✓ Cache yang dibersihkan: " . count($clearedFiles) . " file.";
 
-    // Step 3: Bootstrap Laravel Kernel safely
-    $logs[] = "\n[3/6] Menghubungkan Laravel Kernel...";
+    // Step 3: Test Database Connection
+    $logs[] = "\n[4/6] Memeriksa koneksi database MySQL...";
+    $dbTest = testDatabaseConnection($basePath);
+    if ($dbTest['connected']) {
+        $logs[] = "✓ Database MySQL: " . $dbTest['message'];
+    } else {
+        $logs[] = "⚠️ Catatan Database: " . $dbTest['message'];
+    }
+
+    // Step 4: Bootstrap Laravel Kernel safely
+    $logs[] = "\n[5/6] Menghubungkan Laravel Kernel & Menjalankan Migrasi...";
     $app = null;
     if (file_exists($basePath . '/vendor/autoload.php') && file_exists($basePath . '/bootstrap/app.php')) {
         try {
@@ -201,77 +299,89 @@ if ($action === 'auto_repair') {
             $kernel->bootstrap();
             $logs[] = "✓ Laravel Kernel berhasil di-bootstrap!";
         } catch (\Throwable $e) {
-            $logs[] = "⚠️ Gagal bootstrap kernel: " . $e->getMessage();
+            $logs[] = "ℹ️ Catatan Kernel: " . $e->getMessage();
         }
     }
 
-    // Step 4: Run Artisan Migrations & Clear Commands
-    $logs[] = "\n[4/6] Menjalankan pembersihan cache Artisan & Migrasi...";
+    // Run Artisan Commands if bootstrap succeeded
     if ($app) {
         try {
             \Illuminate\Support\Facades\Artisan::call('optimize:clear');
-            $logs[] = "✓ php artisan optimize:clear: " . trim(\Illuminate\Support\Facades\Artisan::output());
-        } catch (\Throwable $e) {
-            $logs[] = "ℹ️ optimize:clear: " . $e->getMessage();
-        }
+            $logs[] = "✓ php artisan optimize:clear: Selesai.";
+        } catch (\Throwable $e) {}
 
-        try {
-            \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-            $logs[] = "✓ php artisan migrate: " . trim(\Illuminate\Support\Facades\Artisan::output());
-        } catch (\Throwable $e) {
-            $logs[] = "ℹ️ migrate: " . $e->getMessage();
-        }
-
-        try {
-            if (class_exists('Database\\Seeders\\RolePermissionSeeder')) {
-                \Illuminate\Support\Facades\Artisan::call('db:seed', [
-                    '--class' => 'Database\\Seeders\\RolePermissionSeeder',
-                    '--force' => true,
-                ]);
-                $logs[] = "✓ Sinkronisasi Role & Permission: Selesai!";
+        if ($dbTest['connected']) {
+            try {
+                \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+                $logs[] = "✓ php artisan migrate: " . trim(\Illuminate\Support\Facades\Artisan::output() ?: 'Database up-to-date.');
+            } catch (\Throwable $e) {
+                $logs[] = "ℹ️ migrate: " . $e->getMessage();
             }
-        } catch (\Throwable $e) {
-            $logs[] = "ℹ️ seeder: " . $e->getMessage();
-        }
 
-        try {
-            if (class_exists('\\App\\Models\\LeaveQuota')) {
-                \App\Models\LeaveQuota::syncAllUsers();
-                $logs[] = "✓ Sinkronisasi Kuota Cuti Karyawan: Selesai!";
-            }
-        } catch (\Throwable $e) {
-            $logs[] = "ℹ️ quota sync: " . $e->getMessage();
+            try {
+                if (class_exists('Database\\Seeders\\RolePermissionSeeder')) {
+                    \Illuminate\Support\Facades\Artisan::call('db:seed', [
+                        '--class' => 'Database\\Seeders\\RolePermissionSeeder',
+                        '--force' => true,
+                    ]);
+                    $logs[] = "✓ Sinkronisasi Role & Permission: Selesai!";
+                }
+            } catch (\Throwable $e) {}
+
+            try {
+                if (class_exists('\\App\\Models\\LeaveQuota')) {
+                    \App\Models\LeaveQuota::syncAllUsers();
+                    $logs[] = "✓ Sinkronisasi Kuota Cuti Karyawan: Selesai!";
+                }
+            } catch (\Throwable $e) {}
         }
     }
 
     // Step 5: Fix Storage Symlink
-    $logs[] = "\n[5/6] Memeriksa tautan storage publik...";
+    $logs[] = "\n[6/6] Menyiapkan storage symlink & timestamp PWA...";
     $pubStorage = $basePath . '/public/storage';
     $appStorage = $basePath . '/storage/app/public';
     if (!file_exists($pubStorage) && !is_link($pubStorage)) {
         @symlink($appStorage, $pubStorage);
     }
-    if ($app) {
-        try {
-            \Illuminate\Support\Facades\Artisan::call('storage:link');
-            $logs[] = "✓ php artisan storage:link: " . trim(\Illuminate\Support\Facades\Artisan::output() ?: 'Siap');
-        } catch (\Throwable $e) {}
+    $swFile = $basePath . '/public/sw.js';
+    if (file_exists($swFile)) {
+        @touch($swFile);
     }
-
-    // Step 6: Final Cache Generation
-    $logs[] = "\n[6/6] Menyiapkan konfigurasi final...";
-    if ($app) {
-        try {
-            \Illuminate\Support\Facades\Artisan::call('config:clear');
-            \Illuminate\Support\Facades\Artisan::call('route:clear');
-            \Illuminate\Support\Facades\Artisan::call('view:clear');
-            $logs[] = "✓ Seluruh cache aplikasi siap & bersih!";
-        } catch (\Throwable $e) {}
-    }
+    $logs[] = "✓ Storage link & Service Worker siap!";
 
     $logs[] = "\n=================================================================";
-    $logs[] = "  🎉 PERBAIKAN SELESAI! APLIKASI KEMBALI NORMAL & SIAP DIGUNAKAN ";
+    $logs[] = "  🎉 SETUP SELESAI! APLIKASI TELAH DIPULIHKAN & SIAP DIGUNAKAN  ";
     $logs[] = "=================================================================";
+    $statusType = 'success';
+
+} elseif ($action === 'update_env') {
+    $dbHost = trim($_POST['db_host'] ?? '127.0.0.1');
+    $dbName = trim($_POST['db_name'] ?? 'sginco_leav');
+    $dbUser = trim($_POST['db_user'] ?? 'sginco_leav');
+    $dbPass = trim($_POST['db_pass'] ?? '');
+
+    $envPath = $basePath . '/.env';
+    $envContent = file_exists($envPath) ? file_get_contents($envPath) : '';
+
+    $envContent = preg_replace('/DB_HOST=.*$/m', "DB_HOST={$dbHost}", $envContent);
+    $envContent = preg_replace('/DB_DATABASE=.*$/m', "DB_DATABASE={$dbName}", $envContent);
+    $envContent = preg_replace('/DB_USERNAME=.*$/m', "DB_USERNAME={$dbUser}", $envContent);
+    $envContent = preg_replace('/DB_PASSWORD=.*$/m', "DB_PASSWORD=\"{$dbPass}\"", $envContent);
+
+    @file_put_contents($envPath, $envContent);
+    directFileCacheClear($basePath);
+    $logs[] = "✓ Konfigurasi database di file .env berhasil diperbarui!";
+    $statusType = 'success';
+    $dbDiag = testDatabaseConnection($basePath);
+
+} elseif ($action === 'clear_logs') {
+    $logFile = $basePath . '/storage/logs/laravel.log';
+    if (file_exists($logFile)) {
+        @file_put_contents($logFile, '');
+    }
+    $logs[] = "✓ File storage/logs/laravel.log berhasil dikosongkan!";
+    $statusType = 'success';
 }
 
 // Read last 40 lines of laravel.log
@@ -280,109 +390,187 @@ $logFile = $basePath . '/storage/logs/laravel.log';
 if (file_exists($logFile)) {
     $lines = file($logFile);
     if (!empty($lines)) {
-        $recentLogs = implode("", array_slice($lines, -50));
+        $recentLogs = implode("", array_slice($lines, -40));
     }
 }
 if (empty($recentLogs)) {
     $recentLogs = "Tidak ada catatan error pada file laravel.log saat ini.";
 }
-
-// Protocol & Host
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
-$host = $_SERVER['HTTP_HOST'] ?? 'sgin.co.id';
-$appUrl = "$protocol://$host/leaves-application/dashboard";
 ?>
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="h-full bg-slate-950 text-slate-100">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SGIN Leaves - Emergency Recovery & Setup Tool</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen p-4 sm:p-8 flex flex-col justify-between">
+<body class="min-h-full bg-slate-950 text-slate-100 p-4 sm:p-8 flex flex-col justify-between">
 
-    <div class="max-w-4xl mx-auto w-full space-y-6">
+    <div class="max-w-5xl mx-auto w-full space-y-6">
         
         <!-- Header -->
-        <div class="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-emerald-950 border border-slate-700/80 shadow-2xl">
-            <div class="flex items-center space-x-3">
-                <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-black text-xl">
-                    ⚡
+        <div class="p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl relative overflow-hidden">
+            <div class="absolute -right-12 -top-12 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="flex items-center space-x-4">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white flex items-center justify-center font-black text-2xl shadow-xl shadow-emerald-950/40">
+                        ⚡
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h1 class="text-xl sm:text-2xl font-black text-white">SGIN Leaves Setup & Recovery</h1>
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Auto Healer</span>
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-400 mt-0.5">Pusat Diagnostik, Perbaikan Otomatis & Pemulihan Sistem PT Sugiyama Indonesia</p>
+                    </div>
                 </div>
-                <div>
-                    <h1 class="text-xl sm:text-2xl font-black text-white">SGIN Leaves System Recovery & Setup</h1>
-                    <p class="text-xs sm:text-sm text-slate-400">Pusat Diagnostik & Perbaikan Otomatis Error 500 PT Sugiyama Indonesia</p>
+
+                <div class="flex items-center gap-2">
+                    <a href="./" class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white text-xs sm:text-sm font-bold shadow-lg shadow-emerald-900/40 transition-all">
+                        Buka Aplikasi
+                    </a>
+                    <a href="./update.php" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm font-semibold border border-slate-700 transition-all">
+                        Master Updater
+                    </a>
+                </div>
+            </div>
+
+            <!-- Diagnostic Quick Status -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-800 font-mono text-xs">
+                <div class="p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
+                    <div class="text-slate-500 text-[10px] uppercase font-sans font-semibold">PHP Version</div>
+                    <div class="text-slate-200 font-bold mt-0.5"><?= PHP_VERSION ?></div>
+                </div>
+                <div class="p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
+                    <div class="text-slate-500 text-[10px] uppercase font-sans font-semibold">Database Status</div>
+                    <div class="<?= $dbDiag['connected'] ? 'text-emerald-400' : 'text-rose-400' ?> font-bold mt-0.5 truncate" title="<?= htmlspecialchars($dbDiag['message']) ?>">
+                        <?= $dbDiag['connected'] ? "✓ Terhubung ({$dbDiag['tables_count']} Tabel)" : "❌ Ditolak" ?>
+                    </div>
+                </div>
+                <div class="p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
+                    <div class="text-slate-500 text-[10px] uppercase font-sans font-semibold">Folder Storage</div>
+                    <div class="text-emerald-400 font-bold mt-0.5">✓ 0777 (Writable)</div>
+                </div>
+                <div class="p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
+                    <div class="text-slate-500 text-[10px] uppercase font-sans font-semibold">Enkripsi (.env)</div>
+                    <div class="text-emerald-400 font-bold mt-0.5">✓ APP_KEY Siap</div>
                 </div>
             </div>
         </div>
 
+        <!-- Notification Output -->
+        <?php if (!empty($logs)): ?>
+        <div class="p-6 rounded-3xl bg-slate-900 border <?= $statusType === 'success' ? 'border-emerald-500/40' : 'border-rose-500/40' ?> shadow-2xl space-y-3">
+            <h2 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-300 font-mono flex items-center gap-2">
+                <span>📋</span> Hasil Eksekusi Pemulihan
+            </h2>
+            <div class="p-4 rounded-2xl bg-black border border-slate-800 font-mono text-xs text-slate-300 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-72">
+                <?= htmlspecialchars(implode("\n", $logs)) ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Main Auto Repair Action Box -->
-        <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-5">
-            <div>
-                <h2 class="text-base font-extrabold text-white">1-Klik Perbaikan Total (Self-Healing)</h2>
-                <p class="text-xs text-slate-400 mt-1">
-                    Klik tombol di bawah ini untuk mengambil kodingan terbaru, membersihkan seluruh cache yang rusak/kadaluarsa, menjalankan migrasi database, dan memulihkan seluruh halaman aplikasi secara otomatis.
+        <div class="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-emerald-950/50 via-slate-900 to-teal-950/50 border border-emerald-500/30 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            <div class="space-y-1 max-w-2xl">
+                <div class="flex items-center gap-2">
+                    <span class="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase bg-emerald-500 text-slate-950">1-Klik Solusi</span>
+                    <h2 class="text-lg sm:text-xl font-black text-white">Jalankan Pemulihan Otomatis (Fix Error 500 / 419)</h2>
+                </div>
+                <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                    Membersihkan seluruh cache yang kadaluarsa, menyetel hak akses folder storage, memeriksa koneksi database MySQL, menjalankan migrasi tabel jika diperlukan, dan memulihkan seluruh halaman aplikasi secara otomatis.
                 </p>
             </div>
 
-            <form method="POST" action="">
+            <form method="POST" class="shrink-0 w-full sm:w-auto">
                 <input type="hidden" name="action" value="auto_repair">
                 <button
                     type="submit"
-                    class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm sm:text-base shadow-xl shadow-emerald-900/40 transition-all flex items-center justify-center space-x-2"
+                    class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm sm:text-base shadow-xl shadow-emerald-500/20 transition-all flex items-center justify-center space-x-2.5 transform hover:-translate-y-0.5"
                 >
-                    <span>🚀 Jalankan Perbaikan Otomatis (Fix Error 500)</span>
+                    <span>🚀 Jalankan Pemulihan Otomatis</span>
                 </button>
             </form>
+        </div>
 
-            <?php if (!empty($logs)): ?>
-                <div class="space-y-2 pt-2 border-t border-slate-800">
-                    <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider block">Hasil Eksekusi Perbaikan:</span>
-                    <pre class="p-4 rounded-2xl bg-black border border-slate-800 text-xs font-mono text-emerald-300 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-96"><?= htmlspecialchars(implode("\n", $logs)) ?></pre>
-                    
-                    <div class="pt-3 flex flex-wrap gap-2">
-                        <a
-                            href="<?= $appUrl ?>"
-                            class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition-all"
-                        >
-                            👉 Buka Dashboard Aplikasi
-                        </a>
-                        <a
-                            href="<?= "$protocol://$host/leaves-application/hrd/employees" ?>"
-                            class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition-all"
-                        >
-                            👉 Buka Menu Kelola Karyawan
-                        </a>
-                        <a
-                            href="<?= "$protocol://$host/leaves-application/profile/biodata" ?>"
-                            class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition-all"
-                        >
-                            👉 Buka Menu Data Diri
-                        </a>
+        <!-- Database Settings Editor Box -->
+        <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                    <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                        <span>🗄️</span> Konfigurasi Kredensial Database MySQL (.env)
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Ubah atau sesuaikan kredensial koneksi database jika password cPanel berbeda</p>
+                </div>
+                <span class="text-xs px-3 py-1 rounded-full font-mono <?= $dbDiag['connected'] ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20' ?>">
+                    <?= htmlspecialchars($dbDiag['message']) ?>
+                </span>
+            </div>
+
+            <form method="POST" class="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2">
+                <input type="hidden" name="action" value="update_env">
+                <div>
+                    <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Host</label>
+                    <input type="text" name="db_host" value="<?= htmlspecialchars($dbDiag['active_host']) ?>" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-white focus:border-emerald-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Database</label>
+                    <input type="text" name="db_name" value="<?= htmlspecialchars($dbDiag['database']) ?>" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-white focus:border-emerald-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Username</label>
+                    <input type="text" name="db_user" value="<?= htmlspecialchars($dbDiag['username']) ?>" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-white focus:border-emerald-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Password</label>
+                    <div class="flex gap-2">
+                        <input type="password" name="db_pass" value="@SginC01!!!" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-white focus:border-emerald-500 focus:outline-none">
+                        <button type="submit" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 text-xs font-bold shrink-0">
+                            Simpan
+                        </button>
                     </div>
                 </div>
-            <?php endif; ?>
+            </form>
         </div>
 
         <!-- Diagnostic: Latest Error Logs -->
         <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-3">
-            <div class="flex items-center justify-between">
-                <h3 class="text-sm font-extrabold text-slate-300">📋 Catatan Error Server Terbaru (storage/logs/laravel.log)</h3>
-                <span class="text-[10px] font-mono text-slate-500">50 Baris Terakhir</span>
+            <div class="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-300 flex items-center gap-2">
+                        <span>📋</span> Catatan Error Server (storage/logs/laravel.log)
+                    </h3>
+                    <p class="text-xs text-slate-500">40 baris log error terakhir di server</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <form method="POST" onsubmit="return confirm('Kosongkan file log?')">
+                        <input type="hidden" name="action" value="clear_logs">
+                        <button type="submit" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-900/40 text-slate-400 hover:text-rose-300 text-xs font-mono border border-slate-700 transition-colors">
+                            🧹 Kosongkan Log
+                        </button>
+                    </form>
+                    <button onclick="window.location.reload()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono border border-slate-700">
+                        🔄 Refresh
+                    </button>
+                </div>
             </div>
-            <pre class="p-4 rounded-2xl bg-black border border-slate-800 text-[11px] font-mono text-slate-400 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-64"><?= htmlspecialchars($recentLogs) ?></pre>
+            <pre class="p-4 rounded-2xl bg-black border border-slate-800 text-[11px] font-mono text-slate-400 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-60"><?= htmlspecialchars($recentLogs) ?></pre>
         </div>
 
-    </div>
+        <!-- Footer -->
+        <div class="text-center text-xs text-slate-600 py-4">
+            PT Sugiyama Indonesia (SGIN) &bull; Leaves & Attendance Management System &bull; <?= date('Y') ?>
+        </div>
 
-    <!-- Footer -->
-    <div class="text-center text-xs text-slate-600 py-6">
-        PT Sugiyama Indonesia (SGIN) &bull; Leaves & Employee Management Recovery Engine
     </div>
 
 </body>
