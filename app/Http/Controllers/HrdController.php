@@ -105,6 +105,16 @@ class HrdController extends Controller
         $departments = $this->departmentRepo->getAll();
         $managers = $this->userRepo->getManagers();
 
+        $roles = class_exists('\\Spatie\\Permission\\Models\\Role')
+            ? \Spatie\Permission\Models\Role::orderBy('name')->get(['id', 'name', 'guard_name'])->map(function ($r) {
+                return [
+                    'id' => $r->id,
+                    'name' => $r->name,
+                    'display_name' => ucfirst(str_replace(['_', '-'], ' ', $r->name)),
+                ];
+            })
+            : collect();
+
         $userStat = User::selectRaw('
             COUNT(*) as total_employees,
             COUNT(CASE WHEN role IN ("manager", "admin", "superadmin") THEN 1 END) as total_managers
@@ -121,6 +131,7 @@ class HrdController extends Controller
             'employees' => $employees,
             'departments' => $departments,
             'managers' => $managers,
+            'roles' => $roles,
             'stats' => $stats,
             'filters' => $filters,
         ]);
@@ -138,7 +149,7 @@ class HrdController extends Controller
             'nik' => 'required|string|max:50|unique:users,nik',
             'email' => 'required|email|max:255|unique:users,email',
             'password' => 'required|string|min:6',
-            'role' => 'required|in:employee,manager,admin,superadmin',
+            'role' => 'required|string|max:50',
             'department_id' => 'nullable|exists:departments,id',
             'approver_1_id' => 'nullable|exists:users,id',
             'approver_2_id' => 'nullable|exists:users,id',
@@ -169,7 +180,7 @@ class HrdController extends Controller
             'nik' => 'required|string|max:50|unique:users,nik,' . $employee->id,
             'email' => 'required|email|max:255|unique:users,email,' . $employee->id,
             'password' => 'nullable|string|min:6',
-            'role' => 'required|in:employee,manager,admin,superadmin',
+            'role' => 'required|string|max:50',
             'department_id' => 'nullable|exists:departments,id',
             'approver_1_id' => 'nullable|exists:users,id',
             'approver_2_id' => 'nullable|exists:users,id',
@@ -461,12 +472,17 @@ class HrdController extends Controller
         return response()->stream(function () {
             $file = fopen('php://output', 'w');
             fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            $dbRoles = class_exists('\\Spatie\\Permission\\Models\\Role') ? \Spatie\Permission\Models\Role::pluck('name')->toArray() : [];
+            $roleOptions = array_unique(array_merge(['employee', 'manager', 'admin', 'superadmin'], $dbRoles));
+            $roleLabel = implode('/', $roleOptions);
+
             fputcsv($file, [
                 '[OPSIONAL] NIK SGIN (Kosongkan jika ingin otomatis)',
                 '[WAJIB] Nama Lengkap Karyawan',
                 '[WAJIB] Email Login Akun',
                 '[OPSIONAL] Password (Default: password123)',
-                '[OPSIONAL] Role (employee/manager/admin)',
+                "[OPSIONAL] Role ({$roleLabel})",
                 '[OPSIONAL] Nama atau Kode Departemen',
                 '[OPSIONAL] NIK/Email Atasan 1 (Supervisor)',
                 '[OPSIONAL] NIK/Email Atasan 2 (Manager)',
@@ -579,6 +595,8 @@ class HrdController extends Controller
         $successCount = 0;
         $rowNumber = 0;
         $departments = $this->departmentRepo->getAll();
+        $dbRoles = class_exists('\\Spatie\\Permission\\Models\\Role') ? \Spatie\Permission\Models\Role::pluck('name')->map(fn($r) => strtolower(trim($r)))->toArray() : [];
+        $validRoles = array_unique(array_merge(['employee', 'manager', 'admin', 'superadmin'], $dbRoles));
 
         while (($row = fgetcsv($handle, 4000, ',')) !== false) {
             $rowNumber++;
@@ -592,7 +610,8 @@ class HrdController extends Controller
             $name = trim($row[1]);
             $email = trim($row[2]);
             $password = trim($row[3] ?? '') ?: 'password123';
-            $role = in_array(strtolower(trim($row[4] ?? '')), ['employee', 'manager', 'admin', 'superadmin']) ? strtolower(trim($row[4])) : 'employee';
+            $inputRole = strtolower(trim($row[4] ?? ''));
+            $role = in_array($inputRole, $validRoles) ? $inputRole : 'employee';
             $deptInput = trim($row[5] ?? '');
             $quota = isset($row[8]) && is_numeric($row[8]) ? (int) $row[8] : 12;
 

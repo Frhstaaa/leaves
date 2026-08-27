@@ -89,8 +89,13 @@ class HrdEmployeeService
             $user = $this->userRepo->create($userData);
 
             // Assign Spatie Role
-            if (method_exists($user, 'assignRole')) {
-                $user->syncRoles([$user->role]);
+            if (method_exists($user, 'syncRoles') && !empty($user->role)) {
+                try {
+                    if (class_exists('\\Spatie\\Permission\\Models\\Role')) {
+                        \Spatie\Permission\Models\Role::firstOrCreate(['name' => $user->role, 'guard_name' => 'web']);
+                        $user->syncRoles([$user->role]);
+                    }
+                } catch (\Throwable $e) {}
             }
 
             // Create initial quota
@@ -154,8 +159,13 @@ class HrdEmployeeService
 
             $this->userRepo->update($user, $updateData);
 
-            if (method_exists($user, 'syncRoles')) {
-                $user->syncRoles([$updateData['role']]);
+            if (method_exists($user, 'syncRoles') && !empty($updateData['role'])) {
+                try {
+                    if (class_exists('\\Spatie\\Permission\\Models\\Role')) {
+                        \Spatie\Permission\Models\Role::firstOrCreate(['name' => $updateData['role'], 'guard_name' => 'web']);
+                        $user->syncRoles([$updateData['role']]);
+                    }
+                } catch (\Throwable $e) {}
             }
 
             if (isset($data['total_quota'])) {

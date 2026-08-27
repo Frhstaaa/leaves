@@ -48,11 +48,41 @@ import {
 import { Button } from "@/components/ui/button";
 import { showAlert, showToast, showConfirm } from '@/Utils/swal';
 
-export default function HrdEmployees({ employees = [], departments = [], managers = [], stats = {}, filters = {} }) {
+export default function HrdEmployees({ employees = [], departments = [], managers = [], roles = [], stats = {}, filters = {} }) {
   // Filter States
   const [searchQuery, setSearchQuery] = useState(filters.search || '');
   const [selectedDept, setSelectedDept] = useState(filters.department_id || '');
   const [selectedRole, setSelectedRole] = useState(filters.role || '');
+
+  // Default and Dynamic Roles Mapping
+  const defaultRoleOptions = [
+    { value: 'employee', label: 'Karyawan (Staf)' },
+    { value: 'manager', label: 'Manager / Supervisor' },
+    { value: 'admin', label: 'HRD / Admin System' },
+    { value: 'superadmin', label: 'Super Admin / Direksi' },
+  ];
+
+  const allRoles = React.useMemo(() => {
+    const map = new Map();
+    defaultRoleOptions.forEach(r => map.set(r.value.toLowerCase(), r.label));
+    (roles || []).forEach(r => {
+      const key = (r.name || '').toLowerCase();
+      if (key && !map.has(key)) {
+        map.set(key, r.display_name || (r.name.charAt(0).toUpperCase() + r.name.slice(1).replace(/[_-]/g, ' ')));
+      }
+    });
+    return Array.from(map.entries()).map(([value, label]) => ({ value, label }));
+  }, [roles]);
+
+  const getRoleBadge = (roleName) => {
+    const r = (roleName || '').toLowerCase();
+    const found = allRoles.find(item => item.value === r);
+    const label = found ? found.label : (roleName || 'Karyawan');
+    if (r === 'superadmin') return { label, cls: 'bg-amber-100 text-amber-800 border border-amber-200' };
+    if (r === 'admin') return { label, cls: 'bg-purple-100 text-purple-800 border border-purple-200' };
+    if (r === 'manager') return { label, cls: 'bg-blue-100 text-blue-800 border border-blue-200' };
+    return { label, cls: 'bg-emerald-100 text-emerald-800 border border-emerald-200' };
+  };
 
   // Modal States
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -373,18 +403,15 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Filter Role</label>
-              <Select
-                value={selectedRole || 'all'}
-                onValueChange={(val) => setSelectedRole(val === 'all' ? '' : val)}
-              >
+              <Select value={selectedRole || 'all'} onValueChange={(val) => setSelectedRole(val === 'all' ? '' : val)}>
                 <SelectTrigger className="w-full bg-slate-50 border-slate-200 text-slate-800 text-xs font-semibold rounded-xl">
                   <SelectValue placeholder="Semua Role" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Role</SelectItem>
-                  <SelectItem value="employee">Karyawan (Staf)</SelectItem>
-                  <SelectItem value="manager">Manager / Supervisor</SelectItem>
-                  <SelectItem value="admin">HRD / Admin</SelectItem>
+                  {allRoles.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -435,14 +462,14 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                             </span>
                           </div>
                         </div>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider shrink-0 ${
-                          emp.role === 'superadmin' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-                          emp.role === 'admin' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
-                          emp.role === 'manager' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                          'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                        }`}>
-                          {emp.role === 'superadmin' ? 'Superadmin' : emp.role === 'admin' ? 'HRD / Admin' : emp.role === 'manager' ? 'Manager' : 'Staf'}
-                        </span>
+                        {(() => {
+                          const rBadge = getRoleBadge(emp.role);
+                          return (
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider shrink-0 ${rBadge.cls}`}>
+                              {rBadge.label}
+                            </span>
+                          );
+                        })()}
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 text-xs pt-1">
@@ -565,14 +592,14 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                           </td>
 
                           <td className="py-3.5 px-4">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
-                              emp.role === 'superadmin' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-                              emp.role === 'admin' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
-                              emp.role === 'manager' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                              'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                            }`}>
-                              {emp.role === 'superadmin' ? 'Superadmin' : emp.role === 'admin' ? 'HRD / Admin' : emp.role === 'manager' ? 'Manager' : 'Staf Karyawan'}
-                            </span>
+                            {(() => {
+                              const rBadge = getRoleBadge(emp.role);
+                              return (
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${rBadge.cls}`}>
+                                  {rBadge.label}
+                                </span>
+                              );
+                            })()}
                           </td>
 
                           <td className="py-3.5 px-4">
@@ -812,10 +839,9 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       onChange={(e) => addForm.setData('role', e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
                     >
-                      <option value="employee">Karyawan (Staf)</option>
-                      <option value="manager">Manager / Supervisor</option>
-                      <option value="admin">HRD / Admin System</option>
-                      <option value="superadmin">Super Admin / Direksi</option>
+                      {allRoles.map((r) => (
+                        <option key={r.value} value={r.value}>{r.label}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -1086,10 +1112,9 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       onChange={(e) => editForm.setData('role', e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
                     >
-                      <option value="employee">Karyawan (Staf)</option>
-                      <option value="manager">Manager / Supervisor</option>
-                      <option value="admin">HRD / Admin System</option>
-                      <option value="superadmin">Super Admin / Direksi</option>
+                      {allRoles.map((r) => (
+                        <option key={r.value} value={r.value}>{r.label}</option>
+                      ))}
                     </select>
                   </div>
 
