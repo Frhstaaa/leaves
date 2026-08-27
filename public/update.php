@@ -595,8 +595,8 @@ try {
 
     $h = trim($mHost[1] ?? '127.0.0.1');
     $p = trim($mPort[1] ?? '3306');
-    $d = trim($mDb[1] ?? 'sginco_leav');
-    $u = trim($mUser[1] ?? 'sginco_leav');
+    $d = trim($mDb[1] ?? 'sginco_dbleav_fix');
+    $u = trim($mUser[1] ?? 'sginco_dbleav_fix');
     $pass = trim(trim($mPass[1] ?? '', '"'), "'");
 
     if ($h && $d && $u) {

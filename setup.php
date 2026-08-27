@@ -158,8 +158,8 @@ LOG_LEVEL=error
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_DATABASE=sginco_leav
-DB_USERNAME=sginco_leav
+DB_DATABASE=sginco_dbleav_fix
+DB_USERNAME=sginco_dbleav_fix
 DB_PASSWORD="@SginC01!!!"
 
 BROADCAST_DRIVER=log
@@ -388,8 +388,8 @@ function testDatabaseConnection($basePath) {
 
     $h = trim($mHost[1] ?? '127.0.0.1');
     $p = trim($mPort[1] ?? '3306');
-    $d = trim($mDb[1] ?? 'sginco_leav');
-    $u = trim($mUser[1] ?? 'sginco_leav');
+    $d = trim($mDb[1] ?? 'sginco_dbleav_fix');
+    $u = trim($mUser[1] ?? 'sginco_dbleav_fix');
     $pass = trim(trim($mPass[1] ?? '', '"'), "'");
 
     $results = [

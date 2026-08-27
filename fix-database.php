@@ -26,8 +26,8 @@ preg_match('/DB_PASSWORD=(.*)/', $envContent, $mPass);
 
 $host = trim($mHost[1] ?? '127.0.0.1');
 $port = (int)trim($mPort[1] ?? '3306');
-$db   = trim($mDb[1] ?? 'sginco_leav');
-$user = trim($mUser[1] ?? 'sginco_leav');
+$db   = trim($mDb[1] ?? 'sginco_dbleav_fix');
+$user = trim($mUser[1] ?? 'sginco_dbleav_fix');
 $pass = trim(trim($mPass[1] ?? '', '"'), "'");
 
 $msg = '';
