@@ -39,6 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import InstantPagination from "@/components/ui/instant-pagination";
 import { showAlert, showConfirm, showToast } from '@/Utils/swal';
 
 const containerVariants = {
@@ -60,6 +61,23 @@ export default function DepartmentsIndex({ departments = [], employees = [], sta
   const [search, setSearch] = useState(filters.search || '');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingDept, setEditingDept] = useState(null);
+
+  // Instant Client-Side Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(9);
+
+  const rawDepartments = React.useMemo(() => {
+    return Array.isArray(departments) ? departments : (departments?.data || []);
+  }, [departments]);
+
+  const paginatedDepartments = React.useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return rawDepartments.slice(start, start + pageSize);
+  }, [rawDepartments, currentPage, pageSize]);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [rawDepartments.length]);
 
   const createForm = useForm({
     name: '',
@@ -298,127 +316,147 @@ export default function DepartmentsIndex({ departments = [], employees = [], sta
         {/* ========================================================================= */}
         {/* 4. DEPARTMENTS GRID (RESPONSIVE FOR MOBILE & DESKTOP)                     */}
         {/* ========================================================================= */}
-        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {departments.length > 0 ? (
-            departments.map((dept) => {
-              const approvalBadge = dept.approval_type === '3_tier'
-                ? { label: '3 Tingkat (Supervisor -> Manager -> HRD)', variant: 'success' }
-                : dept.approval_type === '2_tier'
-                ? { label: '2 Tingkat (Manager -> HRD)', variant: 'purple' }
-                : dept.approval_type === '1_tier'
-                ? { label: '1 Tingkat (HRD Langsung)', variant: 'warning' }
-                : { label: 'Custom Per Karyawan', variant: 'outline' };
+        <motion.div variants={itemVariants} className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {rawDepartments.length > 0 ? (
+              paginatedDepartments.map((dept) => {
+                const approvalBadge = dept.approval_type === '3_tier'
+                  ? { label: '3 Tingkat (Supervisor -> Manager -> HRD)', variant: 'success' }
+                  : dept.approval_type === '2_tier'
+                  ? { label: '2 Tingkat (Manager -> HRD)', variant: 'purple' }
+                  : dept.approval_type === '1_tier'
+                  ? { label: '1 Tingkat (HRD Langsung)', variant: 'warning' }
+                  : { label: 'Custom Per Karyawan', variant: 'outline' };
 
-              return (
-                <Card key={dept.id} className="border-slate-200 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
-                  <div>
-                    {/* Header Card */}
-                    <CardHeader className="p-5 pb-3 flex flex-row items-start justify-between space-y-0">
-                      <div className="flex items-center space-x-3 min-w-0">
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black text-sm shrink-0 uppercase shadow-2xs">
-                          {dept.code}
+                return (
+                  <Card key={dept.id} className="border-slate-200 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+                    <div>
+                      {/* Header Card */}
+                      <CardHeader className="p-5 pb-3 flex flex-row items-start justify-between space-y-0">
+                        <div className="flex items-center space-x-3 min-w-0">
+                          <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black text-sm shrink-0 uppercase shadow-2xs">
+                            {dept.code}
+                          </div>
+                          <div className="min-w-0">
+                            <CardTitle className="text-base truncate">{dept.name}</CardTitle>
+                            <p className="text-[11px] text-slate-500 font-semibold mt-0.5 flex items-center space-x-1">
+                              <Users size={12} className="text-slate-400" />
+                              <span>{dept.employees_count || 0} Karyawan Terdaftar</span>
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <CardTitle className="text-base truncate">{dept.name}</CardTitle>
-                          <p className="text-[11px] text-slate-500 font-semibold mt-0.5 flex items-center space-x-1">
-                            <Users size={12} className="text-slate-400" />
-                            <span>{dept.employees_count || 0} Karyawan Terdaftar</span>
+
+                        <div className="flex items-center space-x-1 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-xl text-slate-500 hover:text-emerald-700 hover:bg-emerald-50"
+                            onClick={() => handleOpenEdit(dept)}
+                            title="Edit Pengaturan Departemen"
+                          >
+                            <Edit2 size={15} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                            onClick={() => handleDelete(dept)}
+                            title="Hapus Departemen"
+                          >
+                            <Trash2 size={15} />
+                          </Button>
+                        </div>
+                      </CardHeader>
+
+                      <CardContent className="p-5 pt-0 space-y-3">
+                        {/* Description */}
+                        {dept.description && (
+                          <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
+                            {dept.description}
                           </p>
-                        </div>
-                      </div>
+                        )}
 
-                      <div className="flex items-center space-x-1 shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 rounded-xl text-slate-500 hover:text-emerald-700 hover:bg-emerald-50"
-                          onClick={() => handleOpenEdit(dept)}
-                          title="Edit Pengaturan Departemen"
-                        >
-                          <Edit2 size={15} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                          onClick={() => handleDelete(dept)}
-                          title="Hapus Departemen"
-                        >
-                          <Trash2 size={15} />
-                        </Button>
-                      </div>
-                    </CardHeader>
-
-                    <CardContent className="p-5 pt-0 space-y-3">
-                      {/* Description */}
-                      {dept.description && (
-                        <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
-                          {dept.description}
-                        </p>
-                      )}
-
-                      {/* Approval Flow Badge */}
-                      <div className="pt-1">
-                        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1">
-                          Alur Persetujuan (Approval Flow):
-                        </span>
-                        <Badge variant={approvalBadge.variant} className="text-[10px] font-extrabold">
-                          {approvalBadge.label}
-                        </Badge>
-                      </div>
-
-                      {/* Approver Details Grid */}
-                      <div className="space-y-1.5 p-3 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs">
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-500 font-medium flex items-center space-x-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
-                            <span>Atasan 1 (Supervisor):</span>
+                        {/* Approval Flow Badge */}
+                        <div className="pt-1">
+                          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1">
+                            Alur Persetujuan (Approval Flow):
                           </span>
-                          <span className="font-bold text-slate-900 truncate max-w-[140px]">
-                            {dept.approver1?.name || <span className="text-slate-400 italic">Belum Diatur</span>}
-                          </span>
+                          <Badge variant={approvalBadge.variant} className="text-[10px] font-extrabold">
+                            {approvalBadge.label}
+                          </Badge>
                         </div>
 
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-500 font-medium flex items-center space-x-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
-                            <span>Atasan 2 (Manager):</span>
-                          </span>
-                          <span className="font-bold text-slate-900 truncate max-w-[140px]">
-                            {dept.approver2?.name || dept.manager?.name || <span className="text-slate-400 italic">Belum Diatur</span>}
-                          </span>
-                        </div>
+                        {/* Approver Details Grid */}
+                        <div className="space-y-1.5 p-3 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-500 font-medium flex items-center space-x-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                              <span>Atasan 1 (Supervisor):</span>
+                            </span>
+                            <span className="font-bold text-slate-900 truncate max-w-[140px]">
+                              {dept.approver1?.name || <span className="text-slate-400 italic">Belum Diatur</span>}
+                            </span>
+                          </div>
 
-                        <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
-                          <span className="text-slate-500 font-medium flex items-center space-x-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
-                            <span>Persetujuan Akhir:</span>
-                          </span>
-                          <span className="font-bold text-amber-900">HRD / PGA Admin</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-500 font-medium flex items-center space-x-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
+                              <span>Atasan 2 (Manager):</span>
+                            </span>
+                            <span className="font-bold text-slate-900 truncate max-w-[140px]">
+                              {dept.approver2?.name || dept.manager?.name || <span className="text-slate-400 italic">Belum Diatur</span>}
+                            </span>
+                          </div>
 
-                  <CardFooter className="p-5 pt-0 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <span className="text-slate-400 font-medium">Kode: <strong className="text-slate-800">{dept.code}</strong></span>
-                    <Button
-                      variant="emerald"
-                      size="sm"
-                      className="rounded-xl space-x-1"
-                      onClick={() => handleOpenEdit(dept)}
-                    >
-                      <Sliders size={13} />
-                      <span>Atur Alur Approval</span>
-                    </Button>
-                  </CardFooter>
-                </Card>
-              );
-            })
-          ) : (
-            <div className="col-span-full py-16 text-center text-slate-400 space-y-2">
-              <Building size={42} className="mx-auto opacity-30 text-slate-400" />
-              <p className="text-xs font-semibold">Tidak ada departemen yang cocok dengan pencarian.</p>
+                          <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
+                            <span className="text-slate-500 font-medium flex items-center space-x-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+                              <span>Persetujuan Akhir:</span>
+                            </span>
+                            <span className="font-bold text-amber-900">HRD / PGA Admin</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </div>
+
+                    <CardFooter className="p-5 pt-0 border-t border-slate-100 flex items-center justify-between text-xs">
+                      <span className="text-slate-400 font-medium">Kode: <strong className="text-slate-800">{dept.code}</strong></span>
+                      <Button
+                        variant="emerald"
+                        size="sm"
+                        className="rounded-xl space-x-1"
+                        onClick={() => handleOpenEdit(dept)}
+                      >
+                        <Sliders size={13} />
+                        <span>Atur Alur Approval</span>
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                );
+              })
+            ) : (
+              <div className="col-span-full py-16 text-center text-slate-400 space-y-2">
+                <Building size={42} className="mx-auto opacity-30 text-slate-400" />
+                <p className="text-xs font-semibold">Tidak ada departemen yang cocok dengan pencarian.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Instant Zero-Lag Pagination */}
+          {rawDepartments.length > 0 && (
+            <div className="rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs">
+              <InstantPagination
+                currentPage={currentPage}
+                totalItems={rawDepartments.length}
+                pageSize={pageSize}
+                pageSizeOptions={[6, 9, 15, 30]}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  setCurrentPage(1);
+                }}
+                itemName="departemen"
+              />
             </div>
           )}
         </motion.div>

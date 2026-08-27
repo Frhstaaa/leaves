@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import InstantPagination from "@/components/ui/instant-pagination";
 
 export default function ApprovalsIndex({ requests, departments = [], filters = {}, isHrdAdmin = false }) {
   const [activeModal, setActiveModal] = useState(null); // 'approve', 'reject', or null
@@ -32,6 +33,23 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
   const [errorMsg, setErrorMsg] = useState('');
   const [searchQuery, setSearchQuery] = useState(filters.search || '');
   const [selectedDept, setSelectedDept] = useState(filters.department_id || '');
+
+  // Instant Client-Side Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const rawRequests = React.useMemo(() => {
+    return Array.isArray(requests) ? requests : (requests?.data || []);
+  }, [requests]);
+
+  const paginatedRequests = React.useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return rawRequests.slice(start, start + pageSize);
+  }, [rawRequests, currentPage, pageSize]);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [rawRequests.length]);
 
   const handleOpenApproveModal = (req) => {
     setSelectedReq(req);
@@ -237,11 +255,11 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
 
         {/* Requests Table & Mobile Cards */}
         <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-sm">
-          {requests.data && requests.data.length > 0 ? (
+          {rawRequests.length > 0 ? (
             <div>
               {/* Mobile Card View (< md) */}
               <div className="block md:hidden space-y-3">
-                {requests.data.map((req, index) => {
+                {paginatedRequests.map((req, index) => {
                   const stageBadge = req.current_stage === 'approval_1'
                     ? { label: 'Tingkat 1 (Supervisor)', cls: 'bg-blue-100 text-blue-800 border-blue-200' }
                     : req.current_stage === 'approval_2'
@@ -298,28 +316,62 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
                         </div>
                       )}
 
-                      <div className="pt-2 border-t border-slate-200 flex items-center justify-end space-x-2">
-                        {req.status === 'pending' ? (
-                          <>
-                            <button
-                              onClick={() => handleOpenApproveModal(req)}
-                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center space-x-1 shadow-sm transition-transform active:scale-95"
+                      <div className="p-3 bg-white rounded-lg border border-slate-100 space-y-1 text-xs">
+                        <div className="pt-1">
+                          <span className="text-slate-400 block text-[10px] uppercase font-bold">Alasan:</span>
+                          <p className="text-slate-600 italic line-clamp-2">{req.reason}</p>
+                        </div>
+                        {req.attachment_path && (
+                          <div className="pt-1">
+                            <a
+                              href={`/storage/${req.attachment_path}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-teal-700 font-bold hover:underline flex items-center space-x-1"
                             >
-                              <CheckCircle size={14} />
-                              <span>Setujui</span>
-                            </button>
-                            <button
-                              onClick={() => handleOpenRejectModal(req)}
-                              className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold flex items-center space-x-1 hover:bg-rose-100 transition-transform active:scale-95"
-                            >
-                              <XCircle size={14} />
-                              <span>Tolak</span>
-                            </button>
-                          </>
-                        ) : (
-                          <span className="text-xs text-slate-400 italic">Selesai Ditinjau</span>
+                              <Download size={12} />
+                              <span>Lihat Lampiran</span>
+                            </a>
+                          </div>
                         )}
                       </div>
+
+                      {/* Approval History Info */}
+                      <div className="text-[11px] space-y-0.5 bg-slate-100/70 p-2 rounded-lg text-slate-600">
+                        {req.approver1 && (
+                          <p className="text-blue-800 font-semibold truncate">✓ T1: {req.approver1.name}</p>
+                        )}
+                        {req.approver2 && (
+                          <p className="text-purple-800 font-semibold truncate">✓ T2: {req.approver2.name}</p>
+                        )}
+                        {req.approverHrd && (
+                          <p className="text-emerald-800 font-bold truncate">✓ HRD: {req.approverHrd.name}</p>
+                        )}
+                      </div>
+
+                      {/* Mobile Actions */}
+                      {req.status === 'pending' ? (
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <button
+                            onClick={() => handleOpenApproveModal(req)}
+                            className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm flex items-center justify-center space-x-1"
+                          >
+                            <CheckCircle size={14} />
+                            <span>Setujui</span>
+                          </button>
+                          <button
+                            onClick={() => handleOpenRejectModal(req)}
+                            className="w-full py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs flex items-center justify-center space-x-1"
+                          >
+                            <XCircle size={14} />
+                            <span>Tolak</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="text-center py-1 bg-slate-100 rounded-lg text-xs font-semibold text-slate-400">
+                          Selesai Ditinjau
+                        </div>
+                      )}
                     </motion.div>
                   );
                 })}
@@ -339,7 +391,7 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {requests.data.map((req) => {
+                    {paginatedRequests.map((req) => {
                       const stageBadge = req.current_stage === 'approval_1'
                         ? { label: 'Tingkat 1 (Supervisor)', cls: 'bg-blue-100 text-blue-800 border-blue-200' }
                         : req.current_stage === 'approval_2'
@@ -439,6 +491,21 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
                     })}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Instant Zero-Lag Pagination */}
+              <div className="mt-4 rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs">
+                <InstantPagination
+                  currentPage={currentPage}
+                  totalItems={rawRequests.length}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                  onPageSizeChange={(newSize) => {
+                    setPageSize(newSize);
+                    setCurrentPage(1);
+                  }}
+                  itemName="pengajuan persetujuan"
+                />
               </div>
             </div>
           ) : (

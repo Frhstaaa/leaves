@@ -46,6 +46,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import InstantPagination from "@/components/ui/instant-pagination";
 import { showAlert, showToast, showConfirm } from '@/Utils/swal';
 
 export default function HrdEmployees({ employees = [], departments = [], managers = [], roles = [], stats = {}, filters = {} }) {
@@ -53,6 +54,10 @@ export default function HrdEmployees({ employees = [], departments = [], manager
   const [searchQuery, setSearchQuery] = useState(filters.search || '');
   const [selectedDept, setSelectedDept] = useState(filters.department_id || '');
   const [selectedRole, setSelectedRole] = useState(filters.role || '');
+
+  // Pagination States (Instant Client-Side Zero-Lag)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Default and Dynamic Roles Mapping
   const defaultRoleOptions = [
@@ -73,6 +78,17 @@ export default function HrdEmployees({ employees = [], departments = [], manager
     });
     return Array.from(map.entries()).map(([value, label]) => ({ value, label }));
   }, [roles]);
+
+  // Sliced Employees for Zero-Lag Instant Pagination
+  const paginatedEmployees = React.useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return (employees || []).slice(start, start + pageSize);
+  }, [employees, currentPage, pageSize]);
+
+  // Reset page to 1 if dataset length changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [employees.length]);
 
   const getRoleBadge = (roleName) => {
     const r = (roleName || '').toLowerCase();
@@ -440,7 +456,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
             <div>
               {/* MOBILE CARD VIEW (< md) */}
               <div className="block md:hidden divide-y divide-slate-100">
-                {employees.map((emp) => {
+                {paginatedEmployees.map((emp) => {
                   const quota = emp.current_quota;
                   const remaining = quota?.remaining_quota ?? 12;
                   const total = quota?.total_quota ?? 12;
@@ -559,7 +575,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {employees.map((emp) => {
+                    {paginatedEmployees.map((emp) => {
                       const quota = emp.current_quota;
                       const remaining = quota?.remaining_quota ?? 12;
                       const total = quota?.total_quota ?? 12;
@@ -720,6 +736,19 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   </tbody>
                 </table>
               </div>
+
+              {/* Zero-Lag Instant Pagination */}
+              <InstantPagination
+                currentPage={currentPage}
+                totalItems={employees.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  setCurrentPage(1);
+                }}
+                itemName="karyawan"
+              />
             </div>
           ) : (
             <div className="py-16 text-center text-slate-400">

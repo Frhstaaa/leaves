@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import InstantPagination from "@/components/ui/instant-pagination";
 import { showConfirm, showToast } from '@/Utils/swal';
 
 export default function HrdIndex({ requests = { data: [] }, departments = [], categories = [], stats = {}, filters = {} }) {
@@ -41,6 +42,23 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
   const [selectedDept, setSelectedDept] = useState(filters.department_id || '');
   const [selectedStatus, setSelectedStatus] = useState(filters.status || '');
   const [selectedCategory, setSelectedCategory] = useState(filters.category_id || '');
+
+  // Instant Client-Side Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const rawRequests = React.useMemo(() => {
+    return Array.isArray(requests) ? requests : (requests?.data || []);
+  }, [requests]);
+
+  const paginatedRequests = React.useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return rawRequests.slice(start, start + pageSize);
+  }, [rawRequests, currentPage, pageSize]);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [rawRequests.length]);
 
   // Detail Modal State
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -353,11 +371,11 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
 
         {/* Master Table List */}
         <div className="rounded-3xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
-          {requests.data && requests.data.length > 0 ? (
+          {rawRequests.length > 0 ? (
             <div>
               {/* MOBILE RECAP CARD VIEW (< md) */}
               <div className="block md:hidden divide-y divide-slate-100">
-                {requests.data.map((req) => (
+                {paginatedRequests.map((req) => (
                   <div
                     key={req.id}
                     onClick={() => setSelectedRequest(req)}
@@ -465,7 +483,7 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {requests.data.map((req) => (
+                    {paginatedRequests.map((req) => (
                       <tr
                         key={req.id}
                         onClick={() => setSelectedRequest(req)}
@@ -556,6 +574,19 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
                   </tbody>
                 </table>
               </div>
+
+              {/* Instant Zero-Lag Pagination */}
+              <InstantPagination
+                currentPage={currentPage}
+                totalItems={rawRequests.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  setCurrentPage(1);
+                }}
+                itemName="data pengajuan"
+              />
             </div>
           ) : (
             <div className="py-16 text-center text-slate-400">

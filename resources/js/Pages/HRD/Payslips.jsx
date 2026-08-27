@@ -49,6 +49,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import InstantPagination from "@/components/ui/instant-pagination";
 import { showAlert, showConfirm, showToast } from '@/Utils/swal';
 
 const containerVariants = {
@@ -95,6 +96,23 @@ export default function HrdPayslips({
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedDept, setSelectedDept] = useState(filters.department_id || 'all');
   const [search, setSearch] = useState(filters.search || '');
+
+  // Instant Client-Side Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const rawPayslips = React.useMemo(() => {
+    return Array.isArray(payslips) ? payslips : (payslips?.data || []);
+  }, [payslips]);
+
+  const paginatedPayslips = React.useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return rawPayslips.slice(start, start + pageSize);
+  }, [rawPayslips, currentPage, pageSize]);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [rawPayslips.length]);
 
   // Modals
   const [isBulkOpen, setIsBulkOpen] = useState(false);
@@ -583,9 +601,10 @@ export default function HrdPayslips({
           </div>
 
           <div className="rounded-3xl bg-white border border-slate-200/80 shadow-xs overflow-hidden">
-            {payslips && payslips.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+            {rawPayslips.length > 0 ? (
+              <div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                       <th className="py-3.5 px-4">Karyawan & NIK</th>
@@ -598,7 +617,7 @@ export default function HrdPayslips({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {payslips.map((p) => {
+                    {paginatedPayslips.map((p) => {
                       const isViewed = p.is_viewed || Boolean(p.viewed_at);
 
                       return (
@@ -708,7 +727,21 @@ export default function HrdPayslips({
                   </tbody>
                 </table>
               </div>
-            ) : (
+
+              {/* Instant Zero-Lag Pagination */}
+              <InstantPagination
+                currentPage={currentPage}
+                totalItems={rawPayslips.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  setCurrentPage(1);
+                }}
+                itemName="slip gaji"
+              />
+            </div>
+          ) : (
               <div className="py-16 text-center text-slate-400 space-y-3">
                 <Receipt size={42} className="mx-auto opacity-30 text-slate-400" />
                 <div>

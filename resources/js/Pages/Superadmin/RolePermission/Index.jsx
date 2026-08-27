@@ -44,6 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import InstantPagination from "@/components/ui/instant-pagination";
 
 // Icon mapper for categories
 const categoryIcons = {
@@ -264,6 +265,19 @@ export default function RolePermissionIndex({
 
     return matchSearch && matchRole;
   });
+
+  // Instant Client-Side Pagination for Employee Role Assignment
+  const [employeePage, setEmployeePage] = useState(1);
+  const [employeePageSize, setEmployeePageSize] = useState(10);
+
+  const paginatedEmployees = useMemo(() => {
+    const start = (employeePage - 1) * employeePageSize;
+    return filteredEmployees.slice(start, start + employeePageSize);
+  }, [filteredEmployees, employeePage, employeePageSize]);
+
+  React.useEffect(() => {
+    setEmployeePage(1);
+  }, [searchEmployee, filterRole]);
 
   return (
     <AuthenticatedLayout title="Manajemen Role & Hak Akses">
@@ -655,7 +669,7 @@ export default function RolePermissionIndex({
                 <div>
                   {/* MOBILE CARD VIEW (< md) */}
                   <div className="block md:hidden divide-y divide-slate-100">
-                    {filteredEmployees.map((emp) => (
+                    {paginatedEmployees.map((emp) => (
                       <div key={emp.id} className="p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3 min-w-0">
@@ -719,7 +733,7 @@ export default function RolePermissionIndex({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
-                        {filteredEmployees.map((emp) => (
+                        {paginatedEmployees.map((emp) => (
                           <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors">
                             <td className="py-4 px-6">
                               <div className="flex items-center space-x-3">
@@ -786,6 +800,19 @@ export default function RolePermissionIndex({
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Instant Zero-Lag Pagination */}
+                  <InstantPagination
+                    currentPage={employeePage}
+                    totalItems={filteredEmployees.length}
+                    pageSize={employeePageSize}
+                    onPageChange={setEmployeePage}
+                    onPageSizeChange={(newSize) => {
+                      setEmployeePageSize(newSize);
+                      setEmployeePage(1);
+                    }}
+                    itemName="karyawan"
+                  />
                 </div>
               )}
             </div>

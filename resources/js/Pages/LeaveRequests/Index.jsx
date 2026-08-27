@@ -46,6 +46,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import InstantPagination from "@/components/ui/instant-pagination";
 import { showConfirm, showToast } from '@/Utils/swal';
 
 const MONTH_NAMES = [
@@ -72,6 +73,23 @@ export default function LeaveRequestsIndex({
   const [status, setStatus] = useState(filters?.status || '');
   const [categoryFilter, setCategoryFilter] = useState(filters?.category_id || '');
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
+
+  // Instant Client-Side Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const rawRequests = React.useMemo(() => {
+    return Array.isArray(requests) ? requests : (requests?.data || []);
+  }, [requests]);
+
+  const paginatedRequests = React.useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return rawRequests.slice(start, start + pageSize);
+  }, [rawRequests, currentPage, pageSize]);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [rawRequests.length]);
 
   const handleFilter = (e) => {
     if (e) e.preventDefault();
@@ -353,11 +371,11 @@ export default function LeaveRequestsIndex({
               </form>
             </div>
 
-            {/* Request List */}
+            {/* Requests List */}
             <div className="space-y-3">
-              {requests?.data && requests.data.length > 0 ? (
+              {rawRequests.length > 0 ? (
                 <div className="space-y-3">
-                  {requests.data.map((req, index) => {
+                  {paginatedRequests.map((req, index) => {
                     const isDeductible = req.category && (
                       req.category.deducts_quota ||
                       ['cuti tahunan', 'cuti haid'].includes(req.category.name?.toLowerCase())
@@ -479,6 +497,21 @@ export default function LeaveRequestsIndex({
                       </motion.div>
                     );
                   })}
+
+                  {/* Instant Pagination Control */}
+                  <div className="rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs">
+                    <InstantPagination
+                      currentPage={currentPage}
+                      totalItems={rawRequests.length}
+                      pageSize={pageSize}
+                      onPageChange={setCurrentPage}
+                      onPageSizeChange={(newSize) => {
+                        setPageSize(newSize);
+                        setCurrentPage(1);
+                      }}
+                      itemName="pengajuan"
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="p-12 rounded-3xl bg-white border border-slate-200 text-center text-slate-400 space-y-2">
