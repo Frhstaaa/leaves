@@ -562,125 +562,193 @@ class HrdController extends Controller
 
     public function importEmployees(Request $request): RedirectResponse
     {
+        $user = Auth::user();
+        if (!$user->isAdmin()) {
+            return back()->with('error', 'Akses khusus HRD / Admin.');
+        }
+
         $request->validate(['file' => 'required|file|max:10240']);
         $file = $request->file('file');
-        $handle = fopen($file->getRealPath(), 'r');
 
-        $bom = fread($handle, 3);
-        if ($bom !== "\xEF\xBB\xBF") {
-            rewind($handle);
-        }
-
-        $successCount = 0;
-        $departments = $this->departmentRepo->getAll();
-        $dbRoles = class_exists('\\Spatie\\Permission\\Models\\Role') ? \Spatie\Permission\Models\Role::pluck('name')->map(fn($r) => strtolower(trim($r)))->toArray() : [];
-        $validRoles = array_unique(array_merge(['employee', 'manager', 'admin', 'superadmin', 'supervisor'], $dbRoles));
-
-        while (($row = fgetcsv($handle, 4000, ',')) !== false) {
-            $col0 = trim($row[0] ?? '');
-            $col1 = trim($row[1] ?? '');
-            $col2 = trim($row[2] ?? '');
-
-            // Skip empty rows
-            if (empty($col0) && empty($col1) && empty($col2)) {
-                continue;
+        try {
+            $path = $file->getRealPath();
+            $handle = fopen($path, 'r');
+            if (!$handle) {
+                return back()->with('error', 'Tidak dapat membuka file yang diunggah.');
             }
 
-            // Skip comments / tutorial rows
-            if (str_starts_with($col0, '#') || 
-                str_starts_with($col0, '=') || 
-                str_starts_with($col0, '-') || 
-                preg_match('/^(tutorial|panduan|petunjuk|daftar|catatan|kode)/i', $col0)) {
-                continue;
+            // 1. Detect UTF-8 BOM
+            $bom = fread($handle, 3);
+            if ($bom !== "\xEF\xBB\xBF") {
+                rewind($handle);
             }
 
-            // Skip table header row
-            if (preg_match('/(nik|nama|email|wajib|opsional)/i', $col0 . $col1) && 
-                preg_match('/(nama|email|login|wajib|opsional)/i', $col1 . $col2)) {
-                continue;
+            // 2. Automatic Delimiter Detection (Comma, Semicolon, or Tab)
+            $samplePos = ftell($handle);
+            $sampleLine = fgets($handle);
+            $delimiter = ',';
+            if ($sampleLine !== false) {
+                $commaCount = substr_count($sampleLine, ',');
+                $semiCount = substr_count($sampleLine, ';');
+                $tabCount = substr_count($sampleLine, "\t");
+
+                if ($semiCount > $commaCount && $semiCount > $tabCount) {
+                    $delimiter = ';';
+                } elseif ($tabCount > $commaCount && $tabCount > $semiCount) {
+                    $delimiter = "\t";
+                }
             }
+            fseek($handle, $samplePos);
 
-            // Check if name and email are present
-            if (empty($col1) || empty($col2)) {
-                continue;
-            }
+            $successCount = 0;
+            $departments = $this->departmentRepo->getAll();
+            $dbRoles = class_exists('\\Spatie\\Permission\\Models\\Role') ? \Spatie\Permission\Models\Role::pluck('name')->map(fn($r) => strtolower(trim($r)))->toArray() : [];
+            $validRoles = array_unique(array_merge(['employee', 'manager', 'admin', 'superadmin', 'supervisor'], $dbRoles));
 
-            // Skip if value matches header keywords
-            if (preg_match('/(nama|lengkap|wajib)/i', $col1) && preg_match('/(email|login|akun)/i', $col2)) {
-                continue;
-            }
+            while (($row = fgetcsv($handle, 4000, $delimiter)) !== false) {
+                $col0 = trim($row[0] ?? '');
+                $col1 = trim($row[1] ?? '');
+                $col2 = trim($row[2] ?? '');
 
-            $nik = $col0 ?: 'EMP-' . date('Y') . '-' . rand(100, 999);
-            $name = $col1;
-            $email = $col2;
-            $password = trim($row[3] ?? '') ?: 'password123';
-            $inputRole = strtolower(trim($row[4] ?? ''));
-            $role = in_array($inputRole, $validRoles) ? $inputRole : 'employee';
-            $deptInput = trim($row[5] ?? '');
-            $statusInput = trim($row[6] ?? '') ?: 'Tetap';
+                // Skip empty rows
+                if (empty($col0) && empty($col1) && empty($col2)) {
+                    continue;
+                }
 
-            $deptId = null;
-            if ($deptInput) {
-                $matched = $departments->first(fn($d) => strcasecmp($d->code, $deptInput) === 0 || strcasecmp($d->name, $deptInput) === 0);
-                $deptId = $matched?->id;
-            }
+                // Skip comments / tutorial / divider rows
+                if (str_starts_with($col0, '#') || 
+                    str_starts_with($col0, '=') || 
+                    str_starts_with($col0, '-') || 
+                    preg_match('/^(tutorial|panduan|petunjuk|daftar|catatan|kode|urutan|langkah)/i', $col0)) {
+                    continue;
+                }
 
-            $userData = [
-                'nik' => $nik,
-                'name' => $name,
-                'password' => Hash::make($password),
-                'role' => $role,
-                'department_id' => $deptId,
-                'employee_status' => $statusInput,
-            ];
+                // Skip table header row
+                if (preg_match('/(nik|nama|email|wajib|opsional)/i', $col0 . $col1) && 
+                    preg_match('/(nama|email|login|wajib|opsional)/i', $col1 . $col2)) {
+                    continue;
+                }
 
-            // Backward compatibility for legacy full templates
-            if (isset($row[9]) && !empty($row[9])) $userData['join_date'] = trim($row[9]);
-            if (isset($row[11]) && !empty($row[11])) $userData['position'] = trim($row[11]);
-            if (isset($row[12]) && !empty($row[12])) $userData['education'] = trim($row[12]);
-            if (isset($row[13]) && !empty($row[13])) $userData['ktp_number'] = trim($row[13]);
-            if (isset($row[14]) && !empty($row[14])) $userData['gender'] = trim($row[14]);
-            if (isset($row[15]) && !empty($row[15])) $userData['birth_place'] = trim($row[15]);
-            if (isset($row[16]) && !empty($row[16])) $userData['birth_date'] = trim($row[16]);
-            if (isset($row[17]) && !empty($row[17])) $userData['phone_number'] = trim($row[17]);
-            if (isset($row[18]) && !empty($row[18])) $userData['ktp_address'] = trim($row[18]);
-            if (isset($row[19]) && !empty($row[19])) $userData['domicile_address'] = trim($row[19]);
-            if (isset($row[20]) && !empty($row[20])) $userData['marital_status'] = trim($row[20]);
-            if (isset($row[21]) && !empty($row[21])) $userData['npwp'] = trim($row[21]);
-            if (isset($row[22]) && !empty($row[22])) $userData['bpjs_kesehatan_number'] = trim($row[22]);
-            if (isset($row[23]) && !empty($row[23])) $userData['bpjs_health_facility'] = trim($row[23]);
-            if (isset($row[24]) && !empty($row[24])) $userData['bpjs_ketenagakerjaan_number'] = trim($row[24]);
-            if (isset($row[25]) && !empty($row[25])) $userData['bank_name'] = trim($row[25]);
-            if (isset($row[26]) && !empty($row[26])) $userData['bank_account_number'] = trim($row[26]);
-            if (isset($row[27]) && !empty($row[27])) $userData['vehicle_plate_number'] = trim($row[27]);
-            if (isset($row[28]) && !empty($row[28])) $userData['sim_number'] = trim($row[28]);
-            if (isset($row[29]) && !empty($row[29])) $userData['sim_valid_until'] = trim($row[29]);
-            if (isset($row[30]) && !empty($row[30])) $userData['shoe_size'] = trim($row[30]);
-            if (isset($row[31]) && !empty($row[31])) $userData['blood_type'] = trim($row[31]);
-            if (isset($row[32]) && !empty($row[32])) $userData['mother_maiden_name'] = trim($row[32]);
-            if (isset($row[33]) && !empty($row[33])) $userData['kk_number'] = trim($row[33]);
+                // Check if name and email are present
+                if (empty($col1) || empty($col2)) {
+                    continue;
+                }
 
-            $user = User::updateOrCreate(
-                ['email' => $email],
-                $userData
-            );
+                // Skip if values match header keywords
+                if (preg_match('/(nama|lengkap|wajib)/i', $col1) && preg_match('/(email|login|akun)/i', $col2)) {
+                    continue;
+                }
 
-            // Sync Spatie role
-            if (method_exists($user, 'syncRoles') && !empty($role)) {
-                try {
-                    if (class_exists('\\Spatie\\Permission\\Models\\Role')) {
-                        \Spatie\Permission\Models\Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
-                        $user->syncRoles([$role]);
+                $name = $col1;
+                $email = strtolower(trim($col2));
+                $passwordInput = trim($row[3] ?? '');
+                $inputRole = strtolower(trim($row[4] ?? ''));
+                $role = in_array($inputRole, $validRoles) ? $inputRole : 'employee';
+                $deptInput = trim($row[5] ?? '');
+                $statusInput = trim($row[6] ?? '') ?: 'Tetap';
+
+                // Find existing user by email
+                $existingUser = User::where('email', $email)->first();
+
+                // Safe Unique NIK Handling
+                $nik = $col0;
+                if (empty($nik)) {
+                    if ($existingUser && !empty($existingUser->nik)) {
+                        $nik = $existingUser->nik;
+                    } else {
+                        do {
+                            $nik = 'EMP-' . date('Y') . '-' . str_pad((string) rand(100, 9999), 4, '0', STR_PAD_LEFT);
+                        } while (User::where('nik', $nik)->exists());
                     }
-                } catch (\Throwable $e) {}
+                } else {
+                    // If user provides a NIK, check if it collides with a different user
+                    $nikOwner = User::where('nik', $nik)->first();
+                    if ($nikOwner && (!$existingUser || $nikOwner->id !== $existingUser->id)) {
+                        // NIK already used by another user -> generate a safe unique NIK
+                        do {
+                            $nik = $col0 . '-' . rand(10, 99);
+                        } while (User::where('nik', $nik)->exists());
+                    }
+                }
+
+                // Department Matching
+                $deptId = null;
+                if ($deptInput) {
+                    $matched = $departments->first(fn($d) => strcasecmp($d->code, $deptInput) === 0 || strcasecmp($d->name, $deptInput) === 0);
+                    $deptId = $matched?->id;
+                }
+
+                $userData = [
+                    'nik' => $nik,
+                    'name' => $name,
+                    'role' => $role,
+                    'department_id' => $deptId,
+                    'employee_status' => $statusInput,
+                ];
+
+                // Password handling: only set/update if provided or new user
+                if (!empty($passwordInput)) {
+                    $userData['password'] = $passwordInput;
+                } elseif (!$existingUser) {
+                    $userData['password'] = 'password123';
+                }
+
+                // Backward compatibility for legacy full templates
+                if (isset($row[9]) && !empty($row[9])) $userData['join_date'] = trim($row[9]);
+                if (isset($row[11]) && !empty($row[11])) $userData['position'] = trim($row[11]);
+                if (isset($row[12]) && !empty($row[12])) $userData['education'] = trim($row[12]);
+                if (isset($row[13]) && !empty($row[13])) $userData['ktp_number'] = trim($row[13]);
+                if (isset($row[14]) && !empty($row[14])) $userData['gender'] = trim($row[14]);
+                if (isset($row[15]) && !empty($row[15])) $userData['birth_place'] = trim($row[15]);
+                if (isset($row[16]) && !empty($row[16])) $userData['birth_date'] = trim($row[16]);
+                if (isset($row[17]) && !empty($row[17])) $userData['phone_number'] = trim($row[17]);
+                if (isset($row[18]) && !empty($row[18])) $userData['ktp_address'] = trim($row[18]);
+                if (isset($row[19]) && !empty($row[19])) $userData['domicile_address'] = trim($row[19]);
+                if (isset($row[20]) && !empty($row[20])) $userData['marital_status'] = trim($row[20]);
+                if (isset($row[21]) && !empty($row[21])) $userData['npwp'] = trim($row[21]);
+                if (isset($row[22]) && !empty($row[22])) $userData['bpjs_kesehatan_number'] = trim($row[22]);
+                if (isset($row[23]) && !empty($row[23])) $userData['bpjs_health_facility'] = trim($row[23]);
+                if (isset($row[24]) && !empty($row[24])) $userData['bpjs_ketenagakerjaan_number'] = trim($row[24]);
+                if (isset($row[25]) && !empty($row[25])) $userData['bank_name'] = trim($row[25]);
+                if (isset($row[26]) && !empty($row[26])) $userData['bank_account_number'] = trim($row[26]);
+                if (isset($row[27]) && !empty($row[27])) $userData['vehicle_plate_number'] = trim($row[27]);
+                if (isset($row[28]) && !empty($row[28])) $userData['sim_number'] = trim($row[28]);
+                if (isset($row[29]) && !empty($row[29])) $userData['sim_valid_until'] = trim($row[29]);
+                if (isset($row[30]) && !empty($row[30])) $userData['shoe_size'] = trim($row[30]);
+                if (isset($row[31]) && !empty($row[31])) $userData['blood_type'] = trim($row[31]);
+                if (isset($row[32]) && !empty($row[32])) $userData['mother_maiden_name'] = trim($row[32]);
+                if (isset($row[33]) && !empty($row[33])) $userData['kk_number'] = trim($row[33]);
+
+                $savedUser = User::updateOrCreate(
+                    ['email' => $email],
+                    $userData
+                );
+
+                // Sync Spatie role
+                if (method_exists($savedUser, 'syncRoles') && !empty($role)) {
+                    try {
+                        if (class_exists('\\Spatie\\Permission\\Models\\Role')) {
+                            \Spatie\Permission\Models\Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
+                            $savedUser->syncRoles([$role]);
+                        }
+                    } catch (\Throwable $e) {}
+                }
+
+                $this->quotaService->setTotalQuota($savedUser->id, 12);
+                $successCount++;
             }
 
-            $this->quotaService->setTotalQuota($user->id, 12);
-            $successCount++;
-        }
+            fclose($handle);
 
-        fclose($handle);
-        return back()->with('success', "Import berhasil! {$successCount} data karyawan berhasil diproses ke sistem.");
+            if ($successCount === 0) {
+                return back()->with('error', 'Tidak ada data karyawan valid yang berhasil dibaca dari file. Pastikan format CSV sesuai template.');
+            }
+
+            return back()->with('success', "Import berhasil! Sebanyak {$successCount} data karyawan berhasil diproses ke sistem.");
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Import error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return back()->with('error', 'Gagal memproses import data: ' . $e->getMessage());
+        }
     }
 
     public function exportBiodataCsv(Request $request): StreamedResponse
