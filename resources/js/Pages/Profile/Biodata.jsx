@@ -128,12 +128,13 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
       ? route('hrd.employees.biodata.update', user.id)
       : route('profile.biodata.update');
 
-    form.put(targetUrl, {
+    form.post(targetUrl, {
       preserveScroll: true,
       onSuccess: () => {
         showToast('Data diri berhasil disimpan ke sistem PT SUGIYAMA INDONESIA!');
       },
-      onError: () => {
+      onError: (errors) => {
+        console.error('Biodata submit errors:', errors);
         showAlert({
           title: 'Periksa Isian Formulir',
           text: 'Terdapat beberapa data yang belum sesuai format. Silakan periksa pesan kesalahan pada formulir.',

@@ -236,7 +236,7 @@
     "src": "resources/js/Pages/Payslips/Index.jsx"
   },
   "resources/js/Pages/Profile/Biodata.jsx": {
-    "file": "assets/Biodata-0c71a3f7.js",
+    "file": "assets/Biodata-a7eddf0b.js",
     "imports": [
       "_vendor-core-d8ac844f.js",
       "_AuthenticatedLayout-93d14e3a.js",
@@ -293,7 +293,7 @@
       "resources/js/Pages/Profile/PrintBiodata.jsx",
       "resources/js/Pages/Superadmin/RolePermission/Index.jsx"
     ],
-    "file": "assets/app-917e8c32.js",
+    "file": "assets/app-5739d487.js",
     "imports": [
       "_vendor-core-d8ac844f.js"
     ],
