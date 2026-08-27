@@ -1424,8 +1424,8 @@ export default function HrdEmployees({ employees = [], departments = [], manager
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <div>
-                    <span className="text-xs font-black text-slate-900 uppercase tracking-wider block">Langkah 1: Format Template CSV Cepat (7 Kolom)</span>
-                    <span className="text-[11px] text-slate-500">Hanya kolom esensial. Biodata lengkap diisi mandiri oleh karyawan.</span>
+                    <span className="text-xs font-black text-slate-900 uppercase tracking-wider block">Langkah 1: Format Template CSV (9 Kolom)</span>
+                    <span className="text-[11px] text-slate-500">Bisa untuk tambah karyawan baru ATAU update massal Jabatan & Jenis Kelamin karyawan lama.</span>
                   </div>
                   <a
                     href={route('hrd.employees.template')}
@@ -1437,11 +1437,11 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                   </a>
                 </div>
 
-                {/* 7 Essential Columns Guide with distinct colors */}
+                {/* 9 Columns Guide with distinct colors */}
                 <div className="space-y-2.5 text-xs">
                   <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-black uppercase tracking-wider text-slate-700">Struktur 7 Kolom Template:</span>
+                      <span className="text-[11px] font-black uppercase tracking-wider text-slate-700">Struktur 9 Kolom Template:</span>
                       <span className="text-[10px] font-bold text-slate-400">Urutan Kolom</span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
@@ -1451,8 +1451,20 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       <span className="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 text-[10px] font-bold">4. Password (Opsional)</span>
                       <span className="px-2 py-0.5 rounded-lg bg-purple-50 text-purple-800 border border-purple-200 text-[10px] font-bold">5. Role (Opsional)</span>
                       <span className="px-2 py-0.5 rounded-lg bg-teal-50 text-teal-800 border border-teal-200 text-[10px] font-bold">6. Departemen (Opsional)</span>
-                      <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold">7. Status Karyawan (Opsional)</span>
+                      <span className="px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-300 text-[10px] font-black">7. Jabatan / Posisi (Opsional) 💼</span>
+                      <span className="px-2 py-0.5 rounded-lg bg-pink-50 text-pink-900 border border-pink-300 text-[10px] font-black">8. Jenis Kelamin (L/P) 👤</span>
+                      <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold">9. Status Karyawan (Opsional)</span>
                     </div>
+                  </div>
+
+                  {/* Batch Update Tip */}
+                  <div className="p-2.5 rounded-xl bg-blue-50/80 border border-blue-200 text-[11px] text-blue-900 space-y-1">
+                    <span className="font-extrabold flex items-center space-x-1">
+                      <span>💡 Tips Update Massal Karyawan Lama:</span>
+                    </span>
+                    <p className="text-[11px] text-blue-800 leading-relaxed">
+                      Untuk update Jabatan & Jenis Kelamin sekaligus, masukkan <strong>Email</strong> atau <strong>NIK</strong> karyawan yang sudah ada di Excel/CSV lalu isi kolom <strong>Jabatan</strong> & <strong>Jenis Kelamin</strong>. Password lama karyawan <strong>tidak akan berubah/reset</strong> jika kolom password dikosongkan.
+                    </p>
                   </div>
 
                   {/* Dynamic Department List */}
