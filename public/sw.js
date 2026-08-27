@@ -1,5 +1,5 @@
 // High-Performance & Resilient Service Worker for Form SGIN PWA
-const CACHE_NAME = 'sgin-pwa-v8';
+const CACHE_NAME = 'sgin-pwa-v10';
 
 const ASSETS_TO_CACHE = [
   './icons/icon-192x192.png',
