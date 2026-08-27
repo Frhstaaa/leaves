@@ -181,8 +181,98 @@ function getDefaultEnvContent() {
 }
 
 $envFile = $basePath . '/.env';
-$action = $_POST['action'] ?? (!empty($_GET['run']) ? 'auto_repair' : null);
+$action = $_POST['action'] ?? (!empty($_GET['run']) ? ($_GET['run'] === '1' ? 'auto_repair' : $_GET['run']) : null);
 $logs = [];
+
+// ============================================================
+// Action: zip_sync — Download full ZIP dari GitHub langsung
+// Gunakan: https://sgin.co.id/leaves-application/public/setup.php?run=zip_sync
+// ============================================================
+if ($action === 'zip_sync') {
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "=== ZIP SYNC dari GitHub Frhstaaa/leaves:main ===\n\n";
+    $repo = 'Frhstaaa/leaves';
+    $branch = 'main';
+    $zipUrl = "https://github.com/$repo/archive/refs/heads/$branch.zip";
+
+    echo "[1] Mengunduh ZIP dari $zipUrl ...\n";
+    if (!function_exists('curl_init')) { echo "[ERROR] cURL tidak tersedia.\n"; exit; }
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $zipUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'SGIN-ZIP-Sync/2.0');
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 180);
+    $zipData = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
+    curl_close($ch);
+
+    echo "[2] HTTP Status: $httpCode | Ukuran: " . strlen($zipData) . " bytes\n";
+    if ($httpCode !== 200 || empty($zipData)) {
+        echo "[ERROR] Gagal download ZIP: $curlErr\n"; exit;
+    }
+
+    $tempZip = $basePath . '/storage/zip_sync_temp.zip';
+    file_put_contents($tempZip, $zipData);
+    echo "[3] ZIP disimpan ke $tempZip\n";
+
+    $extractPath = $basePath . '/storage/zip_sync_extracted';
+    if (is_dir($extractPath)) {
+        $old = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($extractPath, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($old as $f) { $f->isDir() ? @rmdir($f->getPathname()) : @unlink($f->getPathname()); }
+        @rmdir($extractPath);
+    }
+    @mkdir($extractPath, 0777, true);
+
+    $zip = new ZipArchive();
+    if ($zip->open($tempZip) !== TRUE) {
+        echo "[ERROR] Gagal membuka file ZIP.\n"; @unlink($tempZip); exit;
+    }
+    $zip->extractTo($extractPath);
+    $zip->close();
+    @unlink($tempZip);
+    echo "[4] ZIP berhasil diekstrak ke $extractPath\n";
+
+    $sourceDir = '';
+    foreach (scandir($extractPath) as $item) {
+        if ($item !== '.' && $item !== '..' && is_dir("$extractPath/$item")) {
+            $sourceDir = "$extractPath/$item"; break;
+        }
+    }
+    if (!$sourceDir) { echo "[ERROR] Tidak dapat menemukan folder root di ZIP.\n"; exit; }
+    echo "[5] Source dir: $sourceDir\n";
+
+    $ignoreList = ['.env', 'storage/', 'public/storage', '.git/', 'node_modules/'];
+    $count = 0;
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($sourceDir, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::SELF_FIRST
+    );
+    foreach ($iterator as $item) {
+        $subPath = str_replace('\\', '/', substr($item->getPathname(), strlen($sourceDir) + 1));
+        $destPath = $basePath . '/' . $subPath;
+        $skip = false;
+        foreach ($ignoreList as $ig) {
+            if (str_starts_with($subPath, rtrim($ig, '/'))) { $skip = true; break; }
+        }
+        if ($skip) continue;
+        if ($item->isDir()) {
+            if (!is_dir($destPath)) @mkdir($destPath, 0777, true);
+        } else {
+            if (@copy($item->getPathname(), $destPath)) { @chmod($destPath, 0644); $count++; }
+        }
+    }
+    echo "[6] Berhasil menyalin $count file ke server!\n";
+    echo "\n=== SELESAI! Semua file terbaru dari GitHub sudah di-deploy ke server. ===\n";
+    echo "\nBuka halaman: https://www.sgin.co.id/leaves-application/dashboard\n";
+    exit;
+}
 
 // Handle Restore / Save .env
 if ($action === 'restore_env') {
@@ -194,6 +284,7 @@ if ($action === 'restore_env') {
         $logs[] = "⚠️ Gagal menulis file .env! Periksa izin folder root (chmod 755/777).";
     }
 }
+
 
 if ($action === 'auto_repair') {
     $logs[] = "=================================================================";
