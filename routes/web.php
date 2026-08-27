@@ -110,9 +110,11 @@ Route::middleware(['auth'])->group(function () {
     Route::match(['put', 'post'], '/profile/biodata/update', [\App\Http\Controllers\ProfileController::class, 'updateBiodata']);
     Route::match(['put', 'post'], '/biodata/update', [\App\Http\Controllers\ProfileController::class, 'updateBiodata']);
     Route::match(['put', 'post'], '/biodata', [\App\Http\Controllers\ProfileController::class, 'updateBiodata']);
+    // Rute canonical baru — bebas konflik nama, tidak bergantung prefix subfolder
+    Route::post('/save-biodata', [\App\Http\Controllers\ProfileController::class, 'updateBiodata'])->name('profile.biodata.save');
     Route::get('/profile/biodata/print', [\App\Http\Controllers\ProfileController::class, 'printBiodata'])->name('profile.biodata.print');
     Route::post('/profile/avatar', [\App\Http\Controllers\ProfileController::class, 'updateAvatar'])->name('profile.avatar');
-    Route::put('/profile/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('profile.password');
+    Route::match(['put', 'post'], '/profile/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('profile.password');
 
     // Employee Payslips Portal
     Route::get('/payslips', [PayslipController::class, 'index'])->name('payslips.index');

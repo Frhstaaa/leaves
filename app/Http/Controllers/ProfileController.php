@@ -26,6 +26,9 @@ class ProfileController extends Controller
         return Inertia::render('Profile/Biodata', [
             'user' => $user,
             'departments' => $departments,
+        ])->toResponse($request)->withHeaders([
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+            'Pragma' => 'no-cache',
         ]);
     }
 
@@ -96,7 +99,12 @@ class ProfileController extends Controller
 
         $user->save();
 
-        return Redirect::back()->with('success', 'Data diri Anda berhasil diperbarui dan disimpan ke sistem!');
+        return Redirect::back()
+            ->with('success', 'Data diri Anda berhasil diperbarui dan disimpan ke sistem!')
+            ->withHeaders([
+                'Cache-Control' => 'no-store, no-cache, must-revalidate',
+                'Pragma' => 'no-cache',
+            ]);
     }
 
     /**
