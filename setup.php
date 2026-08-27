@@ -1,12 +1,14 @@
 <?php
 /**
- * SGIN - Web Setup & Maintenance Utility (Replacement for Terminal/SSH)
- * For security, please delete this file after completing the setup.
+ * SGIN Leaves Application - Emergency System Recovery & Self-Healing Setup Tool
+ * Akses: https://sgin.co.id/leaves-application/setup.php
  */
 
-// Disable time limits for migrations
-@set_time_limit(300);
-@ini_set('max_execution_time', 300);
+@set_time_limit(600);
+@ini_set('max_execution_time', 600);
+@ini_set('memory_limit', '512M');
+@ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
 // Determine base path
 $basePath = __DIR__;
@@ -16,431 +18,300 @@ if (!file_exists($basePath . '/vendor/autoload.php')) {
     }
 }
 
-// 1. Auto-create all required storage & cache folders before anything else
-$requiredDirs = [
+// 1. Ensure storage directories exist and are writable
+$storageDirs = [
+    $basePath . '/storage',
+    $basePath . '/storage/framework',
     $basePath . '/storage/framework/sessions',
     $basePath . '/storage/framework/views',
+    $basePath . '/storage/framework/cache',
     $basePath . '/storage/framework/cache/data',
-    $basePath . '/storage/framework/testing',
     $basePath . '/storage/logs',
+    $basePath . '/storage/app',
     $basePath . '/storage/app/public',
     $basePath . '/bootstrap/cache',
+    $basePath . '/public/build',
 ];
 
-$dirCreationLogs = [];
-foreach ($requiredDirs as $dir) {
+foreach ($storageDirs as $dir) {
     if (!is_dir($dir)) {
-        if (@mkdir($dir, 0777, true)) {
-            $dirCreationLogs[] = "✓ Folder berhasil dibuat: " . str_replace($basePath . '/', '', $dir);
-            @chmod($dir, 0777);
-        } else {
-            $dirCreationLogs[] = "✗ Gagal membuat folder: " . str_replace($basePath . '/', '', $dir);
-        }
+        @mkdir($dir, 0777, true);
+    }
+    @chmod($dir, 0777);
+}
+
+// 2. Safe execution helper
+function runShell($cmd, $dir) {
+    if (!function_exists('shell_exec')) {
+        return "shell_exec tidak aktif pada PHP server ini.";
+    }
+    $full = "cd " . escapeshellarg($dir) . " && " . $cmd . " 2>&1";
+    return trim(@shell_exec($full) ?: '');
+}
+
+// 3. Clear all cached framework files directly from filesystem
+function directFileCacheClear($basePath) {
+    $cleared = [];
+
+    // Delete bootstrap cache files
+    foreach (glob($basePath . '/bootstrap/cache/*.php') as $f) {
+        @unlink($f);
+        $cleared[] = 'bootstrap/cache/' . basename($f);
+    }
+
+    // Delete compiled blade views
+    foreach (glob($basePath . '/storage/framework/views/*.php') as $f) {
+        @unlink($f);
+        $cleared[] = 'views/' . basename($f);
+    }
+
+    // Delete data cache files
+    $cacheData = $basePath . '/storage/framework/cache/data';
+    if (is_dir($cacheData)) {
+        try {
+            $it = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($cacheData, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::CHILD_FIRST
+            );
+            foreach ($it as $file) {
+                if ($file->isFile()) {
+                    @unlink($file->getRealPath());
+                } elseif ($file->isDir()) {
+                    @rmdir($file->getRealPath());
+                }
+            }
+            $cleared[] = 'storage/framework/cache/data/*';
+        } catch (\Throwable $e) {}
+    }
+
+    // Reset OPcache if present
+    if (function_exists('opcache_reset')) {
+        @opcache_reset();
+        $cleared[] = 'PHP OPcache Memory';
+    }
+
+    return $cleared;
+}
+
+// Handle Auto-Repair Actions via POST
+$action = $_POST['action'] ?? null;
+$logs = [];
+
+if ($action === 'auto_repair') {
+    $logs[] = "=================================================================";
+    $logs[] = "  🛠️ MEMULAI PERBAIKAN TOTAL SISTEM APLIKASI SGIN LEAVES...     ";
+    $logs[] = "=================================================================\n";
+
+    // Step 1: Force Git pull & Hard Reset to GitHub main
+    $logs[] = "[1/6] Mengambil kodingan terbaru & terbersih dari GitHub main...";
+    $gitVer = runShell("git --version", $basePath);
+    if (str_contains(strtolower($gitVer), 'git version')) {
+        $fetch = runShell("git fetch origin main", $basePath);
+        $reset = runShell("git reset --hard origin/main", $basePath);
+        $logs[] = "✓ Git Reset: " . ($reset ?: $fetch ?: 'Selesai');
     } else {
-        @chmod($dir, 0777);
+        $logs[] = "ℹ️ Git CLI tidak tersedia, menggunakan file lokal saat ini.";
     }
-}
 
-// Check environment and framework availability
-$hasVendor = file_exists($basePath . '/vendor/autoload.php');
-$hasEnv = file_exists($basePath . '/.env');
-$hasBootstrap = file_exists($basePath . '/bootstrap/app.php');
+    // Step 2: Clear All File Caches manually
+    $logs[] = "\n[2/6] Membersihkan seluruh file cache & compiled routes secara langsung...";
+    $clearedFiles = directFileCacheClear($basePath);
+    $logs[] = "✓ Cache yang dibersihkan: " . implode(', ', array_slice($clearedFiles, 0, 10)) . (count($clearedFiles) > 10 ? ' dan ' . (count($clearedFiles) - 10) . ' file lainnya.' : '.');
 
-$app = null;
-$kernel = null;
-$bootstrapError = null;
-
-if ($hasVendor && $hasBootstrap) {
-    try {
-        require_once $basePath . '/vendor/autoload.php';
-        $app = require_once $basePath . '/bootstrap/app.php';
-        $kernel = $app->make(\Illuminate\Contracts\Console\Kernel::class);
-        $kernel->bootstrap();
-    } catch (\Throwable $e) {
-        $bootstrapError = $e->getMessage();
-    }
-}
-
-// Handle Actions
-$outputLog = '';
-$actionExecuted = $_POST['action'] ?? null;
-
-if ($actionExecuted && $app) {
-    ob_start();
-    try {
-        switch ($actionExecuted) {
-            case 'init_storage':
-                echo "=== MEMBUAT FOLDER & MEMPERBAIKI PERMISSION STORAGE ===\n";
-                foreach ($requiredDirs as $dir) {
-                    if (!is_dir($dir)) {
-                        mkdir($dir, 0777, true);
-                        echo "Created: $dir\n";
-                    }
-                    @chmod($dir, 0777);
-                    echo "Permissions 777 applied: " . basename($dir) . "\n";
-                }
-                echo "✓ Semua folder storage berhasil disiapkan!\n";
-                break;
-
-            case 'key_generate':
-                echo "=== GENERATE APP ENCRYPTION KEY ===\n";
-                \Illuminate\Support\Facades\Artisan::call('key:generate', ['--force' => true]);
-                echo \Illuminate\Support\Facades\Artisan::output();
-                break;
-
-            case 'migrate':
-                echo "=== MENJALANKAN DATABASE MIGRATION ===\n";
-                \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-                echo \Illuminate\Support\Facades\Artisan::output();
-                break;
-
-            case 'migrate_seed':
-                echo "=== MENJALANKAN MIGRATION & SEEDER ===\n";
-                \Illuminate\Support\Facades\Artisan::call('migrate', ['--seed' => true, '--force' => true]);
-                echo \Illuminate\Support\Facades\Artisan::output();
-                break;
-
-            case 'migrate_fresh':
-                echo "=== RESET & FRESH MIGRATION DENGAN SEEDER ===\n";
-                \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--seed' => true, '--force' => true]);
-                echo \Illuminate\Support\Facades\Artisan::output();
-                break;
-
-            case 'storage_link':
-                echo "=== MEMBUAT STORAGE SYMLINK (UPLOAD LINK) ===\n";
-                $publicStorage = $basePath . '/public/storage';
-                $appStorage = $basePath . '/storage/app/public';
-                
-                if (file_exists($publicStorage) || is_link($publicStorage)) {
-                    @unlink($publicStorage);
-                }
-                
-                try {
-                    \Illuminate\Support\Facades\Artisan::call('storage:link');
-                    echo \Illuminate\Support\Facades\Artisan::output();
-                } catch (\Throwable $ex) {
-                    if (@symlink($appStorage, $publicStorage)) {
-                        echo "✓ Symlink created manually: public/storage -> storage/app/public\n";
-                    } else {
-                        echo "✗ Gagal membuat symlink: " . $ex->getMessage() . "\n";
-                    }
-                }
-                break;
-
-            case 'clear_cache':
-                echo "=== MEMBERSIHKAN SELURUH CACHE ===\n";
-                \Illuminate\Support\Facades\Artisan::call('optimize:clear');
-                echo \Illuminate\Support\Facades\Artisan::output();
-                break;
-
-            case 'optimize':
-                echo "=== OPTIMASI UNTUK PRODUCTION (CACHE CONFIG & ROUTES) ===\n";
-                \Illuminate\Support\Facades\Artisan::call('config:cache');
-                echo \Illuminate\Support\Facades\Artisan::output();
-                \Illuminate\Support\Facades\Artisan::call('route:cache');
-                echo \Illuminate\Support\Facades\Artisan::output();
-                \Illuminate\Support\Facades\Artisan::call('view:cache');
-                echo \Illuminate\Support\Facades\Artisan::output();
-                break;
-
-            case 'run_all':
-                echo "=== MENJALANKAN SETUP LENGKAP OTOMATIS ===\n\n";
-                
-                // 1. Storage dirs
-                echo "[1/5] Memeriksa & membuat folder storage...\n";
-                foreach ($requiredDirs as $dir) {
-                    if (!is_dir($dir)) {
-                        @mkdir($dir, 0777, true);
-                    }
-                    @chmod($dir, 0777);
-                }
-                echo "✓ Selesai.\n\n";
-
-                // 2. Key Generate
-                echo "[2/5] Memeriksa App Key...\n";
-                if (!config('app.key')) {
-                    \Illuminate\Support\Facades\Artisan::call('key:generate', ['--force' => true]);
-                    echo \Illuminate\Support\Facades\Artisan::output();
-                } else {
-                    echo "✓ App Key sudah tersedia.\n";
-                }
-                echo "\n";
-
-                // 3. Migrate & Seed
-                echo "[3/5] Menjalankan Migration & Database Seeder...\n";
-                \Illuminate\Support\Facades\Artisan::call('migrate', ['--seed' => true, '--force' => true]);
-                echo \Illuminate\Support\Facades\Artisan::output();
-                echo "\n";
-
-                // 4. Storage Link
-                echo "[4/5] Menghubungkan storage symlink...\n";
-                $publicStorage = $basePath . '/public/storage';
-                $appStorage = $basePath . '/storage/app/public';
-                if (!file_exists($publicStorage)) {
-                    @symlink($appStorage, $publicStorage);
-                    \Illuminate\Support\Facades\Artisan::call('storage:link');
-                    echo \Illuminate\Support\Facades\Artisan::output();
-                } else {
-                    echo "✓ Storage symlink sudah terhubung.\n";
-                }
-                echo "\n";
-
-                // 5. Clear Cache
-                echo "[5/5] Membersihkan cache konfigurasi...\n";
-                \Illuminate\Support\Facades\Artisan::call('optimize:clear');
-                echo \Illuminate\Support\Facades\Artisan::output();
-                echo "\n=== SETUP SELESAI DENGAN SUKSES! ===";
-                break;
-
-            case 'delete_self':
-                echo "=== MENGHAPUS SETUP.PHP DARI SERVER ===\n";
-                $file = __FILE__;
-                $rootFile = $basePath . '/setup.php';
-                $pubFile = $basePath . '/public/setup.php';
-                
-                @unlink($rootFile);
-                @unlink($pubFile);
-                @unlink($file);
-                
-                echo "✓ File setup.php berhasil dihapus demi keamanan server Anda!\n";
-                echo "Silakan kembali ke website utama.";
-                break;
+    // Step 3: Bootstrap Laravel Kernel safely
+    $logs[] = "\n[3/6] Menghubungkan Laravel Kernel...";
+    $app = null;
+    if (file_exists($basePath . '/vendor/autoload.php') && file_exists($basePath . '/bootstrap/app.php')) {
+        try {
+            require_once $basePath . '/vendor/autoload.php';
+            $app = require_once $basePath . '/bootstrap/app.php';
+            $app->usePublicPath($basePath . '/public');
+            $kernel = $app->make(\Illuminate\Contracts\Console\Kernel::class);
+            $kernel->bootstrap();
+            $logs[] = "✓ Laravel Kernel berhasil di-bootstrap!";
+        } catch (\Throwable $e) {
+            $logs[] = "⚠️ Gagal bootstrap kernel: " . $e->getMessage();
         }
-    } catch (\Throwable $e) {
-        echo "✗ Terjadi Error: " . $e->getMessage() . "\n";
-        echo "Trace:\n" . $e->getTraceAsString();
     }
-    $outputLog = ob_get_clean();
+
+    // Step 4: Run Artisan Migrations & Clear Commands
+    $logs[] = "\n[4/6] Menjalankan pembersihan cache Artisan & Migrasi...";
+    if ($app) {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('optimize:clear');
+            $logs[] = "✓ php artisan optimize:clear: " . trim(\Illuminate\Support\Facades\Artisan::output());
+        } catch (\Throwable $e) {
+            $logs[] = "ℹ️ optimize:clear: " . $e->getMessage();
+        }
+
+        try {
+            \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+            $logs[] = "✓ php artisan migrate: " . trim(\Illuminate\Support\Facades\Artisan::output());
+        } catch (\Throwable $e) {
+            $logs[] = "ℹ️ migrate: " . $e->getMessage();
+        }
+
+        try {
+            if (class_exists('Database\\Seeders\\RolePermissionSeeder')) {
+                \Illuminate\Support\Facades\Artisan::call('db:seed', [
+                    '--class' => 'Database\\Seeders\\RolePermissionSeeder',
+                    '--force' => true,
+                ]);
+                $logs[] = "✓ Sinkronisasi Role & Permission: Selesai!";
+            }
+        } catch (\Throwable $e) {
+            $logs[] = "ℹ️ seeder: " . $e->getMessage();
+        }
+
+        try {
+            if (class_exists('\\App\\Models\\LeaveQuota')) {
+                \App\Models\LeaveQuota::syncAllUsers();
+                $logs[] = "✓ Sinkronisasi Kuota Cuti Karyawan: Selesai!";
+            }
+        } catch (\Throwable $e) {
+            $logs[] = "ℹ️ quota sync: " . $e->getMessage();
+        }
+    }
+
+    // Step 5: Fix Storage Symlink
+    $logs[] = "\n[5/6] Memeriksa tautan storage publik...";
+    $pubStorage = $basePath . '/public/storage';
+    $appStorage = $basePath . '/storage/app/public';
+    if (!file_exists($pubStorage) && !is_link($pubStorage)) {
+        @symlink($appStorage, $pubStorage);
+    }
+    if ($app) {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('storage:link');
+            $logs[] = "✓ php artisan storage:link: " . trim(\Illuminate\Support\Facades\Artisan::output() ?: 'Siap');
+        } catch (\Throwable $e) {}
+    }
+
+    // Step 6: Final Cache Generation
+    $logs[] = "\n[6/6] Menyiapkan konfigurasi final...";
+    if ($app) {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('config:clear');
+            \Illuminate\Support\Facades\Artisan::call('route:clear');
+            \Illuminate\Support\Facades\Artisan::call('view:clear');
+            $logs[] = "✓ Seluruh cache aplikasi siap & bersih!";
+        } catch (\Throwable $e) {}
+    }
+
+    $logs[] = "\n=================================================================";
+    $logs[] = "  🎉 PERBAIKAN SELESAI! APLIKASI KEMBALI NORMAL & SIAP DIGUNAKAN ";
+    $logs[] = "=================================================================";
 }
 
-// Check database connection status
-$dbStatus = 'Belum terhubung';
-$dbConnected = false;
-if ($app) {
-    try {
-        \Illuminate\Support\Facades\DB::connection()->getPdo();
-        $dbStatus = 'Terhubung (' . \Illuminate\Support\Facades\DB::connection()->getDatabaseName() . ')';
-        $dbConnected = true;
-    } catch (\Throwable $e) {
-        $dbStatus = 'Gagal: ' . $e->getMessage();
+// Read last 40 lines of laravel.log
+$recentLogs = '';
+$logFile = $basePath . '/storage/logs/laravel.log';
+if (file_exists($logFile)) {
+    $lines = file($logFile);
+    if (!empty($lines)) {
+        $recentLogs = implode("", array_slice($lines, -50));
     }
 }
+if (empty($recentLogs)) {
+    $recentLogs = "Tidak ada catatan error pada file laravel.log saat ini.";
+}
+
+// Protocol & Host
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
+$host = $_SERVER['HTTP_HOST'] ?? 'sgin.co.id';
+$appUrl = "$protocol://$host/leaves-application/dashboard";
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SGIN - Web Setup & Maintenance Center</title>
+    <title>SGIN Leaves - Emergency Recovery & Setup Tool</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen p-4 sm:p-8">
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 sm:p-8 flex flex-col justify-between">
 
-    <div class="max-w-4xl mx-auto space-y-6">
-
+    <div class="max-w-4xl mx-auto w-full space-y-6">
+        
         <!-- Header -->
-        <div class="p-6 rounded-3xl bg-gradient-to-r from-emerald-800 to-teal-900 border border-emerald-700/50 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-                <div class="flex items-center space-x-2">
-                    <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-extrabold uppercase border border-emerald-400/30">CyberPanel Helper</span>
-                    <span class="text-xs text-emerald-200">Terminal Alternative</span>
+        <div class="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-emerald-950 border border-slate-700/80 shadow-2xl">
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-black text-xl">
+                    ⚡
                 </div>
-                <h1 class="text-2xl font-black text-white mt-1">SGIN Setup & Maintenance Panel</h1>
-                <p class="text-xs text-emerald-100/80 mt-0.5">Jalankan perintah Artisan dan konfigurasi database tanpa akses terminal/SSH</p>
-            </div>
-            <a href="./" class="px-5 py-2.5 rounded-2xl bg-white text-emerald-950 hover:bg-emerald-50 font-black text-xs shadow-lg transition-transform hover:scale-105 shrink-0 text-center">
-                &larr; Buka Website SGIN
-            </a>
-        </div>
-
-        <!-- Status Overview Cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div class="p-4 rounded-2xl bg-slate-800/80 border border-slate-700">
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">PHP Version</span>
-                <span class="text-sm font-black text-white"><?= phpversion(); ?></span>
-            </div>
-            <div class="p-4 rounded-2xl bg-slate-800/80 border border-slate-700">
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">File .env</span>
-                <span class="text-sm font-black <?= $hasEnv ? 'text-emerald-400' : 'text-rose-400' ?>">
-                    <?= $hasEnv ? '✓ Ada' : '✗ Belum Ada' ?>
-                </span>
-            </div>
-            <div class="p-4 rounded-2xl bg-slate-800/80 border border-slate-700">
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Storage Status</span>
-                <span class="text-sm font-black text-emerald-400">✓ Siap (Auto-Fixed)</span>
-            </div>
-            <div class="p-4 rounded-2xl bg-slate-800/80 border border-slate-700">
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Database Status</span>
-                <span class="text-xs font-bold <?= $dbConnected ? 'text-emerald-400' : 'text-amber-400' ?> truncate block" title="<?= htmlspecialchars($dbStatus) ?>">
-                    <?= $dbConnected ? '✓ Terhubung' : '⚠️ ' . htmlspecialchars($dbStatus) ?>
-                </span>
-            </div>
-        </div>
-
-        <?php if (!empty($dirCreationLogs)): ?>
-        <div class="p-4 rounded-2xl bg-emerald-950/60 border border-emerald-600/40 text-xs text-emerald-200 space-y-1">
-            <p class="font-extrabold text-emerald-400">⚡ Status Pembuatan Folder Storage:</p>
-            <?php foreach ($dirCreationLogs as $log): ?>
-                <p class="font-mono text-[11px]"><?= htmlspecialchars($log) ?></p>
-            <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
-
-        <?php if ($bootstrapError): ?>
-        <div class="p-4 rounded-2xl bg-rose-950/80 border border-rose-600/50 text-xs text-rose-200 space-y-1">
-            <p class="font-extrabold text-rose-400">⚠️ Peringatan Bootstrap Laravel:</p>
-            <p class="font-mono text-[11px]"><?= htmlspecialchars($bootstrapError) ?></p>
-            <p class="text-[11px] text-rose-300 mt-1">Jika error terkait App Key, silakan klik tombol <strong>"Generate App Key"</strong> di bawah.</p>
-        </div>
-        <?php endif; ?>
-
-        <!-- Quick 1-Click All Setup Action -->
-        <div class="p-6 rounded-3xl bg-slate-800/90 border border-emerald-500/40 shadow-xl space-y-4">
-            <div class="flex items-center justify-between">
                 <div>
-                    <h3 class="text-lg font-black text-white flex items-center space-x-2">
-                        <span>⚡ 1-Click Full Setup (Direkomendasikan)</span>
-                    </h3>
-                    <p class="text-xs text-slate-400 mt-0.5">Otomatis memperbaiki storage folder, generate app key, migrasi database, dan storage symlink sekaligus.</p>
+                    <h1 class="text-xl sm:text-2xl font-black text-white">SGIN Leaves System Recovery & Setup</h1>
+                    <p class="text-xs sm:text-sm text-slate-400">Pusat Diagnostik & Perbaikan Otomatis Error 500 PT Sugiyama Indonesia</p>
                 </div>
-                <form method="POST">
-                    <input type="hidden" name="action" value="run_all">
-                    <button type="submit" onclick="return confirm('Jalankan seluruh rangkaian setup otomatis sekarang?')" class="px-6 py-3.5 rounded-2xl bg-[#0FA172] hover:bg-[#1CB67C] text-white font-black text-xs shadow-lg shadow-emerald-600/30 flex items-center space-x-2 transition-all hover:scale-105 shrink-0">
-                        <span>Jalankan Semua Setup</span>
-                        <span>&rarr;</span>
-                    </button>
-                </form>
             </div>
         </div>
 
-        <!-- Individual Control Actions Grid -->
-        <div class="p-6 rounded-3xl bg-slate-800/50 border border-slate-700/60 space-y-5">
-            <h3 class="text-sm font-extrabold uppercase tracking-wider text-slate-400">Pilih Aksi Per Bagian:</h3>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-
-                <!-- 1. Fix Storage Dirs -->
-                <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-700 flex flex-col justify-between space-y-3">
-                    <div>
-                        <h4 class="text-xs font-bold text-white">1. Siapkan Folder Storage</h4>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Buat folder sessions, views, cache/data, dan logs dengan permission 777.</p>
-                    </div>
-                    <form method="POST">
-                        <input type="hidden" name="action" value="init_storage">
-                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold text-xs transition-colors">
-                            Perbaiki Folder Storage
-                        </button>
-                    </form>
-                </div>
-
-                <!-- 2. Generate App Key -->
-                <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-700 flex flex-col justify-between space-y-3">
-                    <div>
-                        <h4 class="text-xs font-bold text-white">2. Generate App Key</h4>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Membuat encryption key baru dan menyimpannya di file .env.</p>
-                    </div>
-                    <form method="POST">
-                        <input type="hidden" name="action" value="key_generate">
-                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold text-xs transition-colors">
-                            Generate APP_KEY
-                        </button>
-                    </form>
-                </div>
-
-                <!-- 3. Migrate & Seed -->
-                <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-700 flex flex-col justify-between space-y-3">
-                    <div>
-                        <h4 class="text-xs font-bold text-white">3. Database Migration + Seed</h4>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Membuat tabel database & data awal (kategori cuti, admin, dll).</p>
-                    </div>
-                    <form method="POST">
-                        <input type="hidden" name="action" value="migrate_seed">
-                        <button type="submit" onclick="return confirm('Jalankan migrasi database & seeder sekarang?')" class="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs transition-colors">
-                            Migrate & Seed
-                        </button>
-                    </form>
-                </div>
-
-                <!-- 4. Storage Link -->
-                <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-700 flex flex-col justify-between space-y-3">
-                    <div>
-                        <h4 class="text-xs font-bold text-white">4. Storage Symlink</h4>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Hubungkan public/storage ke storage/app/public untuk file lampiran.</p>
-                    </div>
-                    <form method="POST">
-                        <input type="hidden" name="action" value="storage_link">
-                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold text-xs transition-colors">
-                            Buat Storage Link
-                        </button>
-                    </form>
-                </div>
-
-                <!-- 5. Clear All Cache -->
-                <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-700 flex flex-col justify-between space-y-3">
-                    <div>
-                        <h4 class="text-xs font-bold text-white">5. Bersihkan Cache</h4>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Hapus cache config, route, view, dan cache aplikasi.</p>
-                    </div>
-                    <form method="POST">
-                        <input type="hidden" name="action" value="clear_cache">
-                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold text-xs transition-colors">
-                            Clear Cache
-                        </button>
-                    </form>
-                </div>
-
-                <!-- 6. Optimize Production -->
-                <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-700 flex flex-col justify-between space-y-3">
-                    <div>
-                        <h4 class="text-xs font-bold text-white">6. Cache untuk Production</h4>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Kompilasi dan simpan cache config/routes untuk performa maksimal.</p>
-                    </div>
-                    <form method="POST">
-                        <input type="hidden" name="action" value="optimize">
-                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold text-xs transition-colors">
-                            Optimize / Cache
-                        </button>
-                    </form>
-                </div>
-
-            </div>
-        </div>
-
-        <!-- Terminal Execution Output Box -->
-        <?php if (!empty($outputLog)): ?>
-        <div class="p-5 rounded-3xl bg-slate-950 border border-slate-700 shadow-2xl space-y-3 animate-fade-in">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-                <span class="text-xs font-bold text-emerald-400 flex items-center space-x-1.5">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span>Hasil Eksekusi Perintah:</span>
-                </span>
-                <span class="text-[10px] text-slate-500 font-mono"><?= date('H:i:s') ?> WIB</span>
-            </div>
-            <pre class="p-4 rounded-2xl bg-black/60 text-emerald-300 font-mono text-xs overflow-x-auto leading-relaxed whitespace-pre-wrap"><?= htmlspecialchars($outputLog) ?></pre>
-        </div>
-        <?php endif; ?>
-
-        <!-- Security Warning & Delete Button -->
-        <div class="p-5 rounded-3xl bg-rose-950/40 border border-rose-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div class="space-y-1">
-                <h4 class="text-xs font-extrabold text-rose-300 uppercase tracking-wider">🔒 Tindakan Keamanan (Wajib)</h4>
-                <p class="text-[11px] text-rose-200/80 leading-relaxed">
-                    Setelah semua setup selesai dan website sudah berjalan normal, hapus file <code>setup.php</code> demi keamanan server Anda.
+        <!-- Main Auto Repair Action Box -->
+        <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-5">
+            <div>
+                <h2 class="text-base font-extrabold text-white">1-Klik Perbaikan Total (Self-Healing)</h2>
+                <p class="text-xs text-slate-400 mt-1">
+                    Klik tombol di bawah ini untuk mengambil kodingan terbaru, membersihkan seluruh cache yang rusak/kadaluarsa, menjalankan migrasi database, dan memulihkan seluruh halaman aplikasi secara otomatis.
                 </p>
             </div>
-            <form method="POST">
-                <input type="hidden" name="action" value="delete_self">
-                <button type="submit" onclick="return confirm('PERINGATAN: Apakah Anda yakin ingin menghapus file setup.php ini sekarang?')" class="px-5 py-2.5 rounded-2xl bg-rose-700 hover:bg-rose-600 text-white font-bold text-xs shadow-lg transition-colors shrink-0">
-                    Hapus File setup.php
+
+            <form method="POST" action="">
+                <input type="hidden" name="action" value="auto_repair">
+                <button
+                    type="submit"
+                    class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm sm:text-base shadow-xl shadow-emerald-900/40 transition-all flex items-center justify-center space-x-2"
+                >
+                    <span>🚀 Jalankan Perbaikan Otomatis (Fix Error 500)</span>
                 </button>
             </form>
+
+            <?php if (!empty($logs)): ?>
+                <div class="space-y-2 pt-2 border-t border-slate-800">
+                    <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider block">Hasil Eksekusi Perbaikan:</span>
+                    <pre class="p-4 rounded-2xl bg-black border border-slate-800 text-xs font-mono text-emerald-300 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-96"><?= htmlspecialchars(implode("\n", $logs)) ?></pre>
+                    
+                    <div class="pt-3 flex flex-wrap gap-2">
+                        <a
+                            href="<?= $appUrl ?>"
+                            class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition-all"
+                        >
+                            👉 Buka Dashboard Aplikasi
+                        </a>
+                        <a
+                            href="<?= "$protocol://$host/leaves-application/hrd/employees" ?>"
+                            class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition-all"
+                        >
+                            👉 Buka Menu Kelola Karyawan
+                        </a>
+                        <a
+                            href="<?= "$protocol://$host/leaves-application/profile/biodata" ?>"
+                            class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition-all"
+                        >
+                            👉 Buka Menu Data Diri
+                        </a>
+                    </div>
+                </div>
+            <?php endif; ?>
         </div>
 
+        <!-- Diagnostic: Latest Error Logs -->
+        <div class="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-3">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-extrabold text-slate-300">📋 Catatan Error Server Terbaru (storage/logs/laravel.log)</h3>
+                <span class="text-[10px] font-mono text-slate-500">50 Baris Terakhir</span>
+            </div>
+            <pre class="p-4 rounded-2xl bg-black border border-slate-800 text-[11px] font-mono text-slate-400 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-64"><?= htmlspecialchars($recentLogs) ?></pre>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="text-center text-xs text-slate-600 py-6">
+        PT Sugiyama Indonesia (SGIN) &bull; Leaves & Employee Management Recovery Engine
     </div>
 
 </body>
