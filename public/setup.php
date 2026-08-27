@@ -40,6 +40,14 @@ foreach ($storageDirs as $dir) {
     @chmod($dir, 0777);
 }
 
+// Ensure all assets in public/build are readable
+$buildAssets = glob($basePath . '/public/build/assets/*');
+if ($buildAssets) {
+    foreach ($buildAssets as $f) {
+        @chmod($f, 0777);
+    }
+}
+
 // 2. Safe execution helper
 function runShell($cmd, $dir) {
     if (!function_exists('shell_exec')) {
