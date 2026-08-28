@@ -17,6 +17,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -1407,7 +1408,7 @@ class HrdController extends Controller
 
         $this->employeeService->updateEmployee($employee, $validated);
 
-        return Redirect::back()->with('success', "Data diri karyawan {$employee->name} berhasil diperbarui.");
+        return redirect()->back()->with('success', "Data diri karyawan {$employee->name} berhasil diperbarui.");
     }
 
     public function printEmployeeBiodata(int $userId): Response
