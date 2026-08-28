@@ -85,8 +85,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/hrd/employees/{userId}/biodata', [HrdController::class, 'employeeBiodata'])->name('hrd.employees.biodata');
     Route::get('/hrd/employees/biodata/{userId}', [HrdController::class, 'employeeBiodata'])->name('hrd.employees.biodata.alt');
     Route::match(['put', 'post'], '/hrd/employees/{userId}/biodata', [HrdController::class, 'updateEmployeeBiodata'])->name('hrd.employees.biodata.update');
+    Route::match(['put', 'post'], '/hrd/employees/{userId}/biodata/update', [HrdController::class, 'updateEmployeeBiodata']);
     Route::match(['put', 'post'], '/hrd/employees/biodata/{userId}/update', [HrdController::class, 'updateEmployeeBiodata']);
     Route::match(['put', 'post'], '/hrd/employees/biodata/{userId}', [HrdController::class, 'updateEmployeeBiodata']);
+    Route::match(['put', 'post'], '/hrd/employees/biodata/update/{userId}', [HrdController::class, 'updateEmployeeBiodata']);
     Route::get('/hrd/employees/{userId}/biodata/print', [HrdController::class, 'printEmployeeBiodata'])->name('hrd.employees.biodata.print');
     Route::get('/hrd/employees/biodata/{userId}/print', [HrdController::class, 'printEmployeeBiodata'])->name('hrd.employees.biodata.print.alt');
     Route::post('/hrd/employees', [HrdController::class, 'storeEmployee'])->name('hrd.employees.store');
