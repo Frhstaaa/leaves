@@ -509,6 +509,17 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                                   Gabung: {new Date(emp.join_date).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })}
                                 </span>
                               )}
+                              {emp.employee_status && (
+                                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border inline-block ${
+                                  emp.employee_status === 'Tetap' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                  emp.employee_status === 'PKWT' || emp.employee_status === 'Kontrak' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                  emp.employee_status === 'Magang' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                  emp.employee_status === 'Alih Daya' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                  'bg-slate-100 text-slate-700 border-slate-200'
+                                }`}>
+                                  {emp.employee_status}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -638,6 +649,17 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                                   {emp.join_date && (
                                     <span className="text-[9px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded inline-block" title={`Bergabung: ${emp.join_date}`}>
                                       📅 {new Date(emp.join_date).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                    </span>
+                                  )}
+                                  {emp.employee_status && (
+                                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border inline-block ${
+                                      emp.employee_status === 'Tetap' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                      emp.employee_status === 'PKWT' || emp.employee_status === 'Kontrak' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                      emp.employee_status === 'Magang' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                      emp.employee_status === 'Alih Daya' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                      'bg-slate-100 text-slate-700 border-slate-200'
+                                    }`}>
+                                      {emp.employee_status}
                                     </span>
                                   )}
                                 </div>
@@ -981,10 +1003,11 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       onChange={(e) => addForm.setData('employee_status', e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
                     >
-                      <option value="Tetap">Tetap</option>
-                      <option value="Kontrak">Kontrak</option>
-                      <option value="Magang">Magang</option>
-                      <option value="Percobaan">Percobaan</option>
+                      <option value="Tetap">Tetap (PKWTT)</option>
+                      <option value="PKWT">PKWT (Kontrak)</option>
+                      <option value="Magang">Magang (Internship)</option>
+                      <option value="Alih Daya">Alih Daya (Outsourcing)</option>
+                      <option value="Percobaan">Percobaan (Probation)</option>
                     </select>
                   </div>
                 </div>
@@ -1329,10 +1352,11 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       onChange={(e) => editForm.setData('employee_status', e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
                     >
-                      <option value="Tetap">Tetap</option>
-                      <option value="Kontrak">Kontrak</option>
-                      <option value="Magang">Magang</option>
-                      <option value="Percobaan">Percobaan</option>
+                      <option value="Tetap">Tetap (PKWTT)</option>
+                      <option value="PKWT">PKWT (Kontrak)</option>
+                      <option value="Magang">Magang (Internship)</option>
+                      <option value="Alih Daya">Alih Daya (Outsourcing)</option>
+                      <option value="Percobaan">Percobaan (Probation)</option>
                     </select>
                   </div>
                 </div>
@@ -1669,7 +1693,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       <span className="px-2 py-0.5 rounded-lg bg-sky-50 text-sky-900 border border-sky-300 text-[10px] font-black">9. Tanggal Bergabung 📅</span>
                       <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-300 text-[10px] font-black">10. Total Jatah Kuota (Thn) 🎯</span>
                       <span className="px-2 py-0.5 rounded-lg bg-lime-50 text-lime-900 border border-lime-300 text-[10px] font-black">11. Sisa Kuota Cuti ⏳</span>
-                      <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-800 border border-slate-200 text-[10px] font-bold">12. Status Karyawan</span>
+                      <span className="px-2 py-0.5 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black">12. Status (PKWT / Magang / Alih Daya / Tetap)</span>
                     </div>
                   </div>
 

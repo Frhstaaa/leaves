@@ -517,7 +517,7 @@ class HrdController extends Controller
             fputcsv($file, ['#    - Jenis Kelamin     : Tulis "Laki-laki" / "L" atau "Perempuan" / "P".']);
             fputcsv($file, ['#    - Total Jatah Kuota : Total jatah cuti tahunan (Default: 12 hari).']);
             fputcsv($file, ['#    - Sisa Kuota        : Sisa hari cuti tahun berjalan yang masih dimiliki karyawan.']);
-            fputcsv($file, ['#    - Status Karyawan   : Pilihan: "Tetap", "Kontrak", "Magang", atau "Percobaan" (Default: "Tetap").']);
+            fputcsv($file, ['#    - Status Karyawan   : Pilihan: "PKWT", "MAGANG", "ALIH DAYA", "TETAP", "KONTRAK", "PERCOBAAN" (Default: "Tetap").']);
             fputcsv($file, ['#']);
             fputcsv($file, ['# [DAFTAR KODE & NAMA DEPARTEMEN AKTIF]:']);
             fputcsv($file, ["# -> {$deptList}"]);
@@ -543,11 +543,11 @@ class HrdController extends Controller
                 '[OPSIONAL] Tanggal Bergabung (YYYY-MM-DD atau DD/MM/YYYY)',
                 '[OPSIONAL] Total Jatah Kuota (Default: 12)',
                 '[OPSIONAL] Sisa Kuota Cuti Tahun Ini',
-                '[OPSIONAL] Status Karyawan'
+                '[OPSIONAL] Status Karyawan (PKWT / Magang / Alih Daya / Tetap)'
             ]);
 
             // =========================================================================================================
-            // 3. CONTOH DATA BARIS (Contoh Format Tanggal Bergabung)
+            // 3. CONTOH DATA BARIS (Contoh Format Tanggal Bergabung & Status Karyawan)
             // =========================================================================================================
             fputcsv($file, [
                 'SA-001',
@@ -576,7 +576,7 @@ class HrdController extends Controller
                 '15/02/2022',
                 '14',
                 '10',
-                'Tetap'
+                'PKWT'
             ]);
 
             fputcsv($file, [
@@ -591,7 +591,22 @@ class HrdController extends Controller
                 '2024-01-15',
                 '12',
                 '12',
-                'Kontrak'
+                'Alih Daya'
+            ]);
+
+            fputcsv($file, [
+                'SA-004',
+                'Dewi Lestari',
+                'dewi.lestari@sugiyama.co.id',
+                '',
+                'employee',
+                'GA',
+                'Staff Magang GA',
+                'Perempuan',
+                '2024-06-01',
+                '6',
+                '6',
+                'Magang'
             ]);
 
             fclose($file);
@@ -657,6 +672,28 @@ class HrdController extends Controller
                     }
                 }
                 return null;
+            };
+
+            $normalizeStatus = function($val) {
+                if (empty($val)) return 'Tetap';
+                $v = trim((string) $val);
+                $vLower = strtolower($v);
+                if (in_array($vLower, ['pkwt', 'kontrak', 'karyawan kontrak', 'contract'])) {
+                    return 'PKWT';
+                }
+                if (in_array($vLower, ['pkwtt', 'tetap', 'karyawan tetap', 'permanent'])) {
+                    return 'Tetap';
+                }
+                if (in_array($vLower, ['magang', 'internship', 'intern', 'praktik', 'pkl', 'magang / internship'])) {
+                    return 'Magang';
+                }
+                if (in_array($vLower, ['alih daya', 'alihdaya', 'outsourcing', 'outsource', 'os', 'alih daya (outsourcing)'])) {
+                    return 'Alih Daya';
+                }
+                if (in_array($vLower, ['percobaan', 'probation', 'training', 'masa percobaan'])) {
+                    return 'Percobaan';
+                }
+                return $v;
             };
 
             $normalizeDate = function($val) {
@@ -735,7 +772,7 @@ class HrdController extends Controller
                 $rowCombined = strtolower(implode(' ', $row));
                 if (!$headerFound && (
                     (str_contains($rowCombined, 'nama') || str_contains($rowCombined, 'name')) &&
-                    (str_contains($rowCombined, 'email') || str_contains($rowCombined, 'nik') || str_contains($rowCombined, 'departemen') || str_contains($rowCombined, 'bergabung') || str_contains($rowCombined, 'join'))
+                    (str_contains($rowCombined, 'email') || str_contains($rowCombined, 'nik') || str_contains($rowCombined, 'departemen') || str_contains($rowCombined, 'bergabung') || str_contains($rowCombined, 'join') || str_contains($rowCombined, 'status'))
                 )) {
                     $headerFound = true;
                     foreach ($row as $colIdx => $headerTitle) {
@@ -850,7 +887,8 @@ class HrdController extends Controller
                 $totalQuotaInput = is_numeric($totalQuotaRaw) ? (int) $totalQuotaRaw : null;
                 $remainingQuotaRaw = $getCol('remaining_quota', 10);
                 $remainingQuotaInput = is_numeric($remainingQuotaRaw) ? (int) $remainingQuotaRaw : null;
-                $statusInput = $getCol('employee_status', 11) ?: 'Tetap';
+                $statusRaw = $getCol('employee_status', 11);
+                $statusInput = $normalizeStatus($statusRaw);
 
                 // Skip header-like keywords if appeared in data
                 if (preg_match('/(nama|lengkap|wajib)/i', $nameInput) && preg_match('/(email|login|akun)/i', $emailInput)) {

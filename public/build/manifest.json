@@ -114,7 +114,7 @@
     "src": "resources/js/Pages/HRD/Departments.jsx"
   },
   "resources/js/Pages/HRD/Employees.jsx": {
-    "file": "assets/Employees-ed35a79f.js",
+    "file": "assets/Employees-5ebb309e.js",
     "imports": [
       "_vendor-core-b664bac1.js",
       "_AuthenticatedLayout-ab2138b9.js",
@@ -236,7 +236,7 @@
     "src": "resources/js/Pages/Payslips/Index.jsx"
   },
   "resources/js/Pages/Profile/Biodata.jsx": {
-    "file": "assets/Biodata-af237c2d.js",
+    "file": "assets/Biodata-65601261.js",
     "imports": [
       "_vendor-core-b664bac1.js",
       "_AuthenticatedLayout-ab2138b9.js",
@@ -293,7 +293,7 @@
       "resources/js/Pages/Profile/PrintBiodata.jsx",
       "resources/js/Pages/Superadmin/RolePermission/Index.jsx"
     ],
-    "file": "assets/app-acbafc79.js",
+    "file": "assets/app-23ec3f42.js",
     "imports": [
       "_vendor-core-b664bac1.js"
     ],

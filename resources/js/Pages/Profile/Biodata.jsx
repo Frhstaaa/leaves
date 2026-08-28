@@ -387,8 +387,9 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
                   >
                     <option value="">-- Pilih Status Karyawan --</option>
                     <option value="Tetap">Karyawan Tetap (PKWTT)</option>
-                    <option value="Kontrak">Karyawan Kontrak (PKWT)</option>
+                    <option value="PKWT">PKWT (Perjanjian Kerja Waktu Tertentu)</option>
                     <option value="Magang">Magang / Internship</option>
+                    <option value="Alih Daya">Alih Daya (Outsourcing)</option>
                     <option value="Percobaan">Masa Percobaan (Probation)</option>
                   </select>
                 </div>
