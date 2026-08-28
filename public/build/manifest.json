@@ -114,7 +114,7 @@
     "src": "resources/js/Pages/HRD/Departments.jsx"
   },
   "resources/js/Pages/HRD/Employees.jsx": {
-    "file": "assets/Employees-4a51d940.js",
+    "file": "assets/Employees-1b7a55ec.js",
     "imports": [
       "_vendor-core-b4678f51.js",
       "_AuthenticatedLayout-06501ea5.js",
@@ -293,7 +293,7 @@
       "resources/js/Pages/Profile/PrintBiodata.jsx",
       "resources/js/Pages/Superadmin/RolePermission/Index.jsx"
     ],
-    "file": "assets/app-ec976765.js",
+    "file": "assets/app-bfe591cc.js",
     "imports": [
       "_vendor-core-b4678f51.js"
     ],

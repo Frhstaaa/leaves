@@ -661,13 +661,12 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                                 </span>
                               )}
                               {emp.employee_status && (
-                                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border inline-block ${
-                                  emp.employee_status === 'Tetap' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                  emp.employee_status === 'PKWT' || emp.employee_status === 'Kontrak' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                  emp.employee_status === 'Magang' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                                  emp.employee_status === 'Alih Daya' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                  'bg-slate-100 text-slate-700 border-slate-200'
-                                }`}>
+                                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border inline-block ${emp.employee_status === 'Tetap' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                    emp.employee_status === 'PKWT' || emp.employee_status === 'Kontrak' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                      emp.employee_status === 'Magang' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                        emp.employee_status === 'Alih Daya' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                          'bg-slate-100 text-slate-700 border-slate-200'
+                                  }`}>
                                   {emp.employee_status}
                                 </span>
                               )}
@@ -802,13 +801,12 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                                     </span>
                                   )}
                                   {emp.employee_status && (
-                                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border inline-block ${
-                                      emp.employee_status === 'Tetap' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                      emp.employee_status === 'PKWT' || emp.employee_status === 'Kontrak' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                      emp.employee_status === 'Magang' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                                      emp.employee_status === 'Alih Daya' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                      'bg-slate-50 text-slate-600 border-slate-200'
-                                    }`}>
+                                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border inline-block ${emp.employee_status === 'Tetap' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                        emp.employee_status === 'PKWT' || emp.employee_status === 'Kontrak' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                          emp.employee_status === 'Magang' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                            emp.employee_status === 'Alih Daya' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                              'bg-slate-50 text-slate-600 border-slate-200'
+                                      }`}>
                                       {emp.employee_status}
                                     </span>
                                   )}
@@ -861,9 +859,8 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                               </div>
                               <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                                 <div
-                                  className={`h-full rounded-full transition-all duration-300 ${
-                                    emp.is_profile_completed ? 'bg-emerald-500' : (emp.profile_completeness >= 50 ? 'bg-amber-500' : 'bg-rose-400')
-                                  }`}
+                                  className={`h-full rounded-full transition-all duration-300 ${emp.is_profile_completed ? 'bg-emerald-500' : (emp.profile_completeness >= 50 ? 'bg-amber-500' : 'bg-rose-400')
+                                    }`}
                                   style={{ width: `${Math.min(100, emp.profile_completeness || 0)}%` }}
                                 />
                               </div>
@@ -910,9 +907,8 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                           <td className="py-3 px-3 align-middle whitespace-nowrap">
                             <div className="space-y-1 w-28">
                               <div className="flex items-baseline space-x-1">
-                                <span className={`text-sm font-black ${
-                                  remaining <= 0 ? 'text-rose-600' : remaining <= 3 ? 'text-amber-600' : 'text-emerald-600'
-                                }`}>
+                                <span className={`text-sm font-black ${remaining <= 0 ? 'text-rose-600' : remaining <= 3 ? 'text-amber-600' : 'text-emerald-600'
+                                  }`}>
                                   {remaining}
                                 </span>
                                 <span className="text-xs font-bold text-slate-400">
@@ -921,9 +917,8 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                               </div>
                               <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                                 <div
-                                  className={`h-full rounded-full transition-all duration-300 ${
-                                    remaining <= 0 ? 'bg-rose-500' : remaining <= 3 ? 'bg-amber-500' : 'bg-emerald-500'
-                                  }`}
+                                  className={`h-full rounded-full transition-all duration-300 ${remaining <= 0 ? 'bg-rose-500' : remaining <= 3 ? 'bg-amber-500' : 'bg-emerald-500'
+                                    }`}
                                   style={{ width: `${Math.min(100, Math.max(0, (remaining / total) * 100))}%` }}
                                 />
                               </div>
@@ -1033,317 +1028,319 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
               <form onSubmit={handleAddSubmit} className="flex flex-col flex-1 overflow-hidden">
                 <div className="p-4 sm:p-5 space-y-3.5 overflow-y-auto flex-1 text-xs">
-                {/* Avatar File Upload */}
-                <div className="flex items-center space-x-3 p-3 rounded-2xl bg-slate-50 border border-slate-200">
-                  <div className="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-lg overflow-hidden shrink-0">
-                    {addAvatarPreview ? (
-                      <img src={addAvatarPreview} alt="Preview" className="w-full h-full object-cover" />
+                  {/* Avatar File Upload */}
+                  <div className="flex items-center space-x-3 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                    <div className="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-lg overflow-hidden shrink-0">
+                      {addAvatarPreview ? (
+                        <img src={addAvatarPreview} alt="Preview" className="w-full h-full object-cover" />
+                      ) : (
+                        addForm.data.name ? addForm.data.name.charAt(0).toUpperCase() : 'U'
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Foto Profil (Opsional &bull; Auto WebP)</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            addForm.setData('avatar', file);
+                            setAddAvatarPreview(URL.createObjectURL(file));
+                          }
+                        }}
+                        className="w-full text-[11px] text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-[11px] file:font-bold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  {/* NIK & Nama Lengkap */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">No Induk Karyawan (NIK) *</label>
+                      <input
+                        type="text"
+                        required
+                        value={addForm.data.nik}
+                        onChange={(e) => addForm.setData('nik', e.target.value)}
+                        placeholder="Contoh: EMP-2026-001"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Nama Lengkap *</label>
+                      <input
+                        type="text"
+                        required
+                        value={addForm.data.name}
+                        onChange={(e) => addForm.setData('name', e.target.value)}
+                        placeholder="Nama lengkap karyawan..."
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Email & Password */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Email Terdaftar *</label>
+                      <input
+                        type="email"
+                        required
+                        value={addForm.data.email}
+                        onChange={(e) => addForm.setData('email', e.target.value)}
+                        placeholder="email@perusahaan.com"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-medium focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Password Awal *</label>
+                      <input
+                        type="text"
+                        required
+                        value={addForm.data.password}
+                        onChange={(e) => addForm.setData('password', e.target.value)}
+                        placeholder="Minimal 6 karakter"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-mono font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Role & Departemen */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Role Sistem *</label>
+                      <select
+                        value={addForm.data.role}
+                        onChange={(e) => addForm.setData('role', e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      >
+                        {allRoles.map((r) => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Departemen / Divisi</label>
+                      <select
+                        value={addForm.data.department_id}
+                        onChange={(e) => addForm.setData('department_id', e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      >
+                        <option value="">Pilih Departemen</option>
+                        {departments.map((dept) => (
+                          <option key={dept.id} value={dept.id}>{dept.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Jabatan & Jenis Kelamin */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Jabatan / Posisi</label>
+                      <input
+                        type="text"
+                        value={addForm.data.position}
+                        onChange={(e) => addForm.setData('position', e.target.value)}
+                        placeholder="Contoh: Staff IT, Operator, QC"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Jenis Kelamin</label>
+                      <select
+                        value={addForm.data.gender}
+                        onChange={(e) => addForm.setData('gender', e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      >
+                        <option value="">-- Pilih Jenis Kelamin --</option>
+                        <option value="Laki-laki">Laki-laki</option>
+                        <option value="Perempuan">Perempuan</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Tanggal Bergabung & Status Karyawan */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Tanggal Bergabung</label>
+                      <input
+                        type="date"
+                        value={addForm.data.join_date}
+                        onChange={(e) => addForm.setData('join_date', e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Status Karyawan</label>
+                      <select
+                        value={addForm.data.employee_status}
+                        onChange={(e) => addForm.setData('employee_status', e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      >
+                        <option value="Tetap">Tetap (PKWTT)</option>
+                        <option value="PKWT">PKWT (Kontrak)</option>
+                        <option value="Magang">Magang (Internship)</option>
+                        <option value="Alih Daya">Alih Daya (Outsourcing)</option>
+                        <option value="Percobaan">Percobaan (Probation)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Approval Flow Configuration */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                        Pengaturan Alur Approval
+                      </label>
+                      <div className="inline-flex rounded-xl bg-slate-200/80 p-0.5 text-[10px] font-bold self-start sm:self-auto shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAddApprovalMode('inherit');
+                            addForm.setData((prev) => ({ ...prev, approver_1_id: '', approver_2_id: '', manager_id: '' }));
+                          }}
+                          className={`px-2.5 py-1 rounded-lg transition-all ${addApprovalMode === 'inherit'
+                              ? 'bg-white text-emerald-800 shadow-xs font-black'
+                              : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                        >
+                          🛡️ Ikut Departemen
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAddApprovalMode('custom')}
+                          className={`px-2.5 py-1 rounded-lg transition-all ${addApprovalMode === 'custom'
+                              ? 'bg-white text-purple-800 shadow-xs font-black'
+                              : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                        >
+                          ⚙️ Kustom Atasan
+                        </button>
+                      </div>
+                    </div>
+
+                    {addApprovalMode === 'inherit' ? (
+                      <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200/80 text-xs space-y-2">
+                        {(() => {
+                          const curDept = departments.find(d => String(d.id) === String(addForm.data.department_id));
+                          const flowLabel = curDept?.approval_type === '3_tier'
+                            ? '3 Tingkat (Supervisor -> Manager -> HRD)'
+                            : curDept?.approval_type === '2_tier'
+                              ? '2 Tingkat (Manager -> HRD)'
+                              : curDept?.approval_type === '1_tier'
+                                ? '1 Tingkat (Langsung HRD)'
+                                : '3 Tingkat Standar';
+                          return (
+                            <>
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="font-extrabold text-emerald-950">
+                                  Alur: {flowLabel}
+                                </span>
+                                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                                  Otomatis
+                                </span>
+                              </div>
+                              <div className="space-y-1 text-[11px] pt-1 border-t border-emerald-200/60">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-slate-600 font-medium">Atasan 1 (Supervisor):</span>
+                                  <span className="font-bold text-slate-900">
+                                    {curDept?.approver1?.name || (curDept?.approval_type === '2_tier' || curDept?.approval_type === '1_tier' ? <span className="text-slate-400 italic">Dilewati</span> : <span className="text-amber-700 italic">Belum Diatur di Departemen</span>)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-slate-600 font-medium">Atasan 2 (Manager):</span>
+                                  <span className="font-bold text-slate-900">
+                                    {curDept?.approver2?.name || curDept?.manager?.name || (curDept?.approval_type === '1_tier' ? <span className="text-slate-400 italic">Dilewati</span> : <span className="text-amber-700 italic">Belum Diatur di Departemen</span>)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-slate-600 font-medium">Persetujuan Akhir:</span>
+                                  <span className="font-bold text-emerald-900">HRD / PGA Admin</span>
+                                </div>
+                              </div>
+                              <p className="text-[10px] text-emerald-700/90 italic pt-0.5 leading-relaxed">
+                                💡 Karyawan ini otomatis mengikuti aturan approval departemen. Ketika atasan departemen diubah di menu Setup Departemen, persetujuan cuti karyawan ini otomatis menyesuaikan.
+                              </p>
+                            </>
+                          );
+                        })()}
+                      </div>
                     ) : (
-                      addForm.data.name ? addForm.data.name.charAt(0).toUpperCase() : 'U'
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div className="min-w-0">
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 1 (Supervisor / Lead)</label>
+                          <select
+                            value={addForm.data.approver_1_id}
+                            onChange={(e) => addForm.setData('approver_1_id', e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none text-xs"
+                          >
+                            <option value="">Tidak ada (Langsung Approval 2 / HRD)</option>
+                            {managers.map((m) => (
+                              <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="min-w-0">
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 2 (Manager / Dept Head)</label>
+                          <select
+                            value={addForm.data.approver_2_id}
+                            onChange={(e) => addForm.setData('approver_2_id', e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none text-xs"
+                          >
+                            <option value="">Tidak ada (Langsung HRD)</option>
+                            {managers.map((m) => (
+                              <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Foto Profil (Opsional &bull; Auto WebP)</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files[0];
-                        if (file) {
-                          addForm.setData('avatar', file);
-                          setAddAvatarPreview(URL.createObjectURL(file));
-                        }
-                      }}
-                      className="w-full text-[11px] text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-[11px] file:font-bold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer"
-                    />
-                  </div>
-                </div>
 
-                {/* NIK & Nama Lengkap */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">No Induk Karyawan (NIK) *</label>
-                    <input
-                      type="text"
-                      required
-                      value={addForm.data.nik}
-                      onChange={(e) => addForm.setData('nik', e.target.value)}
-                      placeholder="Contoh: EMP-2026-001"
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    />
-                  </div>
+                  {/* Kuota Cuti Tahunan & Sisa Kuota */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Total Jatah Kuota (Hari / Thn)</label>
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        max="365"
+                        value={addForm.data.total_quota}
+                        onChange={(e) => addForm.setData((prev) => ({
+                          ...prev,
+                          total_quota: e.target.value,
+                          remaining_quota: prev.remaining_quota === prev.total_quota ? e.target.value : prev.remaining_quota
+                        }))}
+                        placeholder="Contoh: 12 atau 3.5"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                        required
+                      />
+                    </div>
 
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Nama Lengkap *</label>
-                    <input
-                      type="text"
-                      required
-                      value={addForm.data.name}
-                      onChange={(e) => addForm.setData('name', e.target.value)}
-                      placeholder="Nama lengkap karyawan..."
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    />
-                  </div>
-                </div>
-
-                {/* Email & Password */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Email Terdaftar *</label>
-                    <input
-                      type="email"
-                      required
-                      value={addForm.data.email}
-                      onChange={(e) => addForm.setData('email', e.target.value)}
-                      placeholder="email@perusahaan.com"
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-medium focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    />
-                  </div>
-
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Password Awal *</label>
-                    <input
-                      type="text"
-                      required
-                      value={addForm.data.password}
-                      onChange={(e) => addForm.setData('password', e.target.value)}
-                      placeholder="Minimal 6 karakter"
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-mono font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    />
-                  </div>
-                </div>
-
-                {/* Role & Departemen */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Role Sistem *</label>
-                    <select
-                      value={addForm.data.role}
-                      onChange={(e) => addForm.setData('role', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    >
-                      {allRoles.map((r) => (
-                        <option key={r.value} value={r.value}>{r.label}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Departemen / Divisi</label>
-                    <select
-                      value={addForm.data.department_id}
-                      onChange={(e) => addForm.setData('department_id', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    >
-                      <option value="">Pilih Departemen</option>
-                      {departments.map((dept) => (
-                        <option key={dept.id} value={dept.id}>{dept.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Jabatan & Jenis Kelamin */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Jabatan / Posisi</label>
-                    <input
-                      type="text"
-                      value={addForm.data.position}
-                      onChange={(e) => addForm.setData('position', e.target.value)}
-                      placeholder="Contoh: Staff IT, Operator, QC"
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    />
-                  </div>
-
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Jenis Kelamin</label>
-                    <select
-                      value={addForm.data.gender}
-                      onChange={(e) => addForm.setData('gender', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    >
-                      <option value="">-- Pilih Jenis Kelamin --</option>
-                      <option value="Laki-laki">Laki-laki</option>
-                      <option value="Perempuan">Perempuan</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Tanggal Bergabung & Status Karyawan */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Tanggal Bergabung</label>
-                    <input
-                      type="date"
-                      value={addForm.data.join_date}
-                      onChange={(e) => addForm.setData('join_date', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    />
-                  </div>
-
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Status Karyawan</label>
-                    <select
-                      value={addForm.data.employee_status}
-                      onChange={(e) => addForm.setData('employee_status', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    >
-                      <option value="Tetap">Tetap (PKWTT)</option>
-                      <option value="PKWT">PKWT (Kontrak)</option>
-                      <option value="Magang">Magang (Internship)</option>
-                      <option value="Alih Daya">Alih Daya (Outsourcing)</option>
-                      <option value="Percobaan">Percobaan (Probation)</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Approval Flow Configuration */}
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                      Pengaturan Alur Approval
-                    </label>
-                    <div className="inline-flex rounded-xl bg-slate-200/80 p-0.5 text-[10px] font-bold self-start sm:self-auto shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAddApprovalMode('inherit');
-                          addForm.setData((prev) => ({ ...prev, approver_1_id: '', approver_2_id: '', manager_id: '' }));
-                        }}
-                        className={`px-2.5 py-1 rounded-lg transition-all ${
-                          addApprovalMode === 'inherit'
-                            ? 'bg-white text-emerald-800 shadow-xs font-black'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        🛡️ Ikut Departemen
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAddApprovalMode('custom')}
-                        className={`px-2.5 py-1 rounded-lg transition-all ${
-                          addApprovalMode === 'custom'
-                            ? 'bg-white text-purple-800 shadow-xs font-black'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        ⚙️ Kustom Atasan
-                      </button>
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Sisa Kuota Cuti Awal (Hari)</label>
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        max="365"
+                        value={addForm.data.remaining_quota}
+                        onChange={(e) => addForm.setData('remaining_quota', e.target.value)}
+                        placeholder="Contoh: 12 atau 3.5"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                        required
+                      />
                     </div>
                   </div>
-
-                  {addApprovalMode === 'inherit' ? (
-                    <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200/80 text-xs space-y-2">
-                      {(() => {
-                        const curDept = departments.find(d => String(d.id) === String(addForm.data.department_id));
-                        const flowLabel = curDept?.approval_type === '3_tier'
-                          ? '3 Tingkat (Supervisor -> Manager -> HRD)'
-                          : curDept?.approval_type === '2_tier'
-                          ? '2 Tingkat (Manager -> HRD)'
-                          : curDept?.approval_type === '1_tier'
-                          ? '1 Tingkat (Langsung HRD)'
-                          : '3 Tingkat Standar';
-                        return (
-                          <>
-                            <div className="flex items-center justify-between text-[11px]">
-                              <span className="font-extrabold text-emerald-950">
-                                Alur: {flowLabel}
-                              </span>
-                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
-                                Otomatis
-                              </span>
-                            </div>
-                            <div className="space-y-1 text-[11px] pt-1 border-t border-emerald-200/60">
-                              <div className="flex items-center justify-between">
-                                <span className="text-slate-600 font-medium">Atasan 1 (Supervisor):</span>
-                                <span className="font-bold text-slate-900">
-                                  {curDept?.approver1?.name || (curDept?.approval_type === '2_tier' || curDept?.approval_type === '1_tier' ? <span className="text-slate-400 italic">Dilewati</span> : <span className="text-amber-700 italic">Belum Diatur di Departemen</span>)}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-slate-600 font-medium">Atasan 2 (Manager):</span>
-                                <span className="font-bold text-slate-900">
-                                  {curDept?.approver2?.name || curDept?.manager?.name || (curDept?.approval_type === '1_tier' ? <span className="text-slate-400 italic">Dilewati</span> : <span className="text-amber-700 italic">Belum Diatur di Departemen</span>)}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-slate-600 font-medium">Persetujuan Akhir:</span>
-                                <span className="font-bold text-emerald-900">HRD / PGA Admin</span>
-                              </div>
-                            </div>
-                            <p className="text-[10px] text-emerald-700/90 italic pt-0.5 leading-relaxed">
-                              💡 Karyawan ini otomatis mengikuti aturan approval departemen. Ketika atasan departemen diubah di menu Setup Departemen, persetujuan cuti karyawan ini otomatis menyesuaikan.
-                            </p>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      <div className="min-w-0">
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 1 (Supervisor / Lead)</label>
-                        <select
-                          value={addForm.data.approver_1_id}
-                          onChange={(e) => addForm.setData('approver_1_id', e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none text-xs"
-                        >
-                          <option value="">Tidak ada (Langsung Approval 2 / HRD)</option>
-                          {managers.map((m) => (
-                            <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="min-w-0">
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 2 (Manager / Dept Head)</label>
-                        <select
-                          value={addForm.data.approver_2_id}
-                          onChange={(e) => addForm.setData('approver_2_id', e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none text-xs"
-                        >
-                          <option value="">Tidak ada (Langsung HRD)</option>
-                          {managers.map((m) => (
-                            <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Kuota Cuti Tahunan & Sisa Kuota */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Total Jatah Kuota (Hari / Thn)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={addForm.data.total_quota}
-                      onChange={(e) => addForm.setData((prev) => ({
-                        ...prev,
-                        total_quota: e.target.value,
-                        remaining_quota: prev.remaining_quota === prev.total_quota ? e.target.value : prev.remaining_quota
-                      }))}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                      required
-                    />
-                  </div>
-
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Sisa Kuota Cuti Awal (Hari)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={addForm.data.remaining_quota}
-                      onChange={(e) => addForm.setData('remaining_quota', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                      required
-                    />
-                  </div>
-                </div>
 
                 </div>
                 {/* Modal Footer */}
@@ -1389,308 +1386,308 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
               <form onSubmit={handleEditSubmit} className="flex flex-col flex-1 overflow-hidden">
                 <div className="p-4 sm:p-5 space-y-3.5 overflow-y-auto flex-1 text-xs">
-                {/* Avatar Preview & File Input */}
-                <div className="flex items-center space-x-3 p-3 rounded-2xl bg-slate-50 border border-slate-200">
-                  <div className="shrink-0">
-                    {editAvatarPreview ? (
-                      <img src={editAvatarPreview} alt="Preview" className="w-12 h-12 rounded-full object-cover ring-2 ring-emerald-500" />
+                  {/* Avatar Preview & File Input */}
+                  <div className="flex items-center space-x-3 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                    <div className="shrink-0">
+                      {editAvatarPreview ? (
+                        <img src={editAvatarPreview} alt="Preview" className="w-12 h-12 rounded-full object-cover ring-2 ring-emerald-500" />
+                      ) : (
+                        <UserAvatar user={editingEmployee} size="w-12 h-12" textSize="text-base" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Ganti Foto Profil (Auto WebP)</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            editForm.setData('avatar', file);
+                            setEditAvatarPreview(URL.createObjectURL(file));
+                          }
+                        }}
+                        className="w-full text-[11px] text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-[11px] file:font-bold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">NIK Karyawan *</label>
+                      <input
+                        type="text"
+                        required
+                        value={editForm.data.nik}
+                        onChange={(e) => editForm.setData('nik', e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Nama Lengkap *</label>
+                      <input
+                        type="text"
+                        required
+                        value={editForm.data.name}
+                        onChange={(e) => editForm.setData('name', e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Email Terdaftar *</label>
+                      <input
+                        type="email"
+                        required
+                        value={editForm.data.email}
+                        onChange={(e) => editForm.setData('email', e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-medium focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Ubah Password (Opsional)</label>
+                      <input
+                        type="password"
+                        value={editForm.data.password}
+                        onChange={(e) => editForm.setData('password', e.target.value)}
+                        placeholder="Kosongkan jika tidak diubah"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-mono focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Role Sistem *</label>
+                      <select
+                        value={editForm.data.role}
+                        onChange={(e) => editForm.setData('role', e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      >
+                        {allRoles.map((r) => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Departemen / Divisi</label>
+                      <select
+                        value={editForm.data.department_id}
+                        onChange={(e) => editForm.setData('department_id', e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      >
+                        <option value="">Pilih Departemen</option>
+                        {departments.map((dept) => (
+                          <option key={dept.id} value={dept.id}>{dept.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Jabatan & Jenis Kelamin */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Jabatan / Posisi</label>
+                      <input
+                        type="text"
+                        value={editForm.data.position}
+                        onChange={(e) => editForm.setData('position', e.target.value)}
+                        placeholder="Contoh: Staff IT, Operator, QC"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Jenis Kelamin</label>
+                      <select
+                        value={editForm.data.gender}
+                        onChange={(e) => editForm.setData('gender', e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      >
+                        <option value="">-- Pilih Jenis Kelamin --</option>
+                        <option value="Laki-laki">Laki-laki</option>
+                        <option value="Perempuan">Perempuan</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Tanggal Bergabung & Status Karyawan */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Tanggal Bergabung</label>
+                      <input
+                        type="date"
+                        value={editForm.data.join_date}
+                        onChange={(e) => editForm.setData('join_date', e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Status Karyawan</label>
+                      <select
+                        value={editForm.data.employee_status}
+                        onChange={(e) => editForm.setData('employee_status', e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                      >
+                        <option value="Tetap">Tetap (PKWTT)</option>
+                        <option value="PKWT">PKWT (Kontrak)</option>
+                        <option value="Magang">Magang (Internship)</option>
+                        <option value="Alih Daya">Alih Daya (Outsourcing)</option>
+                        <option value="Percobaan">Percobaan (Probation)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Approval Flow Configuration */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                        Pengaturan Alur Approval
+                      </label>
+                      <div className="inline-flex rounded-xl bg-slate-200/80 p-0.5 text-[10px] font-bold self-start sm:self-auto shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditApprovalMode('inherit');
+                            editForm.setData((prev) => ({ ...prev, approver_1_id: '', approver_2_id: '', manager_id: '' }));
+                          }}
+                          className={`px-2.5 py-1 rounded-lg transition-all ${editApprovalMode === 'inherit'
+                              ? 'bg-white text-emerald-800 shadow-xs font-black'
+                              : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                        >
+                          🛡️ Ikut Departemen
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditApprovalMode('custom')}
+                          className={`px-2.5 py-1 rounded-lg transition-all ${editApprovalMode === 'custom'
+                              ? 'bg-white text-purple-800 shadow-xs font-black'
+                              : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                        >
+                          ⚙️ Kustom Atasan
+                        </button>
+                      </div>
+                    </div>
+
+                    {editApprovalMode === 'inherit' ? (
+                      <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200/80 text-xs space-y-2">
+                        {(() => {
+                          const curDept = departments.find(d => String(d.id) === String(editForm.data.department_id));
+                          const flowLabel = curDept?.approval_type === '3_tier'
+                            ? '3 Tingkat (Supervisor -> Manager -> HRD)'
+                            : curDept?.approval_type === '2_tier'
+                              ? '2 Tingkat (Manager -> HRD)'
+                              : curDept?.approval_type === '1_tier'
+                                ? '1 Tingkat (Langsung HRD)'
+                                : '3 Tingkat Standar';
+                          return (
+                            <>
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="font-extrabold text-emerald-950">
+                                  Alur: {flowLabel}
+                                </span>
+                                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                                  Otomatis
+                                </span>
+                              </div>
+                              <div className="space-y-1 text-[11px] pt-1 border-t border-emerald-200/60">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-slate-600 font-medium">Atasan 1 (Supervisor):</span>
+                                  <span className="font-bold text-slate-900">
+                                    {curDept?.approver1?.name || (curDept?.approval_type === '2_tier' || curDept?.approval_type === '1_tier' ? <span className="text-slate-400 italic">Dilewati</span> : <span className="text-amber-700 italic">Belum Diatur di Departemen</span>)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-slate-600 font-medium">Atasan 2 (Manager):</span>
+                                  <span className="font-bold text-slate-900">
+                                    {curDept?.approver2?.name || curDept?.manager?.name || (curDept?.approval_type === '1_tier' ? <span className="text-slate-400 italic">Dilewati</span> : <span className="text-amber-700 italic">Belum Diatur di Departemen</span>)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-slate-600 font-medium">Persetujuan Akhir:</span>
+                                  <span className="font-bold text-emerald-900">HRD / PGA Admin</span>
+                                </div>
+                              </div>
+                              <p className="text-[10px] text-emerald-700/90 italic pt-0.5 leading-relaxed">
+                                💡 Karyawan ini otomatis mengikuti aturan approval departemen. Ketika atasan departemen diubah di menu Setup Departemen, persetujuan cuti karyawan ini otomatis menyesuaikan.
+                              </p>
+                            </>
+                          );
+                        })()}
+                      </div>
                     ) : (
-                      <UserAvatar user={editingEmployee} size="w-12 h-12" textSize="text-base" />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div className="min-w-0">
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 1 (Supervisor / Lead)</label>
+                          <select
+                            value={editForm.data.approver_1_id}
+                            onChange={(e) => editForm.setData('approver_1_id', e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none text-xs"
+                          >
+                            <option value="">Tidak ada (Langsung Approval 2 / HRD)</option>
+                            {managers.filter(m => m.id !== editingEmployee?.id).map((m) => (
+                              <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="min-w-0">
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 2 (Manager / Dept Head)</label>
+                          <select
+                            value={editForm.data.approver_2_id}
+                            onChange={(e) => editForm.setData('approver_2_id', e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none text-xs"
+                          >
+                            <option value="">Tidak ada (Langsung HRD)</option>
+                            {managers.filter(m => m.id !== editingEmployee?.id).map((m) => (
+                              <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Ganti Foto Profil (Auto WebP)</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files[0];
-                        if (file) {
-                          editForm.setData('avatar', file);
-                          setEditAvatarPreview(URL.createObjectURL(file));
-                        }
-                      }}
-                      className="w-full text-[11px] text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-[11px] file:font-bold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer"
-                    />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">NIK Karyawan *</label>
-                    <input
-                      type="text"
-                      required
-                      value={editForm.data.nik}
-                      onChange={(e) => editForm.setData('nik', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    />
-                  </div>
+                  {/* Kuota Cuti Tahunan & Sisa Kuota */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Total Jatah Kuota (Hari / Thn)</label>
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        max="365"
+                        value={editForm.data.total_quota}
+                        onChange={(e) => editForm.setData('total_quota', e.target.value)}
+                        placeholder="Contoh: 12 atau 3.5"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                        required
+                      />
+                    </div>
 
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Nama Lengkap *</label>
-                    <input
-                      type="text"
-                      required
-                      value={editForm.data.name}
-                      onChange={(e) => editForm.setData('name', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Email Terdaftar *</label>
-                    <input
-                      type="email"
-                      required
-                      value={editForm.data.email}
-                      onChange={(e) => editForm.setData('email', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-medium focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    />
-                  </div>
-
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Ubah Password (Opsional)</label>
-                    <input
-                      type="password"
-                      value={editForm.data.password}
-                      onChange={(e) => editForm.setData('password', e.target.value)}
-                      placeholder="Kosongkan jika tidak diubah"
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-mono focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Role Sistem *</label>
-                    <select
-                      value={editForm.data.role}
-                      onChange={(e) => editForm.setData('role', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    >
-                      {allRoles.map((r) => (
-                        <option key={r.value} value={r.value}>{r.label}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Departemen / Divisi</label>
-                    <select
-                      value={editForm.data.department_id}
-                      onChange={(e) => editForm.setData('department_id', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    >
-                      <option value="">Pilih Departemen</option>
-                      {departments.map((dept) => (
-                        <option key={dept.id} value={dept.id}>{dept.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Jabatan & Jenis Kelamin */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Jabatan / Posisi</label>
-                    <input
-                      type="text"
-                      value={editForm.data.position}
-                      onChange={(e) => editForm.setData('position', e.target.value)}
-                      placeholder="Contoh: Staff IT, Operator, QC"
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    />
-                  </div>
-
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Jenis Kelamin</label>
-                    <select
-                      value={editForm.data.gender}
-                      onChange={(e) => editForm.setData('gender', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    >
-                      <option value="">-- Pilih Jenis Kelamin --</option>
-                      <option value="Laki-laki">Laki-laki</option>
-                      <option value="Perempuan">Perempuan</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Tanggal Bergabung & Status Karyawan */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Tanggal Bergabung</label>
-                    <input
-                      type="date"
-                      value={editForm.data.join_date}
-                      onChange={(e) => editForm.setData('join_date', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    />
-                  </div>
-
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Status Karyawan</label>
-                    <select
-                      value={editForm.data.employee_status}
-                      onChange={(e) => editForm.setData('employee_status', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-semibold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                    >
-                      <option value="Tetap">Tetap (PKWTT)</option>
-                      <option value="PKWT">PKWT (Kontrak)</option>
-                      <option value="Magang">Magang (Internship)</option>
-                      <option value="Alih Daya">Alih Daya (Outsourcing)</option>
-                      <option value="Percobaan">Percobaan (Probation)</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Approval Flow Configuration */}
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                      Pengaturan Alur Approval
-                    </label>
-                    <div className="inline-flex rounded-xl bg-slate-200/80 p-0.5 text-[10px] font-bold self-start sm:self-auto shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditApprovalMode('inherit');
-                          editForm.setData((prev) => ({ ...prev, approver_1_id: '', approver_2_id: '', manager_id: '' }));
-                        }}
-                        className={`px-2.5 py-1 rounded-lg transition-all ${
-                          editApprovalMode === 'inherit'
-                            ? 'bg-white text-emerald-800 shadow-xs font-black'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        🛡️ Ikut Departemen
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditApprovalMode('custom')}
-                        className={`px-2.5 py-1 rounded-lg transition-all ${
-                          editApprovalMode === 'custom'
-                            ? 'bg-white text-purple-800 shadow-xs font-black'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        ⚙️ Kustom Atasan
-                      </button>
+                    <div className="min-w-0">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Sisa Kuota Cuti Saat Ini (Hari)</label>
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        max="365"
+                        value={editForm.data.remaining_quota}
+                        onChange={(e) => editForm.setData('remaining_quota', e.target.value)}
+                        placeholder="Contoh: 12 atau 3.5"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
+                        required
+                      />
                     </div>
                   </div>
-
-                  {editApprovalMode === 'inherit' ? (
-                    <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200/80 text-xs space-y-2">
-                      {(() => {
-                        const curDept = departments.find(d => String(d.id) === String(editForm.data.department_id));
-                        const flowLabel = curDept?.approval_type === '3_tier'
-                          ? '3 Tingkat (Supervisor -> Manager -> HRD)'
-                          : curDept?.approval_type === '2_tier'
-                          ? '2 Tingkat (Manager -> HRD)'
-                          : curDept?.approval_type === '1_tier'
-                          ? '1 Tingkat (Langsung HRD)'
-                          : '3 Tingkat Standar';
-                        return (
-                          <>
-                            <div className="flex items-center justify-between text-[11px]">
-                              <span className="font-extrabold text-emerald-950">
-                                Alur: {flowLabel}
-                              </span>
-                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
-                                Otomatis
-                              </span>
-                            </div>
-                            <div className="space-y-1 text-[11px] pt-1 border-t border-emerald-200/60">
-                              <div className="flex items-center justify-between">
-                                <span className="text-slate-600 font-medium">Atasan 1 (Supervisor):</span>
-                                <span className="font-bold text-slate-900">
-                                  {curDept?.approver1?.name || (curDept?.approval_type === '2_tier' || curDept?.approval_type === '1_tier' ? <span className="text-slate-400 italic">Dilewati</span> : <span className="text-amber-700 italic">Belum Diatur di Departemen</span>)}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-slate-600 font-medium">Atasan 2 (Manager):</span>
-                                <span className="font-bold text-slate-900">
-                                  {curDept?.approver2?.name || curDept?.manager?.name || (curDept?.approval_type === '1_tier' ? <span className="text-slate-400 italic">Dilewati</span> : <span className="text-amber-700 italic">Belum Diatur di Departemen</span>)}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-slate-600 font-medium">Persetujuan Akhir:</span>
-                                <span className="font-bold text-emerald-900">HRD / PGA Admin</span>
-                              </div>
-                            </div>
-                            <p className="text-[10px] text-emerald-700/90 italic pt-0.5 leading-relaxed">
-                              💡 Karyawan ini otomatis mengikuti aturan approval departemen. Ketika atasan departemen diubah di menu Setup Departemen, persetujuan cuti karyawan ini otomatis menyesuaikan.
-                            </p>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      <div className="min-w-0">
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 1 (Supervisor / Lead)</label>
-                        <select
-                          value={editForm.data.approver_1_id}
-                          onChange={(e) => editForm.setData('approver_1_id', e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none text-xs"
-                        >
-                          <option value="">Tidak ada (Langsung Approval 2 / HRD)</option>
-                          {managers.filter(m => m.id !== editingEmployee?.id).map((m) => (
-                            <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="min-w-0">
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Approval 2 (Manager / Dept Head)</label>
-                        <select
-                          value={editForm.data.approver_2_id}
-                          onChange={(e) => editForm.setData('approver_2_id', e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:border-emerald-500 outline-none text-xs"
-                        >
-                          <option value="">Tidak ada (Langsung HRD)</option>
-                          {managers.filter(m => m.id !== editingEmployee?.id).map((m) => (
-                            <option key={m.id} value={m.id}>{m.name} ({m.department?.name || m.role})</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Kuota Cuti Tahunan & Sisa Kuota */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Total Jatah Kuota (Hari / Thn)</label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      max="365"
-                      value={editForm.data.total_quota}
-                      onChange={(e) => editForm.setData('total_quota', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                      required
-                    />
-                  </div>
-
-                  <div className="min-w-0">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Sisa Kuota Cuti Saat Ini (Hari)</label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      max="365"
-                      value={editForm.data.remaining_quota}
-                      onChange={(e) => editForm.setData('remaining_quota', e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
-                      required
-                    />
-                  </div>
-                </div>
 
                 </div>
                 {/* Modal Footer */}
@@ -1831,9 +1828,9 @@ export default function HrdEmployees({ employees = [], departments = [], manager
         {isImportOpen && (
           <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-2 sm:p-4 flex min-h-full items-center justify-center animate-fade-in">
             <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm" onClick={() => !isCommitting && !isPreviewLoading && setIsImportOpen(false)} />
-            
+
             <div className={`relative z-10 w-full ${importStep === 'preview' ? 'max-w-6xl' : 'max-w-2xl'} p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 sm:space-y-5 my-auto max-h-[94vh] flex flex-col transition-all duration-300`}>
-              
+
               {/* Modal Header & Breadcrumb */}
               <div className="flex items-center justify-between border-b border-slate-200 pb-3 sm:pb-4 shrink-0">
                 <div className="flex items-center space-x-3 min-w-0">
@@ -1845,9 +1842,8 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       <h3 className="text-sm sm:text-base font-black text-slate-900 truncate">
                         {importStep === 'preview' ? 'Crosscheck & Validasi Data Import' : 'Import Data Karyawan (CSV / Excel)'}
                       </h3>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
-                        importStep === 'preview' ? 'bg-indigo-100 text-indigo-800' : 'bg-emerald-100 text-emerald-800'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${importStep === 'preview' ? 'bg-indigo-100 text-indigo-800' : 'bg-emerald-100 text-emerald-800'
+                        }`}>
                         {importStep === 'preview' ? 'Langkah 2 dari 2' : 'Langkah 1 dari 2'}
                       </span>
                     </div>
@@ -1980,7 +1976,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
               {/* STEP 2: INTERACTIVE LIVE PREVIEW & CROSSCHECK TABLE */}
               {importStep === 'preview' && previewData && (
                 <div className="space-y-4 flex-1 flex flex-col min-h-0 overflow-hidden">
-                  
+
                   {/* Summary Metric Cards */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 shrink-0">
                     <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center space-x-3">
@@ -2030,11 +2026,10 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       <button
                         type="button"
                         onClick={() => setPreviewFilter('all')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                          previewFilter === 'all'
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${previewFilter === 'all'
                             ? 'bg-slate-900 text-white shadow-sm'
                             : 'text-slate-600 hover:bg-slate-200/60'
-                        }`}
+                          }`}
                       >
                         Semua ({previewData.summary.total})
                       </button>
@@ -2042,11 +2037,10 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       <button
                         type="button"
                         onClick={() => setPreviewFilter('update')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                          previewFilter === 'update'
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${previewFilter === 'update'
                             ? 'bg-blue-600 text-white shadow-sm'
                             : 'text-blue-700 hover:bg-blue-100/60'
-                        }`}
+                          }`}
                       >
                         Update Lama ({previewData.summary.update_count})
                       </button>
@@ -2054,11 +2048,10 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       <button
                         type="button"
                         onClick={() => setPreviewFilter('create')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                          previewFilter === 'create'
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${previewFilter === 'create'
                             ? 'bg-emerald-600 text-white shadow-sm'
                             : 'text-emerald-700 hover:bg-emerald-100/60'
-                        }`}
+                          }`}
                       >
                         Karyawan Baru ({previewData.summary.create_count})
                       </button>
@@ -2067,11 +2060,10 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                         <button
                           type="button"
                           onClick={() => setPreviewFilter('warning')}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                            previewFilter === 'warning'
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${previewFilter === 'warning'
                               ? 'bg-amber-600 text-white shadow-sm'
                               : 'text-amber-700 hover:bg-amber-100/60'
-                          }`}
+                            }`}
                         >
                           Ada Catatan ({previewData.summary.warning_count})
                         </button>
@@ -2187,13 +2179,12 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                               </td>
 
                               <td className="py-2.5 px-3 whitespace-nowrap">
-                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border inline-block ${
-                                  row.employee_status === 'Tetap' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
-                                  row.employee_status === 'PKWT' || row.employee_status === 'Kontrak' ? 'bg-blue-50 text-blue-800 border-blue-200' :
-                                  row.employee_status === 'Magang' ? 'bg-purple-50 text-purple-800 border-purple-200' :
-                                  row.employee_status === 'Alih Daya' ? 'bg-amber-50 text-amber-800 border-amber-200' :
-                                  'bg-slate-100 text-slate-700 border-slate-200'
-                                }`}>
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border inline-block ${row.employee_status === 'Tetap' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
+                                    row.employee_status === 'PKWT' || row.employee_status === 'Kontrak' ? 'bg-blue-50 text-blue-800 border-blue-200' :
+                                      row.employee_status === 'Magang' ? 'bg-purple-50 text-purple-800 border-purple-200' :
+                                        row.employee_status === 'Alih Daya' ? 'bg-amber-50 text-amber-800 border-amber-200' :
+                                          'bg-slate-100 text-slate-700 border-slate-200'
+                                  }`}>
                                   {row.employee_status || 'Tetap'}
                                 </span>
                               </td>

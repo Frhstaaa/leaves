@@ -176,8 +176,8 @@ class HrdEmployeeService
             }
 
             if (isset($data['total_quota'])) {
-                $remainingQuota = isset($data['remaining_quota']) && $data['remaining_quota'] !== '' ? (int) $data['remaining_quota'] : null;
-                $this->quotaService->setQuota($user->id, (int) $data['total_quota'], $remainingQuota);
+                $remainingQuota = isset($data['remaining_quota']) && $data['remaining_quota'] !== '' ? (float) $data['remaining_quota'] : null;
+                $this->quotaService->setQuota($user->id, (float) $data['total_quota'], $remainingQuota);
             }
 
             return $user->fresh();
