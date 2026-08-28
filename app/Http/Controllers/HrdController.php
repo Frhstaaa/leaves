@@ -1338,6 +1338,21 @@ class HrdController extends Controller
             return back()->with('error', 'Karyawan tidak ditemukan.');
         }
 
+        // Normalize gender & blood_type before validation
+        $input = $request->all();
+        if (isset($input['gender']) && is_string($input['gender'])) {
+            $g = strtoupper(trim($input['gender']));
+            if (in_array($g, ['L', 'LAKI-LAKI', 'LAKI - LAKI', 'PRIA', 'MALE'])) {
+                $input['gender'] = 'Laki-laki';
+            } elseif (in_array($g, ['P', 'PEREMPUAN', 'WANITA', 'FEMALE'])) {
+                $input['gender'] = 'Perempuan';
+            }
+        }
+        if (isset($input['blood_type']) && is_string($input['blood_type'])) {
+            $input['blood_type'] = strtoupper(trim($input['blood_type']));
+        }
+        $request->merge($input);
+
         $validated = $request->validate([
             // Data Pekerjaan (HRD can edit all)
             'join_date' => 'nullable|date',
@@ -1349,7 +1364,7 @@ class HrdController extends Controller
 
             // Data Pribadi
             'ktp_number' => 'nullable|string|max:30',
-            'gender' => 'nullable|in:Laki-laki,Perempuan',
+            'gender' => 'nullable|string|max:50',
             'birth_place' => 'nullable|string|max:100',
             'birth_date' => 'nullable|date',
             'phone_number' => 'nullable|string|max:30',
@@ -1358,7 +1373,7 @@ class HrdController extends Controller
             'marital_status' => 'nullable|string|max:50',
             'mother_maiden_name' => 'nullable|string|max:150',
             'kk_number' => 'nullable|string|max:30',
-            'blood_type' => 'nullable|in:A,B,AB,O',
+            'blood_type' => 'nullable|string|max:10',
 
             // Keuangan & BPJS
             'npwp' => 'nullable|string|max:50',

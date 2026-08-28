@@ -38,6 +38,14 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
   const [activeTab, setActiveTab] = useState('pekerjaan'); // 'pekerjaan' | 'pribadi' | 'keuangan' | 'keluarga'
 
   // Initialize Form Data
+  const normalizeGender = (g) => {
+    if (!g) return '';
+    const upper = String(g).trim().toUpperCase();
+    if (upper === 'L' || upper === 'PRIA' || upper === 'MALE' || upper.startsWith('LAKI')) return 'Laki-laki';
+    if (upper === 'P' || upper === 'WANITA' || upper === 'FEMALE' || upper.startsWith('PEREMPUAN')) return 'Perempuan';
+    return g;
+  };
+
   const form = useForm({
     // 1. Data Pekerjaan
     join_date: user.join_date ? (typeof user.join_date === 'string' ? user.join_date.split('T')[0] : user.join_date) : '',
@@ -49,7 +57,7 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
 
     // 2. Data Pribadi & Kependudukan
     ktp_number: user.ktp_number || '',
-    gender: user.gender || '',
+    gender: normalizeGender(user.gender),
     birth_place: user.birth_place || '',
     birth_date: user.birth_date ? (typeof user.birth_date === 'string' ? user.birth_date.split('T')[0] : user.birth_date) : '',
     phone_number: user.phone_number || '',
