@@ -234,8 +234,8 @@ class HrdController extends Controller
         }
 
         $validated = $request->validate([
-            'total_quota' => 'required|integer|min:0|max:100',
-            'remaining_quota' => 'nullable|integer|min:0|max:100',
+            'total_quota' => 'required|numeric|min:0|max:365',
+            'remaining_quota' => 'nullable|numeric|min:0|max:365',
         ]);
 
         $employee = $this->userRepo->findById($userId);
@@ -243,8 +243,8 @@ class HrdController extends Controller
             return back()->with('error', 'Karyawan tidak ditemukan.');
         }
 
-        $remaining = isset($validated['remaining_quota']) && $validated['remaining_quota'] !== '' ? (int) $validated['remaining_quota'] : null;
-        $quota = $this->quotaService->setQuota($employee->id, (int) $validated['total_quota'], $remaining);
+        $remaining = isset($validated['remaining_quota']) && $validated['remaining_quota'] !== '' ? (float) $validated['remaining_quota'] : null;
+        $quota = $this->quotaService->setQuota($employee->id, (float) $validated['total_quota'], $remaining);
 
         return redirect()->back()->with('success', "Kuota cuti {$employee->name} berhasil diperbarui (Total: {$quota->total_quota} hari, Sisa: {$quota->remaining_quota} hari).");
     }
@@ -747,6 +747,12 @@ class HrdController extends Controller
                 }
             };
 
+            $normalizeNumber = function($val) {
+                if ($val === null || trim((string)$val) === '') return null;
+                $v = trim(str_replace(',', '.', (string)$val));
+                return is_numeric($v) ? (float)$v : null;
+            };
+
             $headerMap = [];
             $headerFound = false;
 
@@ -884,9 +890,9 @@ class HrdController extends Controller
                 $joinDateRaw = $getCol('join_date', 8);
                 $joinDateInput = $normalizeDate($joinDateRaw);
                 $totalQuotaRaw = $getCol('total_quota', 9);
-                $totalQuotaInput = is_numeric($totalQuotaRaw) ? (int) $totalQuotaRaw : null;
+                $totalQuotaInput = $normalizeNumber($totalQuotaRaw);
                 $remainingQuotaRaw = $getCol('remaining_quota', 10);
-                $remainingQuotaInput = is_numeric($remainingQuotaRaw) ? (int) $remainingQuotaRaw : null;
+                $remainingQuotaInput = $normalizeNumber($remainingQuotaRaw);
                 $statusRaw = $getCol('employee_status', 11);
                 $statusInput = $normalizeStatus($statusRaw);
 
@@ -988,7 +994,7 @@ class HrdController extends Controller
 
                     // Update Quotas if specified
                     if ($totalQuotaInput !== null || $remainingQuotaInput !== null) {
-                        $targetTotal = $totalQuotaInput ?? ($existingUser->currentQuota?->total_quota ?? 12);
+                        $targetTotal = $totalQuotaInput !== null ? (float) $totalQuotaInput : (float) ($existingUser->currentQuota?->total_quota ?? 12.0);
                         $this->quotaService->setQuota($existingUser->id, $targetTotal, $remainingQuotaInput);
                     }
 
@@ -1038,7 +1044,7 @@ class HrdController extends Controller
                         $savedUser->save();
                     } catch (\Throwable $e) {}
 
-                    $targetTotal = $totalQuotaInput ?? 12;
+                    $targetTotal = $totalQuotaInput !== null ? (float) $totalQuotaInput : 12.0;
                     $this->quotaService->setQuota($savedUser->id, $targetTotal, $remainingQuotaInput);
                     $createdCount++;
                 }

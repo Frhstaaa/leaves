@@ -18,6 +18,12 @@ class LeaveQuota extends Model
         'remaining_quota',
     ];
 
+    protected $casts = [
+        'total_quota' => 'float',
+        'used_quota' => 'float',
+        'remaining_quota' => 'float',
+    ];
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -33,11 +39,11 @@ class LeaveQuota extends Model
 
         $quota = self::firstOrCreate(
             ['user_id' => $userId, 'year' => $year],
-            ['total_quota' => 12, 'used_quota' => 0, 'remaining_quota' => 12]
+            ['total_quota' => 12.0, 'used_quota' => 0.0, 'remaining_quota' => 12.0]
         );
 
         // Sum of all approved 'Cuti Tahunan' & 'Cuti Haid' (or deducts_quota = true) in days
-        $usedDays = (int) LeaveRequest::where('user_id', $userId)
+        $usedDays = (float) LeaveRequest::where('user_id', $userId)
             ->where('status', 'approved')
             ->whereYear('start_date', $year)
             ->where('unit', 'hari')
@@ -47,10 +53,10 @@ class LeaveQuota extends Model
             })
             ->sum('amount');
 
-        $total = $quota->total_quota ?? 12;
-        $remaining = max(0, $total - $usedDays);
+        $total = (float) ($quota->total_quota ?? 12.0);
+        $remaining = max(0.0, $total - $usedDays);
 
-        if ((int)$quota->used_quota !== $usedDays || (int)$quota->remaining_quota !== $remaining) {
+        if ((float)$quota->used_quota !== (float)$usedDays || (float)$quota->remaining_quota !== (float)$remaining) {
             $quota->update([
                 'used_quota' => $usedDays,
                 'remaining_quota' => $remaining,

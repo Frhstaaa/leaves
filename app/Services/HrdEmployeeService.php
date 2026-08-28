@@ -99,8 +99,8 @@ class HrdEmployeeService
             }
 
             // Create initial quota
-            $totalQuota = (int) ($data['total_quota'] ?? 12);
-            $remainingQuota = isset($data['remaining_quota']) && $data['remaining_quota'] !== '' ? (int) $data['remaining_quota'] : null;
+            $totalQuota = (float) ($data['total_quota'] ?? 12.0);
+            $remainingQuota = isset($data['remaining_quota']) && $data['remaining_quota'] !== '' ? (float) $data['remaining_quota'] : null;
             $this->quotaService->setQuota($user->id, $totalQuota, $remainingQuota);
 
             return $user;

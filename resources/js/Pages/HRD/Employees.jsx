@@ -1481,8 +1481,9 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                     <label className="block text-[11px] font-bold text-slate-600 mb-1">Total Jatah Kuota (Hari / Thn)</label>
                     <input
                       type="number"
+                      step="0.5"
                       min="0"
-                      max="100"
+                      max="365"
                       value={editForm.data.total_quota}
                       onChange={(e) => editForm.setData('total_quota', e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
@@ -1494,8 +1495,9 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                     <label className="block text-[11px] font-bold text-slate-600 mb-1">Sisa Kuota Cuti Saat Ini (Hari)</label>
                     <input
                       type="number"
+                      step="0.5"
                       min="0"
-                      max="100"
+                      max="365"
                       value={editForm.data.remaining_quota}
                       onChange={(e) => editForm.setData('remaining_quota', e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:bg-white focus:border-emerald-500 outline-none text-xs"
@@ -1553,8 +1555,9 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                     </label>
                     <input
                       type="number"
+                      step="0.5"
                       min="0"
-                      max="100"
+                      max="365"
                       value={quotaForm.data.total_quota}
                       onChange={(e) => quotaForm.setData('total_quota', e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-black text-sm focus:bg-white focus:border-emerald-500 outline-none"
@@ -1569,8 +1572,9 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                     </label>
                     <input
                       type="number"
+                      step="0.5"
                       min="0"
-                      max="100"
+                      max="365"
                       value={quotaForm.data.remaining_quota}
                       onChange={(e) => quotaForm.setData('remaining_quota', e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-black text-sm focus:bg-white focus:border-emerald-500 outline-none"
