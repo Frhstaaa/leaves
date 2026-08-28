@@ -32,13 +32,6 @@ import {
   ArrowRight,
   AlertCircle
 } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import InstantPagination from "@/components/ui/instant-pagination";
 import { showAlert, showConfirm, showToast } from '@/Utils/swal';
 
@@ -665,26 +658,22 @@ export default function DepartmentsIndex({ departments = [], employees = [], sta
                         <label className="block text-xs font-bold text-slate-700 mb-1">
                           Atasan 1 (Supervisor Departemen)
                         </label>
-                        <Select
-                          value={editingDept ? (editForm.data.approver_1_id ? String(editForm.data.approver_1_id) : 'none') : (createForm.data.approver_1_id ? String(createForm.data.approver_1_id) : 'none')}
-                          onValueChange={(val) => {
-                            const finalVal = val === 'none' ? '' : val;
-                            if (editingDept) editForm.setData('approver_1_id', finalVal);
-                            else createForm.setData('approver_1_id', finalVal);
+                        <select
+                          value={editingDept ? (editForm.data.approver_1_id || '') : (createForm.data.approver_1_id || '')}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (editingDept) editForm.setData('approver_1_id', val);
+                            else createForm.setData('approver_1_id', val);
                           }}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none shadow-xs"
                         >
-                          <SelectTrigger className="w-full bg-white border-slate-300 text-xs font-semibold text-slate-900 rounded-xl">
-                            <SelectValue placeholder="-- Pilih Supervisor / Atasan 1 --" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">-- Tanpa Atasan 1 (Kosong) --</SelectItem>
-                            {employees.map((emp) => (
-                              <SelectItem key={emp.id} value={String(emp.id)}>
-                                {emp.name} ({emp.nik}) - {emp.role.toUpperCase()}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          <option value="">-- Tanpa Atasan 1 (Kosong) --</option>
+                          {employees.map((emp) => (
+                            <option key={emp.id} value={emp.id}>
+                              {emp.name} ({emp.nik || 'No NIK'}) - {emp.role.toUpperCase()}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     )}
 
@@ -694,33 +683,29 @@ export default function DepartmentsIndex({ departments = [], employees = [], sta
                         <label className="block text-xs font-bold text-slate-700 mb-1">
                           Atasan 2 / Manager Departemen
                         </label>
-                        <Select
+                        <select
                           value={
                             editingDept
-                              ? (editForm.data.approver_2_id || editForm.data.manager_id ? String(editForm.data.approver_2_id || editForm.data.manager_id) : 'none')
-                              : (createForm.data.approver_2_id || createForm.data.manager_id ? String(createForm.data.approver_2_id || createForm.data.manager_id) : 'none')
+                              ? (editForm.data.approver_2_id || editForm.data.manager_id || '')
+                              : (createForm.data.approver_2_id || createForm.data.manager_id || '')
                           }
-                          onValueChange={(val) => {
-                            const finalVal = val === 'none' ? '' : val;
+                          onChange={(e) => {
+                            const val = e.target.value;
                             if (editingDept) {
-                              editForm.setData((prev) => ({ ...prev, approver_2_id: finalVal, manager_id: finalVal }));
+                              editForm.setData((prev) => ({ ...prev, approver_2_id: val, manager_id: val }));
                             } else {
-                              createForm.setData((prev) => ({ ...prev, approver_2_id: finalVal, manager_id: finalVal }));
+                              createForm.setData((prev) => ({ ...prev, approver_2_id: val, manager_id: val }));
                             }
                           }}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none shadow-xs"
                         >
-                          <SelectTrigger className="w-full bg-white border-slate-300 text-xs font-semibold text-slate-900 rounded-xl">
-                            <SelectValue placeholder="-- Pilih Manager Departemen --" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">-- Tanpa Atasan 2 (Kosong) --</SelectItem>
-                            {employees.map((emp) => (
-                              <SelectItem key={emp.id} value={String(emp.id)}>
-                                {emp.name} ({emp.nik}) - {emp.role.toUpperCase()}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          <option value="">-- Tanpa Atasan 2 (Kosong) --</option>
+                          {employees.map((emp) => (
+                            <option key={emp.id} value={emp.id}>
+                              {emp.name} ({emp.nik || 'No NIK'}) - {emp.role.toUpperCase()}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     )}
                   </div>
