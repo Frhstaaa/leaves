@@ -38,6 +38,15 @@ Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// Session Heartbeat & CSRF Token Auto-Refresh Endpoint (Prevents 419 Page Expired)
+Route::match(['get', 'post'], '/ping', function () {
+    return response()->json([
+        'status' => 'ok',
+        'csrf_token' => csrf_token(),
+        'authenticated' => auth()->check(),
+    ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+})->name('ping');
+
 // Authenticated Routes
 Route::middleware(['auth'])->group(function () {
     // Dashboard

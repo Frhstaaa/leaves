@@ -17,6 +17,29 @@ if (typeof document !== 'undefined') {
     }
 }
 
+// Global Axios 419 Auto-Recovery Interceptor
+window.axios.interceptors.response.use(
+    (response) => {
+        // If response provides a refreshed CSRF token in header, update meta tag & default headers
+        const refreshedToken = response.headers?.['x-csrf-token'];
+        if (refreshedToken && typeof document !== 'undefined') {
+            const meta = document.head?.querySelector('meta[name="csrf-token"]');
+            if (meta) meta.content = refreshedToken;
+            window.axios.defaults.headers.common['X-CSRF-TOKEN'] = refreshedToken;
+        }
+        return response;
+    },
+    (error) => {
+        if (error.response && error.response.status === 419) {
+            console.warn('[CSO Security] Session expired (419). Auto-refreshing session...');
+            if (typeof window !== 'undefined') {
+                window.location.reload();
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
 /**
  * Echo exposes an expressive API for subscribing to channels and listening
  * for events that are broadcast by Laravel. Echo and event broadcasting
