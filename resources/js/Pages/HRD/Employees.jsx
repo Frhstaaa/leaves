@@ -320,13 +320,34 @@ export default function HrdEmployees({ employees = [], departments = [], manager
       addForm.data.approver_2_id = '';
       addForm.data.manager_id = '';
     }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    if (csrfToken) {
+      addForm.transform((data) => ({ ...data, _token: csrfToken }));
+    }
+
     addForm.post(route('hrd.employees.store'), {
+      preserveScroll: true,
       onSuccess: () => {
         setIsAddOpen(false);
         addForm.reset();
         setAddAvatarPreview(null);
         showToast('Karyawan baru berhasil ditambahkan!');
+        showAlert({
+          title: 'Berhasil!',
+          text: 'Karyawan baru berhasil ditambahkan ke sistem.',
+          icon: 'success',
+          timer: 2000
+        });
       },
+      onError: (errors) => {
+        console.error('Add employee validation errors:', errors);
+        showAlert({
+          title: 'Gagal Menambah Karyawan',
+          text: Object.values(errors).join('\n') || 'Terdapat kesalahan pada isian formulir.',
+          icon: 'error'
+        });
+      }
     });
   };
 
@@ -363,13 +384,35 @@ export default function HrdEmployees({ employees = [], departments = [], manager
       editForm.data.approver_2_id = '';
       editForm.data.manager_id = '';
     }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    if (csrfToken) {
+      editForm.transform((data) => ({ ...data, _token: csrfToken }));
+    }
+
     editForm.post(route('hrd.employees.update', editingEmployee.id), {
+      preserveScroll: true,
       onSuccess: () => {
+        const empName = editForm.data.name || 'Karyawan';
         setEditingEmployee(null);
         editForm.reset();
         setEditAvatarPreview(null);
         showToast('Data karyawan berhasil diperbarui!');
+        showAlert({
+          title: 'Berhasil Diperbarui!',
+          text: `Data master karyawan ${empName} berhasil disimpan ke database.`,
+          icon: 'success',
+          timer: 2000
+        });
       },
+      onError: (errors) => {
+        console.error('Update employee validation errors:', errors);
+        showAlert({
+          title: 'Gagal Memperbarui Data',
+          text: Object.values(errors).join('\n') || 'Terdapat data yang belum sesuai validasi.',
+          icon: 'error'
+        });
+      }
     });
   };
 
@@ -384,18 +427,49 @@ export default function HrdEmployees({ employees = [], departments = [], manager
   const handleQuotaSubmit = (e) => {
     e.preventDefault();
     quotaForm.post(route('hrd.update-quota', quotaEmployee.id), {
+      preserveScroll: true,
       onSuccess: () => {
         setQuotaEmployee(null);
+        showToast('Kuota cuti berhasil diperbarui!');
+        showAlert({
+          title: 'Kuota Diperbarui!',
+          text: `Kuota cuti ${quotaEmployee?.name} berhasil disesuaikan.`,
+          icon: 'success',
+          timer: 2000
+        });
       },
+      onError: (errors) => {
+        showAlert({
+          title: 'Gagal Mengubah Kuota',
+          text: Object.values(errors).join('\n') || 'Terjadi kesalahan saat menyimpan kuota.',
+          icon: 'error'
+        });
+      }
     });
   };
 
   const handleDeleteSubmit = () => {
     if (!deletingEmployee) return;
     router.delete(route('hrd.employees.destroy', deletingEmployee.id), {
+      preserveScroll: true,
       onSuccess: () => {
+        const deletedName = deletingEmployee?.name || 'Karyawan';
         setDeletingEmployee(null);
+        showToast('Karyawan berhasil dihapus.');
+        showAlert({
+          title: 'Karyawan Dihapus',
+          text: `${deletedName} telah dihapus dari sistem.`,
+          icon: 'success',
+          timer: 2000
+        });
       },
+      onError: (errors) => {
+        showAlert({
+          title: 'Gagal Menghapus Karyawan',
+          text: Object.values(errors).join('\n') || 'Terjadi kesalahan pada server.',
+          icon: 'error'
+        });
+      }
     });
   };
 

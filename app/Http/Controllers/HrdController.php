@@ -143,8 +143,23 @@ class HrdController extends Controller
     {
         $user = Auth::user();
         if (!$user->isAdmin()) {
-            return back()->with('error', 'Akses khusus HRD.');
+            return redirect()->back()->with('error', 'Akses khusus HRD.');
         }
+
+        $input = $request->all();
+        if (empty($input['department_id'])) $input['department_id'] = null;
+        if (empty($input['approver_1_id'])) $input['approver_1_id'] = null;
+        if (empty($input['approver_2_id'])) $input['approver_2_id'] = null;
+        if (empty($input['manager_id'])) $input['manager_id'] = null;
+        if (isset($input['gender']) && is_string($input['gender'])) {
+            $g = strtoupper(trim($input['gender']));
+            if (in_array($g, ['L', 'LAKI-LAKI', 'LAKI - LAKI', 'PRIA', 'MALE'])) {
+                $input['gender'] = 'Laki-laki';
+            } elseif (in_array($g, ['P', 'PEREMPUAN', 'WANITA', 'FEMALE'])) {
+                $input['gender'] = 'Perempuan';
+            }
+        }
+        $request->merge($input);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -156,11 +171,11 @@ class HrdController extends Controller
             'approver_1_id' => 'nullable|exists:users,id',
             'approver_2_id' => 'nullable|exists:users,id',
             'manager_id' => 'nullable|exists:users,id',
-            'total_quota' => 'required|integer|min:0|max:100',
-            'remaining_quota' => 'nullable|integer|min:0|max:100',
+            'total_quota' => 'required|numeric|min:0|max:365',
+            'remaining_quota' => 'nullable|numeric|min:0|max:365',
             'join_date' => 'nullable|date',
             'position' => 'nullable|string|max:100',
-            'gender' => 'nullable|string|max:20',
+            'gender' => 'nullable|string|max:50',
             'employee_status' => 'nullable|string|max:50',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
@@ -174,13 +189,31 @@ class HrdController extends Controller
     {
         $user = Auth::user();
         if (!$user->isAdmin()) {
-            return back()->with('error', 'Akses khusus HRD.');
+            return redirect()->back()->with('error', 'Akses khusus HRD.');
         }
 
         $employee = $this->userRepo->findById($userId);
         if (!$employee) {
-            return back()->with('error', 'Karyawan tidak ditemukan.');
+            return redirect()->back()->with('error', 'Karyawan tidak ditemukan.');
         }
+
+        $input = $request->all();
+        if (empty($input['password'])) {
+            unset($input['password']);
+        }
+        if (empty($input['department_id'])) $input['department_id'] = null;
+        if (empty($input['approver_1_id'])) $input['approver_1_id'] = null;
+        if (empty($input['approver_2_id'])) $input['approver_2_id'] = null;
+        if (empty($input['manager_id'])) $input['manager_id'] = null;
+        if (isset($input['gender']) && is_string($input['gender'])) {
+            $g = strtoupper(trim($input['gender']));
+            if (in_array($g, ['L', 'LAKI-LAKI', 'LAKI - LAKI', 'PRIA', 'MALE'])) {
+                $input['gender'] = 'Laki-laki';
+            } elseif (in_array($g, ['P', 'PEREMPUAN', 'WANITA', 'FEMALE'])) {
+                $input['gender'] = 'Perempuan';
+            }
+        }
+        $request->merge($input);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -192,11 +225,11 @@ class HrdController extends Controller
             'approver_1_id' => 'nullable|exists:users,id',
             'approver_2_id' => 'nullable|exists:users,id',
             'manager_id' => 'nullable|exists:users,id',
-            'total_quota' => 'required|integer|min:0|max:100',
-            'remaining_quota' => 'nullable|integer|min:0|max:100',
+            'total_quota' => 'required|numeric|min:0|max:365',
+            'remaining_quota' => 'nullable|numeric|min:0|max:365',
             'join_date' => 'nullable|date',
             'position' => 'nullable|string|max:100',
-            'gender' => 'nullable|string|max:20',
+            'gender' => 'nullable|string|max:50',
             'employee_status' => 'nullable|string|max:50',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
