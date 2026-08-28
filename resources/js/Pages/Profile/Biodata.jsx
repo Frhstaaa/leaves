@@ -130,10 +130,14 @@ export default function Biodata({ user = {}, departments = [], isHrdView = false
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-    form.transform((data) => ({
-      ...data,
-      _token: csrfToken,
-    })).put(targetUrl, {
+    if (csrfToken) {
+      form.transform((data) => ({
+        ...data,
+        _token: csrfToken,
+      }));
+    }
+
+    form.put(targetUrl, {
       preserveScroll: true,
       headers: csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {},
       onSuccess: () => {
