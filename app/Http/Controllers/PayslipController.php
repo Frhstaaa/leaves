@@ -399,6 +399,18 @@ class PayslipController extends Controller
         $matchedCount = count($matched);
         $unmatchedCount = count($unmatched);
 
+        if ($request->wantsJson() || $request->ajax() || $request->header('Accept') === 'application/json' || $request->input('is_chunk')) {
+            return response()->json([
+                'success' => ($matchedCount > 0 || $unmatchedCount === 0),
+                'matched_count' => $matchedCount,
+                'unmatched_count' => $unmatchedCount,
+                'matched' => $matched,
+                'unmatched' => $unmatched,
+                'period' => $periodLabel,
+                'message' => "{$matchedCount} slip gaji periode {$periodLabel} berhasil diproses.",
+            ]);
+        }
+
         if ($matchedCount > 0 && $unmatchedCount === 0) {
             return back()->with('success', "Berhasil! {$matchedCount} slip gaji periode {$periodLabel} otomatis terdistribusi ke akun karyawan.");
         } elseif ($matchedCount > 0 && $unmatchedCount > 0) {

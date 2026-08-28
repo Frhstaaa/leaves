@@ -123,6 +123,7 @@ export default function HrdPayslips({
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [selectedZip, setSelectedZip] = useState(null);
   const [isSubmittingBulk, setIsSubmittingBulk] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
 
   // Bulk Upload Form
   const bulkForm = useForm({
@@ -287,7 +288,7 @@ export default function HrdPayslips({
     setIsSingleOpen(true);
   };
 
-  const handleBulkSubmit = (e) => {
+  const handleBulkSubmit = async (e) => {
     e.preventDefault();
 
     if (selectedFiles.length === 0 && !selectedZip) {
@@ -300,44 +301,184 @@ export default function HrdPayslips({
     }
 
     setIsSubmittingBulk(true);
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-    const formData = new FormData();
-    formData.append('month', String(bulkForm.data.month));
-    formData.append('year', String(bulkForm.data.year));
-
+    // =========================================================================
+    // CASE 1: ZIP FILE UPLOAD (Single Payload)
+    // =========================================================================
     if (selectedZip) {
+      setUploadProgress({ current: 0, total: 1, currentBatch: 1, totalBatches: 1, percent: 50 });
+      const formData = new FormData();
+      formData.append('month', String(bulkForm.data.month));
+      formData.append('year', String(bulkForm.data.year));
       formData.append('zip_file', selectedZip);
-    } else {
-      selectedFiles.forEach((item, idx) => {
-        formData.append(`files[${idx}]`, item.file);
-        if (item.userId) {
-          formData.append(`user_ids[${idx}]`, item.userId);
-        }
-      });
-    }
+      if (csrfToken) formData.append('_token', csrfToken);
 
-    router.post(route('hrd.payslips.bulk-upload'), formData, {
-      forceFormData: true,
-      preserveScroll: true,
-      onSuccess: () => {
+      try {
+        const response = await fetch(route('hrd.payslips.bulk-upload'), {
+          method: 'POST',
+          headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json',
+          },
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.message || `Server error (${response.status})`);
+        }
+
+        const data = await response.json();
         setIsSubmittingBulk(false);
         setIsBulkOpen(false);
         setSelectedFiles([]);
         setSelectedZip(null);
         bulkForm.reset();
-      },
-      onError: (errs) => {
-        setIsSubmittingBulk(false);
+        setUploadProgress(null);
+
         showAlert({
-          title: 'Gagal Upload Slip Gaji',
-          text: Object.values(errs)[0] || 'Terjadi kesalahan saat memproses file.',
+          title: 'Distribusi Selesai!',
+          text: data.message || 'File ZIP berhasil diekstrak dan didistribusikan ke akun karyawan.',
+          icon: 'success'
+        });
+
+        router.reload({ preserveScroll: true });
+      } catch (err) {
+        setIsSubmittingBulk(false);
+        setUploadProgress(null);
+        showAlert({
+          title: 'Gagal Upload File ZIP',
+          text: err.message || 'Terjadi kesalahan saat mengunggah file ZIP.',
           icon: 'error'
         });
-      },
-      onFinish: () => {
-        setIsSubmittingBulk(false);
       }
+      return;
+    }
+
+    // =========================================================================
+    // CASE 2: MULTIPLE PDF FILES (Chunked Batch Upload - 5 PDFs per Batch)
+    // Prevents HTTP 413 Payload Too Large
+    // =========================================================================
+    const CHUNK_SIZE = 5;
+    const totalFiles = selectedFiles.length;
+    const chunks = [];
+    for (let i = 0; i < totalFiles; i += CHUNK_SIZE) {
+      chunks.push(selectedFiles.slice(i, i + CHUNK_SIZE));
+    }
+
+    const totalBatches = chunks.length;
+    let uploadedCount = 0;
+    const allMatched = [];
+    const allUnmatched = [];
+
+    setUploadProgress({
+      current: 0,
+      total: totalFiles,
+      currentBatch: 1,
+      totalBatches,
+      percent: 0,
     });
+
+    try {
+      for (let bIndex = 0; bIndex < totalBatches; bIndex++) {
+        const currentChunk = chunks[bIndex];
+        const batchNum = bIndex + 1;
+
+        setUploadProgress({
+          current: uploadedCount,
+          total: totalFiles,
+          currentBatch: batchNum,
+          totalBatches,
+          percent: Math.round((uploadedCount / totalFiles) * 100),
+        });
+
+        const formData = new FormData();
+        formData.append('month', String(bulkForm.data.month));
+        formData.append('year', String(bulkForm.data.year));
+        formData.append('is_chunk', '1');
+        if (csrfToken) formData.append('_token', csrfToken);
+
+        currentChunk.forEach((item, idx) => {
+          formData.append(`files[${idx}]`, item.file);
+          if (item.userId) {
+            formData.append(`user_ids[${idx}]`, item.userId);
+          }
+        });
+
+        const response = await fetch(route('hrd.payslips.bulk-upload'), {
+          method: 'POST',
+          headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json',
+          },
+          body: formData,
+        });
+
+        if (!response.ok) {
+          if (response.status === 413) {
+            throw new Error(`Ukuran batch ke-${batchNum} terlalu besar untuk server (413).`);
+          }
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.message || `Error pada batch ${batchNum} (Status: ${response.status})`);
+        }
+
+        const data = await response.json();
+        if (data.matched) allMatched.push(...data.matched);
+        if (data.unmatched) allUnmatched.push(...data.unmatched);
+
+        uploadedCount += currentChunk.length;
+        setUploadProgress({
+          current: uploadedCount,
+          total: totalFiles,
+          currentBatch: batchNum,
+          totalBatches,
+          percent: Math.round((uploadedCount / totalFiles) * 100),
+        });
+      }
+
+      // Selesai seluruh batch
+      setIsSubmittingBulk(false);
+      setIsBulkOpen(false);
+      setSelectedFiles([]);
+      setSelectedZip(null);
+      bulkForm.reset();
+      setUploadProgress(null);
+
+      const matchedCount = allMatched.length;
+      const unmatchedCount = allUnmatched.length;
+
+      if (matchedCount > 0 && unmatchedCount === 0) {
+        showAlert({
+          title: 'Distribusi Sukses!',
+          text: `Semua ${matchedCount} slip gaji berhasil diunggah & otomatis terdistribusi ke akun masing-masing karyawan!`,
+          icon: 'success'
+        });
+      } else if (matchedCount > 0 && unmatchedCount > 0) {
+        showAlert({
+          title: 'Sebagian Terdistribusi',
+          text: `${matchedCount} slip gaji berhasil dikirim. Terdapat ${unmatchedCount} file tidak teridentifikasi (${allUnmatched.slice(0, 3).join(', ')}...).`,
+          icon: 'warning'
+        });
+      } else {
+        showAlert({
+          title: 'Periksa Nama File',
+          text: `Gagal mencocokkan ${unmatchedCount} file slip gaji dengan data NIK atau nama karyawan di sistem.`,
+          icon: 'error'
+        });
+      }
+
+      router.reload({ preserveScroll: true });
+    } catch (err) {
+      console.error('Batch upload error:', err);
+      setIsSubmittingBulk(false);
+      setUploadProgress(null);
+      showAlert({
+        title: 'Gagal Upload Batch',
+        text: err.message || 'Terjadi kesalahan jaringan saat mendistribusikan slip gaji.',
+        icon: 'error'
+      });
+    }
   };
 
   const handleSingleSubmit = (e) => {
@@ -1059,6 +1200,35 @@ export default function HrdPayslips({
                       </div>
                     )}
                   </div>
+
+                  {/* Real-time Chunked Upload Progress Bar */}
+                  {isSubmittingBulk && uploadProgress && (
+                    <div className="p-4 rounded-2xl bg-emerald-50/90 border border-emerald-200 space-y-2.5 animate-in fade-in duration-200">
+                      <div className="flex items-center justify-between text-xs font-extrabold text-emerald-950">
+                        <div className="flex items-center space-x-2 min-w-0">
+                          <span className="relative flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-600"></span>
+                          </span>
+                          <span className="truncate">
+                            Mengunggah Batch {uploadProgress.currentBatch} dari {uploadProgress.totalBatches} ({uploadProgress.current}/{uploadProgress.total} Slip Gaji)...
+                          </span>
+                        </div>
+                        <span className="font-mono text-emerald-800 font-black text-sm shrink-0 ml-2">
+                          {uploadProgress.percent}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-emerald-200/60 h-2.5 rounded-full overflow-hidden">
+                        <div
+                          className="bg-emerald-600 h-full rounded-full transition-all duration-300 ease-out"
+                          style={{ width: `${uploadProgress.percent}%` }}
+                        />
+                      </div>
+                      <p className="text-[11px] text-emerald-700 font-medium">
+                        🛡️ Sistem otomatis membagi unggahan per 5 file agar anti-gagal, mulus, dan bebas error 413 (Payload Too Large).
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Modal Footer */}
