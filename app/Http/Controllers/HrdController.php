@@ -12,6 +12,7 @@ use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\HrdEmployeeService;
 use App\Services\LeaveQuotaService;
 use App\Services\LeaveRequestService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -608,9 +609,34 @@ class HrdController extends Controller
                 '6',
                 'Magang'
             ]);
-
             fclose($file);
         }, 200, $headers);
+    }
+
+    public function previewImport(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user->isAdmin()) {
+            return response()->json(['success' => false, 'error' => 'Akses khusus HRD / Admin.'], 403);
+        }
+
+        $request->validate(['file' => 'required|file|max:15360']);
+        $file = $request->file('file');
+
+        try {
+            $parsed = $this->parseEmployeeCsvFile($file->getRealPath());
+            return response()->json([
+                'success' => true,
+                'summary' => $parsed['summary'],
+                'rows' => $parsed['rows'],
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Preview import error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Gagal membaca file: ' . $e->getMessage(),
+            ], 422);
+        }
     }
 
     public function importEmployees(Request $request): RedirectResponse
@@ -620,462 +646,156 @@ class HrdController extends Controller
             return back()->with('error', 'Akses khusus HRD / Admin.');
         }
 
-        $request->validate(['file' => 'required|file|max:15360']);
-        $file = $request->file('file');
+        $request->validate([
+            'file' => 'nullable|file|max:15360',
+            'confirmed_rows' => 'nullable|array',
+        ]);
 
         try {
-            $path = $file->getRealPath();
-            $handle = fopen($path, 'r');
-            if (!$handle) {
-                return back()->with('error', 'Tidak dapat membuka file yang diunggah.');
+            $rowsToProcess = [];
+
+            if ($request->hasFile('file')) {
+                $parsed = $this->parseEmployeeCsvFile($request->file('file')->getRealPath());
+                $rowsToProcess = $parsed['rows'];
+            } elseif ($request->filled('confirmed_rows')) {
+                $rowsToProcess = $request->input('confirmed_rows');
+            } else {
+                return back()->with('error', 'Tidak ada data karyawan yang dikirim untuk di-import.');
             }
 
-            // 1. Detect UTF-8 BOM
-            $bom = fread($handle, 3);
-            if ($bom !== "\xEF\xBB\xBF") {
-                rewind($handle);
+            if (empty($rowsToProcess)) {
+                return back()->with('error', 'Tidak ada data baris yang valid untuk diproses.');
             }
-
-            // 2. Automatic Delimiter Detection (Comma, Semicolon, or Tab)
-            $samplePos = ftell($handle);
-            $sampleLine = fgets($handle);
-            $delimiter = ',';
-            if ($sampleLine !== false) {
-                $commaCount = substr_count($sampleLine, ',');
-                $semiCount = substr_count($sampleLine, ';');
-                $tabCount = substr_count($sampleLine, "\t");
-
-                if ($semiCount > $commaCount && $semiCount > $tabCount) {
-                    $delimiter = ';';
-                } elseif ($tabCount > $commaCount && $tabCount > $semiCount) {
-                    $delimiter = "\t";
-                }
-            }
-            fseek($handle, $samplePos);
 
             $successCount = 0;
             $updatedCount = 0;
             $createdCount = 0;
-            $departments = $this->departmentRepo->getAll();
-            $dbRoles = class_exists('\\Spatie\\Permission\\Models\\Role') ? \Spatie\Permission\Models\Role::pluck('name')->map(fn($r) => strtolower(trim($r)))->toArray() : [];
-            $validRoles = array_unique(array_merge(['employee', 'manager', 'admin', 'superadmin', 'supervisor'], $dbRoles));
 
-            $normalizeGender = function($val) {
-                if (empty($val)) return null;
-                $v = strtolower(trim((string) $val));
-                if (str_starts_with($v, 'l') || str_starts_with($v, 'm') || str_starts_with($v, 'pria')) {
-                    return 'Laki-laki';
-                }
-                if (str_starts_with($v, 'p') || str_starts_with($v, 'w') || str_starts_with($v, 'f') || str_starts_with($v, 'wanita')) {
-                    if ($v !== 'pria' && $v !== 'percobaan') {
-                        return 'Perempuan';
+            \Illuminate\Support\Facades\DB::transaction(function () use ($rowsToProcess, &$successCount, &$updatedCount, &$createdCount) {
+                foreach ($rowsToProcess as $item) {
+                    $nik = trim($item['nik'] ?? '');
+                    $nameInput = trim($item['name'] ?? '');
+                    $emailInput = strtolower(trim($item['email'] ?? ''));
+                    $passwordInput = $item['password'] ?? '';
+                    $role = $item['role'] ?? 'employee';
+                    $deptId = !empty($item['department_id']) ? (int) $item['department_id'] : null;
+                    $positionInput = trim($item['position'] ?? '');
+                    $genderInput = $item['gender'] ?? null;
+                    $joinDateInput = $item['join_date'] ?? null;
+                    $statusInput = $item['employee_status'] ?? 'Tetap';
+                    $totalQuotaInput = isset($item['total_quota']) && $item['total_quota'] !== null && $item['total_quota'] !== '' ? (float) $item['total_quota'] : null;
+                    $remainingQuotaInput = isset($item['remaining_quota']) && $item['remaining_quota'] !== null && $item['remaining_quota'] !== '' ? (float) $item['remaining_quota'] : null;
+
+                    // Match Existing Employee
+                    $existingUser = null;
+                    if (!empty($nik)) {
+                        $existingUser = User::where('nik', $nik)->first();
                     }
-                }
-                return null;
-            };
-
-            $normalizeStatus = function($val) {
-                if (empty($val)) return 'Tetap';
-                $v = trim((string) $val);
-                $vLower = strtolower($v);
-                if (in_array($vLower, ['pkwt', 'kontrak', 'karyawan kontrak', 'contract'])) {
-                    return 'PKWT';
-                }
-                if (in_array($vLower, ['pkwtt', 'tetap', 'karyawan tetap', 'permanent'])) {
-                    return 'Tetap';
-                }
-                if (in_array($vLower, ['magang', 'internship', 'intern', 'praktik', 'pkl', 'magang / internship'])) {
-                    return 'Magang';
-                }
-                if (in_array($vLower, ['alih daya', 'alihdaya', 'outsourcing', 'outsource', 'os', 'alih daya (outsourcing)'])) {
-                    return 'Alih Daya';
-                }
-                if (in_array($vLower, ['percobaan', 'probation', 'training', 'masa percobaan'])) {
-                    return 'Percobaan';
-                }
-                return $v;
-            };
-
-            $normalizeDate = function($val) {
-                if (empty($val)) return null;
-                $v = trim((string) $val);
-                if ($v === '' || $v === '-' || $v === '0000-00-00' || strtolower($v) === 'null') return null;
-
-                // Handle Excel numeric serial dates (e.g., 44562 for 2022-01-01)
-                if (is_numeric($v) && (int)$v > 20000 && (int)$v < 70000) {
-                    try {
-                        $excelDate = (int)$v;
-                        $unix = ($excelDate - 25569) * 86400;
-                        return gmdate('Y-m-d', $unix);
-                    } catch (\Throwable $e) {}
-                }
-
-                // Handle DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
-                if (preg_match('/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/', $v, $m)) {
-                    $d = (int)$m[1];
-                    $mo = (int)$m[2];
-                    $y = (int)$m[3];
-                    if (checkdate($mo, $d, $y)) {
-                        return sprintf('%04d-%02d-%02d', $y, $mo, $d);
+                    if (!$existingUser && !empty($emailInput)) {
+                        $existingUser = User::where('email', $emailInput)->first();
                     }
-                }
 
-                // Handle YYYY-MM-DD or YYYY/MM/DD or YYYY.MM.DD
-                if (preg_match('/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/', $v, $m)) {
-                    $y = (int)$m[1];
-                    $mo = (int)$m[2];
-                    $d = (int)$m[3];
-                    if (checkdate($mo, $d, $y)) {
-                        return sprintf('%04d-%02d-%02d', $y, $mo, $d);
-                    }
-                }
-
-                // Handle Indonesian month names like '15 Januari 2024', '10 Mei 2023'
-                $idMonths = [
-                    'januari' => 'January', 'februari' => 'February', 'maret' => 'March',
-                    'april' => 'April', 'mei' => 'May', 'juni' => 'June',
-                    'juli' => 'July', 'agustus' => 'August', 'september' => 'September',
-                    'oktober' => 'October', 'november' => 'November', 'desember' => 'December',
-                    'agu' => 'Aug', 'okt' => 'Oct', 'des' => 'Dec'
-                ];
-                $engV = str_ireplace(array_keys($idMonths), array_values($idMonths), $v);
-
-                try {
-                    return \Carbon\Carbon::parse($engV)->format('Y-m-d');
-                } catch (\Throwable $e) {
-                    return null;
-                }
-            };
-
-            $normalizeNumber = function($val) {
-                if ($val === null || trim((string)$val) === '') return null;
-                $v = trim(str_replace(',', '.', (string)$val));
-                return is_numeric($v) ? (float)$v : null;
-            };
-
-            $headerMap = [];
-            $headerFound = false;
-
-            while (($row = fgetcsv($handle, 4000, $delimiter)) !== false) {
-                $col0 = trim($row[0] ?? '');
-                $col1 = trim($row[1] ?? '');
-                $col2 = trim($row[2] ?? '');
-
-                // Skip empty rows
-                if (empty($col0) && empty($col1) && empty($col2) && count(array_filter($row)) === 0) {
-                    continue;
-                }
-
-                // Skip comments / divider rows
-                if (str_starts_with($col0, '#') || 
-                    str_starts_with($col0, '=') || 
-                    str_starts_with($col0, '-') || 
-                    preg_match('/^(tutorial|panduan|petunjuk|daftar|catatan|kode|urutan|langkah)/i', $col0)) {
-                    continue;
-                }
-
-                // Header Detection & Dynamic Column Mapping
-                $rowCombined = strtolower(implode(' ', $row));
-                if (!$headerFound && (
-                    (str_contains($rowCombined, 'nama') || str_contains($rowCombined, 'name')) &&
-                    (str_contains($rowCombined, 'email') || str_contains($rowCombined, 'nik') || str_contains($rowCombined, 'departemen') || str_contains($rowCombined, 'bergabung') || str_contains($rowCombined, 'join') || str_contains($rowCombined, 'status'))
-                )) {
-                    $headerFound = true;
-                    foreach ($row as $colIdx => $headerTitle) {
-                        $clean = strtolower(trim(preg_replace('/[^a-zA-Z0-9]/', '', (string)$headerTitle)));
-                        if (str_contains($clean, 'nik')) {
-                            if (str_contains($clean, 'ktp')) {
-                                $headerMap['ktp_number'] = $colIdx;
-                            } elseif (!isset($headerMap['nik'])) {
-                                $headerMap['nik'] = $colIdx;
+                    if ($existingUser) {
+                        // UPDATE EXISTING EMPLOYEE
+                        $updateData = [];
+                        if (!empty($nameInput)) $updateData['name'] = $nameInput;
+                        if (!empty($nik) && (empty($existingUser->nik) || $existingUser->nik !== $nik)) {
+                            if (!User::where('nik', $nik)->where('id', '!=', $existingUser->id)->exists()) {
+                                $updateData['nik'] = $nik;
                             }
-                        } elseif (str_contains($clean, 'nama') || str_contains($clean, 'name')) {
-                            if (str_contains($clean, 'ibu')) {
-                                $headerMap['mother_maiden_name'] = $colIdx;
-                            } elseif (str_contains($clean, 'pasangan')) {
-                                $headerMap['spouse_name'] = $colIdx;
-                            } elseif (str_contains($clean, 'darurat')) {
-                                $headerMap['emergency_contact_name'] = $colIdx;
-                            } elseif (str_contains($clean, 'bank')) {
-                                $headerMap['bank_name'] = $colIdx;
-                            } elseif (!isset($headerMap['name'])) {
-                                $headerMap['name'] = $colIdx;
-                            }
-                        } elseif (str_contains($clean, 'email')) {
-                            $headerMap['email'] = $colIdx;
-                        } elseif (str_contains($clean, 'password')) {
-                            $headerMap['password'] = $colIdx;
-                        } elseif (str_contains($clean, 'role')) {
-                            $headerMap['role'] = $colIdx;
-                        } elseif (str_contains($clean, 'departemen') || str_contains($clean, 'department')) {
-                            $headerMap['department'] = $colIdx;
-                        } elseif (str_contains($clean, 'jabatan') || str_contains($clean, 'posisi') || str_contains($clean, 'position')) {
-                            $headerMap['position'] = $colIdx;
-                        } elseif (str_contains($clean, 'gender') || str_contains($clean, 'kelamin')) {
-                            $headerMap['gender'] = $colIdx;
-                        } elseif (str_contains($clean, 'tanggalbergabung') || str_contains($clean, 'tanggalmasuk') || str_contains($clean, 'tglmasuk') || str_contains($clean, 'joindate') || str_contains($clean, 'bergabung')) {
-                            $headerMap['join_date'] = $colIdx;
-                        } elseif (str_contains($clean, 'totalkuota') || str_contains($clean, 'jatahkuota') || str_contains($clean, 'totaljatah') || str_contains($clean, 'totalquota')) {
-                            $headerMap['total_quota'] = $colIdx;
-                        } elseif (str_contains($clean, 'sisakuota') || str_contains($clean, 'remainingquota')) {
-                            $headerMap['remaining_quota'] = $colIdx;
-                        } elseif (str_contains($clean, 'statuskaryawan') || $clean === 'status') {
-                            $headerMap['employee_status'] = $colIdx;
-                        } elseif (str_contains($clean, 'pendidikan') || str_contains($clean, 'education')) {
-                            $headerMap['education'] = $colIdx;
-                        } elseif (str_contains($clean, 'noktp') || str_contains($clean, 'nikktp')) {
-                            $headerMap['ktp_number'] = $colIdx;
-                        } elseif (str_contains($clean, 'tempatlahir')) {
-                            $headerMap['birth_place'] = $colIdx;
-                        } elseif (str_contains($clean, 'tanggallahir')) {
-                            $headerMap['birth_date'] = $colIdx;
-                        } elseif (str_contains($clean, 'nohp') || str_contains($clean, 'telepon')) {
-                            $headerMap['phone_number'] = $colIdx;
-                        } elseif (str_contains($clean, 'alamatktp')) {
-                            $headerMap['ktp_address'] = $colIdx;
-                        } elseif (str_contains($clean, 'alamatdomisili')) {
-                            $headerMap['domicile_address'] = $colIdx;
-                        } elseif (str_contains($clean, 'statusnikah') || str_contains($clean, 'statuskawin')) {
-                            $headerMap['marital_status'] = $colIdx;
-                        } elseif (str_contains($clean, 'npwp')) {
-                            $headerMap['npwp'] = $colIdx;
-                        } elseif (str_contains($clean, 'bpjskesehatan')) {
-                            $headerMap['bpjs_kesehatan_number'] = $colIdx;
-                        } elseif (str_contains($clean, 'faskes')) {
-                            $headerMap['bpjs_health_facility'] = $colIdx;
-                        } elseif (str_contains($clean, 'bpjsketenagakerjaan') || str_contains($clean, 'bpjstku')) {
-                            $headerMap['bpjs_ketenagakerjaan_number'] = $colIdx;
-                        } elseif (str_contains($clean, 'bank') || str_contains($clean, 'namabank')) {
-                            $headerMap['bank_name'] = $colIdx;
-                        } elseif (str_contains($clean, 'norekening') || str_contains($clean, 'rekening')) {
-                            $headerMap['bank_account_number'] = $colIdx;
-                        } elseif (str_contains($clean, 'nopol') || str_contains($clean, 'kendaraan')) {
-                            $headerMap['vehicle_plate_number'] = $colIdx;
-                        } elseif (str_contains($clean, 'nosim') || str_contains($clean, 'simnumber')) {
-                            $headerMap['sim_number'] = $colIdx;
-                        } elseif (str_contains($clean, 'masaberlakusim')) {
-                            $headerMap['sim_valid_until'] = $colIdx;
-                        } elseif (str_contains($clean, 'sepatu') || str_contains($clean, 'shoesize')) {
-                            $headerMap['shoe_size'] = $colIdx;
-                        } elseif (str_contains($clean, 'goldarah') || str_contains($clean, 'bloodtype')) {
-                            $headerMap['blood_type'] = $colIdx;
-                        } elseif (str_contains($clean, 'nokk') || str_contains($clean, 'kknumber')) {
-                            $headerMap['kk_number'] = $colIdx;
                         }
-                    }
-                    continue; // Skip processing header row as employee data
-                }
+                        if (!empty($role)) $updateData['role'] = $role;
+                        if ($deptId !== null) $updateData['department_id'] = $deptId;
+                        if (!empty($statusInput)) $updateData['employee_status'] = $statusInput;
+                        if (!empty($positionInput)) $updateData['position'] = $positionInput;
+                        if (!empty($genderInput)) $updateData['gender'] = $genderInput;
+                        if (!empty($joinDateInput)) $updateData['join_date'] = $joinDateInput;
+                        if (!empty($passwordInput)) $updateData['password'] = Hash::make($passwordInput);
 
-                // Extract Field Values using Header Map (if available) or Positional Index Fallback
-                $getCol = function($key, $posFallback) use ($row, $headerMap) {
-                    if (isset($headerMap[$key]) && isset($row[$headerMap[$key]])) {
-                        return trim((string) $row[$headerMap[$key]]);
-                    }
-                    if (isset($row[$posFallback])) {
-                        return trim((string) $row[$posFallback]);
-                    }
-                    return '';
-                };
+                        // Biodata fields if present
+                        if (!empty($item['extra_fields']) && is_array($item['extra_fields'])) {
+                            foreach ($item['extra_fields'] as $k => $v) {
+                                if ($v !== null && $v !== '') {
+                                    $updateData[$k] = $v;
+                                }
+                            }
+                        }
 
-                $nikInput = $getCol('nik', 0);
-                $nameInput = $getCol('name', 1);
-                $emailInput = strtolower($getCol('email', 2));
-                $passwordInput = $getCol('password', 3);
-                $inputRole = strtolower($getCol('role', 4));
-                $role = in_array($inputRole, $validRoles) ? $inputRole : null;
-                $deptInput = $getCol('department', 5);
-                $positionInput = $getCol('position', 6);
-                $genderRaw = $getCol('gender', 7);
-                $genderInput = $normalizeGender($genderRaw);
-                $joinDateRaw = $getCol('join_date', 8);
-                $joinDateInput = $normalizeDate($joinDateRaw);
-                $totalQuotaRaw = $getCol('total_quota', 9);
-                $totalQuotaInput = $normalizeNumber($totalQuotaRaw);
-                $remainingQuotaRaw = $getCol('remaining_quota', 10);
-                $remainingQuotaInput = $normalizeNumber($remainingQuotaRaw);
-                $statusRaw = $getCol('employee_status', 11);
-                $statusInput = $normalizeStatus($statusRaw);
+                        $existingUser->fill($updateData);
+                        try {
+                            $existingUser->is_profile_completed = ($existingUser->profile_completeness >= 75);
+                        } catch (\Throwable $e) {}
+                        $existingUser->save();
+                        $savedUser = $existingUser;
 
-                // Skip header-like keywords if appeared in data
-                if (preg_match('/(nama|lengkap|wajib)/i', $nameInput) && preg_match('/(email|login|akun)/i', $emailInput)) {
-                    continue;
-                }
+                        // Update Quotas if specified
+                        if ($totalQuotaInput !== null || $remainingQuotaInput !== null) {
+                            $targetTotal = $totalQuotaInput !== null ? (float) $totalQuotaInput : (float) ($existingUser->currentQuota?->total_quota ?? 12.0);
+                            $this->quotaService->setQuota($existingUser->id, $targetTotal, $remainingQuotaInput);
+                        }
 
-                // Must have at least NIK or Name or Email
-                if (empty($nameInput) && empty($emailInput) && empty($nikInput)) {
-                    continue;
-                }
-
-                // 1. Find Existing User by Email OR by NIK
-                $existingUser = null;
-                if (!empty($emailInput)) {
-                    $existingUser = User::where('email', $emailInput)->first();
-                }
-                if (!$existingUser && !empty($nikInput)) {
-                    $existingUser = User::where('nik', $nikInput)->first();
-                }
-
-                // 2. Department Matching by Code or Name
-                $deptId = null;
-                if (!empty($deptInput)) {
-                    $matched = $departments->first(fn($d) => strcasecmp($d->code, $deptInput) === 0 || strcasecmp($d->name, $deptInput) === 0);
-                    $deptId = $matched?->id;
-                }
-
-                // 3. Safe NIK Handling
-                $nik = $nikInput;
-                if (empty($nik)) {
-                    if ($existingUser && !empty($existingUser->nik)) {
-                        $nik = $existingUser->nik;
+                        $updatedCount++;
                     } else {
-                        do {
-                            $nik = 'EMP-' . date('Y') . '-' . str_pad((string) rand(100, 9999), 4, '0', STR_PAD_LEFT);
-                        } while (User::where('nik', $nik)->exists());
+                        // CREATE NEW EMPLOYEE
+                        $cleanNik = !empty($nik) ? $nik : ('EMP-' . date('Y') . '-' . rand(100, 999));
+                        $userData = [
+                            'nik' => $cleanNik,
+                            'name' => $nameInput ?: 'Karyawan Baru',
+                            'email' => $emailInput ?: ($cleanNik . '@sugiyama.co.id'),
+                            'role' => $role ?: 'employee',
+                            'department_id' => $deptId,
+                            'employee_status' => $statusInput ?: 'Tetap',
+                            'position' => $positionInput ?: null,
+                            'gender' => $genderInput ?: null,
+                            'join_date' => $joinDateInput ?: null,
+                            'password' => !empty($passwordInput) ? Hash::make($passwordInput) : Hash::make('password123'),
+                        ];
+
+                        if (!empty($item['extra_fields']) && is_array($item['extra_fields'])) {
+                            foreach ($item['extra_fields'] as $k => $v) {
+                                if ($v !== null && $v !== '') {
+                                    $userData[$k] = $v;
+                                }
+                            }
+                        }
+
+                        $savedUser = User::create($userData);
+                        try {
+                            $savedUser->is_profile_completed = ($savedUser->profile_completeness >= 75);
+                            $savedUser->save();
+                        } catch (\Throwable $e) {}
+
+                        $targetTotal = $totalQuotaInput !== null ? (float) $totalQuotaInput : 12.0;
+                        $this->quotaService->setQuota($savedUser->id, $targetTotal, $remainingQuotaInput);
+                        $createdCount++;
                     }
+
+                    // Sync Spatie role
+                    $activeRole = $savedUser->role;
+                    if (method_exists($savedUser, 'syncRoles') && !empty($activeRole)) {
+                        try {
+                            if (class_exists('\\Spatie\\Permission\\Models\\Role')) {
+                                \Spatie\Permission\Models\Role::firstOrCreate(['name' => $activeRole, 'guard_name' => 'web']);
+                                $savedUser->syncRoles([$activeRole]);
+                            }
+                        } catch (\Throwable $e) {}
+                    }
+
+                    $successCount++;
                 }
-
-                if ($existingUser) {
-                    // =========================================================================
-                    // UPDATE EXISTING EMPLOYEE (UPDATE TANGGAL BERGABUNG & BIODATA)
-                    // =========================================================================
-                    $updateData = [];
-                    if (!empty($nameInput)) $updateData['name'] = $nameInput;
-                    if (!empty($nik) && (empty($existingUser->nik) || $existingUser->nik !== $nik)) {
-                        // Ensure NIK isn't colliding with another user
-                        if (!User::where('nik', $nik)->where('id', '!=', $existingUser->id)->exists()) {
-                            $updateData['nik'] = $nik;
-                        }
-                    }
-                    if (!empty($role)) $updateData['role'] = $role;
-                    if ($deptId !== null) $updateData['department_id'] = $deptId;
-                    if (!empty($statusInput)) $updateData['employee_status'] = $statusInput;
-                    if (!empty($positionInput)) $updateData['position'] = $positionInput;
-                    if (!empty($genderInput)) $updateData['gender'] = $genderInput;
-                    
-                    // Update Tanggal Bergabung
-                    if (!empty($joinDateInput)) {
-                        $updateData['join_date'] = $joinDateInput;
-                    }
-
-                    // Optional password update if provided
-                    if (!empty($passwordInput)) {
-                        $updateData['password'] = Hash::make($passwordInput);
-                    }
-
-                    // Extra biodata fields if present in header map
-                    $extraFields = [
-                        'education', 'ktp_number', 'birth_place', 'phone_number',
-                        'ktp_address', 'domicile_address', 'marital_status', 'npwp',
-                        'bpjs_kesehatan_number', 'bpjs_health_facility', 'bpjs_ketenagakerjaan_number',
-                        'bank_name', 'bank_account_number', 'vehicle_plate_number', 'sim_number',
-                        'shoe_size', 'blood_type', 'mother_maiden_name', 'kk_number'
-                    ];
-                    foreach ($extraFields as $f) {
-                        $val = $getCol($f, -1);
-                        if (!empty($val)) {
-                            $updateData[$f] = $val;
-                        }
-                    }
-                    if (!empty($getCol('birth_date', -1))) {
-                        $bDate = $normalizeDate($getCol('birth_date', -1));
-                        if ($bDate) $updateData['birth_date'] = $bDate;
-                    }
-                    if (!empty($getCol('sim_valid_until', -1))) {
-                        $sDate = $normalizeDate($getCol('sim_valid_until', -1));
-                        if ($sDate) $updateData['sim_valid_until'] = $sDate;
-                    }
-
-                    $existingUser->fill($updateData);
-                    try {
-                        $existingUser->is_profile_completed = ($existingUser->profile_completeness >= 75);
-                    } catch (\Throwable $e) {}
-                    $existingUser->save();
-                    $savedUser = $existingUser;
-
-                    // Update Quotas if specified
-                    if ($totalQuotaInput !== null || $remainingQuotaInput !== null) {
-                        $targetTotal = $totalQuotaInput !== null ? (float) $totalQuotaInput : (float) ($existingUser->currentQuota?->total_quota ?? 12.0);
-                        $this->quotaService->setQuota($existingUser->id, $targetTotal, $remainingQuotaInput);
-                    }
-
-                    $updatedCount++;
-                } else {
-                    // =========================================================================
-                    // CREATE NEW EMPLOYEE
-                    // =========================================================================
-                    $userData = [
-                        'nik' => $nik,
-                        'name' => $nameInput ?: 'Karyawan Baru',
-                        'email' => $emailInput ?: ($nik . '@sugiyama.co.id'),
-                        'role' => $role ?: 'employee',
-                        'department_id' => $deptId,
-                        'employee_status' => $statusInput ?: 'Tetap',
-                        'position' => $positionInput,
-                        'gender' => $genderInput,
-                        'join_date' => $joinDateInput,
-                        'password' => !empty($passwordInput) ? Hash::make($passwordInput) : Hash::make('password123'),
-                    ];
-
-                    $extraFields = [
-                        'education', 'ktp_number', 'birth_place', 'phone_number',
-                        'ktp_address', 'domicile_address', 'marital_status', 'npwp',
-                        'bpjs_kesehatan_number', 'bpjs_health_facility', 'bpjs_ketenagakerjaan_number',
-                        'bank_name', 'bank_account_number', 'vehicle_plate_number', 'sim_number',
-                        'shoe_size', 'blood_type', 'mother_maiden_name', 'kk_number'
-                    ];
-                    foreach ($extraFields as $f) {
-                        $val = $getCol($f, -1);
-                        if (!empty($val)) {
-                            $userData[$f] = $val;
-                        }
-                    }
-                    if (!empty($getCol('birth_date', -1))) {
-                        $bDate = $normalizeDate($getCol('birth_date', -1));
-                        if ($bDate) $userData['birth_date'] = $bDate;
-                    }
-                    if (!empty($getCol('sim_valid_until', -1))) {
-                        $sDate = $normalizeDate($getCol('sim_valid_until', -1));
-                        if ($sDate) $userData['sim_valid_until'] = $sDate;
-                    }
-
-                    $savedUser = User::create($userData);
-                    try {
-                        $savedUser->is_profile_completed = ($savedUser->profile_completeness >= 75);
-                        $savedUser->save();
-                    } catch (\Throwable $e) {}
-
-                    $targetTotal = $totalQuotaInput !== null ? (float) $totalQuotaInput : 12.0;
-                    $this->quotaService->setQuota($savedUser->id, $targetTotal, $remainingQuotaInput);
-                    $createdCount++;
-                }
-
-                // Sync Spatie role
-                $activeRole = $savedUser->role;
-                if (method_exists($savedUser, 'syncRoles') && !empty($activeRole)) {
-                    try {
-                        if (class_exists('\\Spatie\\Permission\\Models\\Role')) {
-                            \Spatie\Permission\Models\Role::firstOrCreate(['name' => $activeRole, 'guard_name' => 'web']);
-                            $savedUser->syncRoles([$activeRole]);
-                        }
-                    } catch (\Throwable $e) {}
-                }
-
-                $successCount++;
-            }
-
-            fclose($handle);
+            });
 
             if ($successCount === 0) {
-                return back()->with('error', 'Tidak ada data karyawan valid yang berhasil dibaca dari file. Pastikan format CSV sesuai template.');
+                return back()->with('error', 'Tidak ada data karyawan valid yang berhasil diproses.');
             }
 
             $msg = "Import berhasil! {$successCount} data karyawan diproses";
             if ($updatedCount > 0 && $createdCount > 0) {
-                $msg .= " ({$updatedCount} data karyawan diperbarui / update tanggal bergabung, {$createdCount} karyawan baru ditambahkan).";
+                $msg .= " ({$updatedCount} diperbarui / update tanggal bergabung, {$createdCount} karyawan baru ditambahkan).";
             } elseif ($updatedCount > 0) {
-                $msg .= " ({$updatedCount} data karyawan lama berhasil diperbarui / update tanggal bergabung).";
+                $msg .= " ({$updatedCount} data karyawan lama berhasil diperbarui).";
             } else {
-                $msg .= " ({$createdCount} karyawan baru ditambahkan).";
+                $msg .= " ({$createdCount} karyawan baru berhasil ditambahkan).";
             }
 
             return back()->with('success', $msg);
@@ -1083,6 +803,415 @@ class HrdController extends Controller
             \Illuminate\Support\Facades\Log::error('Import error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return back()->with('error', 'Gagal memproses import data: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Parse and structure employee data from uploaded CSV for live preview and import.
+     */
+    protected function parseEmployeeCsvFile(string $filePath): array
+    {
+        $handle = fopen($filePath, 'r');
+        if (!$handle) {
+            throw new \Exception('Tidak dapat membuka file CSV.');
+        }
+
+        // 1. Detect and strip UTF-8 BOM
+        $bom = fread($handle, 3);
+        if ($bom !== "\xEF\xBB\xBF") {
+            rewind($handle);
+        }
+
+        // 2. Automatic Delimiter Detection
+        $samplePos = ftell($handle);
+        $sampleLine = fgets($handle);
+        $delimiter = ',';
+        if ($sampleLine !== false) {
+            $commaCount = substr_count($sampleLine, ',');
+            $semiCount = substr_count($sampleLine, ';');
+            $tabCount = substr_count($sampleLine, "\t");
+
+            if ($semiCount > $commaCount && $semiCount > $tabCount) {
+                $delimiter = ';';
+            } elseif ($tabCount > $commaCount && $tabCount > $semiCount) {
+                $delimiter = "\t";
+            }
+        }
+        fseek($handle, $samplePos);
+
+        $departments = $this->departmentRepo->getAll();
+        $dbRoles = class_exists('\\Spatie\\Permission\\Models\\Role') ? \Spatie\Permission\Models\Role::pluck('name')->map(fn($r) => strtolower(trim($r)))->toArray() : [];
+        $validRoles = array_unique(array_merge(['employee', 'manager', 'admin', 'superadmin', 'supervisor'], $dbRoles));
+
+        $normalizeGender = function($val) {
+            if (empty($val)) return null;
+            $v = strtolower(trim((string) $val));
+            if (str_starts_with($v, 'l') || str_starts_with($v, 'm') || str_starts_with($v, 'pria')) {
+                return 'Laki-laki';
+            }
+            if (str_starts_with($v, 'p') || str_starts_with($v, 'w') || str_starts_with($v, 'f') || str_starts_with($v, 'wanita')) {
+                if ($v !== 'pria' && $v !== 'percobaan') {
+                    return 'Perempuan';
+                }
+            }
+            return null;
+        };
+
+        $normalizeStatus = function($val) {
+            if (empty($val)) return 'Tetap';
+            $v = trim((string) $val);
+            $vLower = strtolower($v);
+            if (in_array($vLower, ['pkwt', 'kontrak', 'karyawan kontrak', 'contract'])) {
+                return 'PKWT';
+            }
+            if (in_array($vLower, ['pkwtt', 'tetap', 'karyawan tetap', 'permanent'])) {
+                return 'Tetap';
+            }
+            if (in_array($vLower, ['magang', 'internship', 'intern', 'praktik', 'pkl', 'magang / internship'])) {
+                return 'Magang';
+            }
+            if (in_array($vLower, ['alih daya', 'alihdaya', 'outsourcing', 'outsource', 'os', 'alih daya (outsourcing)'])) {
+                return 'Alih Daya';
+            }
+            if (in_array($vLower, ['percobaan', 'probation', 'training', 'masa percobaan'])) {
+                return 'Percobaan';
+            }
+            return $v;
+        };
+
+        $normalizeDate = function($val) {
+            if (empty($val)) return null;
+            $v = trim((string) $val);
+            if ($v === '' || $v === '-' || $v === '0000-00-00' || strtolower($v) === 'null') return null;
+
+            if (is_numeric($v) && (int)$v > 20000 && (int)$v < 70000) {
+                try {
+                    $excelDate = (int)$v;
+                    $unix = ($excelDate - 25569) * 86400;
+                    return gmdate('Y-m-d', $unix);
+                } catch (\Throwable $e) {}
+            }
+
+            if (preg_match('/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/', $v, $m)) {
+                $d = (int)$m[1];
+                $mo = (int)$m[2];
+                $y = (int)$m[3];
+                if (checkdate($mo, $d, $y)) {
+                    return sprintf('%04d-%02d-%02d', $y, $mo, $d);
+                }
+            }
+
+            if (preg_match('/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/', $v, $m)) {
+                $y = (int)$m[1];
+                $mo = (int)$m[2];
+                $d = (int)$m[3];
+                if (checkdate($mo, $d, $y)) {
+                    return sprintf('%04d-%02d-%02d', $y, $mo, $d);
+                }
+            }
+
+            $idMonths = [
+                'januari' => 'January', 'februari' => 'February', 'maret' => 'March',
+                'april' => 'April', 'mei' => 'May', 'juni' => 'June',
+                'juli' => 'July', 'agustus' => 'August', 'september' => 'September',
+                'oktober' => 'October', 'november' => 'November', 'desember' => 'December',
+                'agu' => 'Aug', 'okt' => 'Oct', 'des' => 'Dec'
+            ];
+            $engV = str_ireplace(array_keys($idMonths), array_values($idMonths), $v);
+
+            try {
+                return \Carbon\Carbon::parse($engV)->format('Y-m-d');
+            } catch (\Throwable $e) {
+                return null;
+            }
+        };
+
+        $normalizeNumber = function($val) {
+            if ($val === null || trim((string)$val) === '') return null;
+            $v = trim(str_replace(',', '.', (string)$val));
+            return is_numeric($v) ? (float)$v : null;
+        };
+
+        $headerMap = [];
+        $headerFound = false;
+        $parsedRows = [];
+        $updateCount = 0;
+        $createCount = 0;
+        $warningCount = 0;
+
+        while (($row = fgetcsv($handle, 4000, $delimiter)) !== false) {
+            $col0 = trim($row[0] ?? '');
+            $col1 = trim($row[1] ?? '');
+            $col2 = trim($row[2] ?? '');
+
+            if (empty($col0) && empty($col1) && empty($col2) && count(array_filter($row)) === 0) {
+                continue;
+            }
+
+            if (str_starts_with($col0, '#') || 
+                str_starts_with($col0, '=') || 
+                str_starts_with($col0, '-') || 
+                preg_match('/^(tutorial|panduan|petunjuk|daftar|catatan|kode|urutan|langkah)/i', $col0)) {
+                continue;
+            }
+
+            $rowCombined = strtolower(implode(' ', $row));
+            if (!$headerFound && (
+                (str_contains($rowCombined, 'nama') || str_contains($rowCombined, 'name')) &&
+                (str_contains($rowCombined, 'email') || str_contains($rowCombined, 'nik') || str_contains($rowCombined, 'departemen') || str_contains($rowCombined, 'bergabung') || str_contains($rowCombined, 'join') || str_contains($rowCombined, 'status'))
+            )) {
+                $headerFound = true;
+                foreach ($row as $colIdx => $headerTitle) {
+                    $clean = strtolower(trim(preg_replace('/[^a-zA-Z0-9]/', '', (string)$headerTitle)));
+                    if (str_contains($clean, 'nik')) {
+                        if (str_contains($clean, 'ktp')) {
+                            $headerMap['ktp_number'] = $colIdx;
+                        } elseif (!isset($headerMap['nik'])) {
+                            $headerMap['nik'] = $colIdx;
+                        }
+                    } elseif (str_contains($clean, 'nama') || str_contains($clean, 'name')) {
+                        if (str_contains($clean, 'ibu')) {
+                            $headerMap['mother_maiden_name'] = $colIdx;
+                        } elseif (str_contains($clean, 'pasangan')) {
+                            $headerMap['spouse_name'] = $colIdx;
+                        } elseif (str_contains($clean, 'darurat')) {
+                            $headerMap['emergency_contact_name'] = $colIdx;
+                        } elseif (str_contains($clean, 'bank')) {
+                            $headerMap['bank_name'] = $colIdx;
+                        } elseif (!isset($headerMap['name'])) {
+                            $headerMap['name'] = $colIdx;
+                        }
+                    } elseif (str_contains($clean, 'email')) {
+                        $headerMap['email'] = $colIdx;
+                    } elseif (str_contains($clean, 'password')) {
+                        $headerMap['password'] = $colIdx;
+                    } elseif (str_contains($clean, 'role')) {
+                        $headerMap['role'] = $colIdx;
+                    } elseif (str_contains($clean, 'departemen') || str_contains($clean, 'department')) {
+                        $headerMap['department'] = $colIdx;
+                    } elseif (str_contains($clean, 'jabatan') || str_contains($clean, 'posisi') || str_contains($clean, 'position')) {
+                        $headerMap['position'] = $colIdx;
+                    } elseif (str_contains($clean, 'gender') || str_contains($clean, 'kelamin')) {
+                        $headerMap['gender'] = $colIdx;
+                    } elseif (str_contains($clean, 'tanggalbergabung') || str_contains($clean, 'tanggalmasuk') || str_contains($clean, 'tglmasuk') || str_contains($clean, 'joindate') || str_contains($clean, 'bergabung')) {
+                        $headerMap['join_date'] = $colIdx;
+                    } elseif (str_contains($clean, 'totalkuota') || str_contains($clean, 'jatahkuota') || str_contains($clean, 'totaljatah') || str_contains($clean, 'totalquota')) {
+                        $headerMap['total_quota'] = $colIdx;
+                    } elseif (str_contains($clean, 'sisakuota') || str_contains($clean, 'remainingquota')) {
+                        $headerMap['remaining_quota'] = $colIdx;
+                    } elseif (str_contains($clean, 'statuskaryawan') || $clean === 'status') {
+                        $headerMap['employee_status'] = $colIdx;
+                    } elseif (str_contains($clean, 'pendidikan') || str_contains($clean, 'education')) {
+                        $headerMap['education'] = $colIdx;
+                    } elseif (str_contains($clean, 'noktp') || str_contains($clean, 'nikktp')) {
+                        $headerMap['ktp_number'] = $colIdx;
+                    } elseif (str_contains($clean, 'tempatlahir')) {
+                        $headerMap['birth_place'] = $colIdx;
+                    } elseif (str_contains($clean, 'tanggallahir')) {
+                        $headerMap['birth_date'] = $colIdx;
+                    } elseif (str_contains($clean, 'nohp') || str_contains($clean, 'telepon')) {
+                        $headerMap['phone_number'] = $colIdx;
+                    } elseif (str_contains($clean, 'alamatktp')) {
+                        $headerMap['ktp_address'] = $colIdx;
+                    } elseif (str_contains($clean, 'alamatdomisili')) {
+                        $headerMap['domicile_address'] = $colIdx;
+                    } elseif (str_contains($clean, 'statusnikah') || str_contains($clean, 'statuskawin')) {
+                        $headerMap['marital_status'] = $colIdx;
+                    } elseif (str_contains($clean, 'npwp')) {
+                        $headerMap['npwp'] = $colIdx;
+                    } elseif (str_contains($clean, 'bpjskesehatan')) {
+                        $headerMap['bpjs_kesehatan_number'] = $colIdx;
+                    } elseif (str_contains($clean, 'faskes')) {
+                        $headerMap['bpjs_health_facility'] = $colIdx;
+                    } elseif (str_contains($clean, 'bpjsketenagakerjaan') || str_contains($clean, 'bpjstku')) {
+                        $headerMap['bpjs_ketenagakerjaan_number'] = $colIdx;
+                    } elseif (str_contains($clean, 'bank') || str_contains($clean, 'namabank')) {
+                        $headerMap['bank_name'] = $colIdx;
+                    } elseif (str_contains($clean, 'norekening') || str_contains($clean, 'rekening')) {
+                        $headerMap['bank_account_number'] = $colIdx;
+                    } elseif (str_contains($clean, 'nopol') || str_contains($clean, 'kendaraan')) {
+                        $headerMap['vehicle_plate_number'] = $colIdx;
+                    } elseif (str_contains($clean, 'nosim') || str_contains($clean, 'simnumber')) {
+                        $headerMap['sim_number'] = $colIdx;
+                    } elseif (str_contains($clean, 'masaberlakusim')) {
+                        $headerMap['sim_valid_until'] = $colIdx;
+                    } elseif (str_contains($clean, 'sepatu') || str_contains($clean, 'shoesize')) {
+                        $headerMap['shoe_size'] = $colIdx;
+                    } elseif (str_contains($clean, 'goldarah') || str_contains($clean, 'bloodtype')) {
+                        $headerMap['blood_type'] = $colIdx;
+                    } elseif (str_contains($clean, 'nokk') || str_contains($clean, 'kknumber')) {
+                        $headerMap['kk_number'] = $colIdx;
+                    }
+                }
+                continue;
+            }
+
+            $getCol = function($key, $posFallback) use ($row, $headerMap) {
+                if (isset($headerMap[$key]) && isset($row[$headerMap[$key]])) {
+                    return trim((string) $row[$headerMap[$key]]);
+                }
+                if (isset($row[$posFallback])) {
+                    return trim((string) $row[$posFallback]);
+                }
+                return '';
+            };
+
+            $nikInput = $getCol('nik', 0);
+            $nameInput = $getCol('name', 1);
+            $emailInput = strtolower($getCol('email', 2));
+            $passwordInput = $getCol('password', 3);
+            $inputRole = strtolower($getCol('role', 4));
+            $role = in_array($inputRole, $validRoles) ? $inputRole : 'employee';
+            $deptInput = $getCol('department', 5);
+            $positionInput = $getCol('position', 6);
+            $genderRaw = $getCol('gender', 7);
+            $genderInput = $normalizeGender($genderRaw);
+            $joinDateRaw = $getCol('join_date', 8);
+            $joinDateInput = $normalizeDate($joinDateRaw);
+            $totalQuotaRaw = $getCol('total_quota', 9);
+            $totalQuotaInput = $normalizeNumber($totalQuotaRaw);
+            $remainingQuotaRaw = $getCol('remaining_quota', 10);
+            $remainingQuotaInput = $normalizeNumber($remainingQuotaRaw);
+            $statusRaw = $getCol('employee_status', 11);
+            $statusInput = $normalizeStatus($statusRaw);
+
+            if (preg_match('/(nama|lengkap|wajib)/i', $nameInput) && preg_match('/(email|login|akun)/i', $emailInput)) {
+                continue;
+            }
+
+            // Department Matching
+            $deptId = null;
+            $deptName = 'General';
+            if (!empty($deptInput)) {
+                $matchedDept = $departments->first(function($d) use ($deptInput) {
+                    return strcasecmp($d->name, $deptInput) === 0 || strcasecmp($d->code, $deptInput) === 0;
+                });
+                if ($matchedDept) {
+                    $deptId = $matchedDept->id;
+                    $deptName = $matchedDept->name;
+                } else {
+                    $deptName = $deptInput;
+                }
+            }
+
+            // Extra Biodata Fields
+            $extraFields = [
+                'education', 'ktp_number', 'birth_place', 'phone_number',
+                'ktp_address', 'domicile_address', 'marital_status', 'npwp',
+                'bpjs_kesehatan_number', 'bpjs_health_facility', 'bpjs_ketenagakerjaan_number',
+                'bank_name', 'bank_account_number', 'vehicle_plate_number', 'sim_number',
+                'shoe_size', 'blood_type', 'mother_maiden_name', 'kk_number'
+            ];
+            $extraData = [];
+            foreach ($extraFields as $f) {
+                $val = $getCol($f, -1);
+                if (!empty($val)) {
+                    $extraData[$f] = $val;
+                }
+            }
+            if (!empty($getCol('birth_date', -1))) {
+                $bDate = $normalizeDate($getCol('birth_date', -1));
+                if ($bDate) $extraData['birth_date'] = $bDate;
+            }
+            if (!empty($getCol('sim_valid_until', -1))) {
+                $sDate = $normalizeDate($getCol('sim_valid_until', -1));
+                if ($sDate) $extraData['sim_valid_until'] = $sDate;
+            }
+
+            // Check if existing user
+            $existingUser = null;
+            if (!empty($nikInput)) {
+                $existingUser = User::with(['department', 'currentQuota'])->where('nik', $nikInput)->first();
+            }
+            if (!$existingUser && !empty($emailInput)) {
+                $existingUser = User::with(['department', 'currentQuota'])->where('email', $emailInput)->first();
+            }
+
+            $warnings = [];
+            $changesSummary = [];
+
+            if ($existingUser) {
+                $action = 'update';
+                $updateCount++;
+
+                if (!empty($joinDateInput)) {
+                    $changesSummary[] = "Update Tgl Bergabung: " . date('d M Y', strtotime($joinDateInput));
+                }
+                if (!empty($statusInput) && $statusInput !== $existingUser->employee_status) {
+                    $changesSummary[] = "Status berubah: {$existingUser->employee_status} → {$statusInput}";
+                }
+                if ($totalQuotaInput !== null || $remainingQuotaInput !== null) {
+                    $changesSummary[] = "Update Kuota Cuti (Total: " . ($totalQuotaInput ?? $existingUser->currentQuota?->total_quota ?? 12) . ", Sisa: " . ($remainingQuotaInput ?? $existingUser->currentQuota?->remaining_quota ?? 12) . " Hari)";
+                }
+                if (!empty($positionInput) && $positionInput !== $existingUser->position) {
+                    $changesSummary[] = "Posisi: {$positionInput}";
+                }
+                if ($deptId && $deptId !== $existingUser->department_id) {
+                    $changesSummary[] = "Dept: {$deptName}";
+                }
+                if (!empty($passwordInput)) {
+                    $changesSummary[] = "Password akun diperbarui";
+                }
+                if (empty($changesSummary)) {
+                    $changesSummary[] = "Sinkronisasi biodata & akun";
+                }
+            } else {
+                $action = 'create';
+                $createCount++;
+
+                if (empty($emailInput) && empty($nikInput)) {
+                    $warnings[] = "Email dan NIK kosong. NIK & Email default akan dibuat otomatis.";
+                } elseif (empty($emailInput)) {
+                    $warnings[] = "Email kosong. Akan dibuat: {$nikInput}@sugiyama.co.id";
+                }
+                if (empty($nameInput)) {
+                    $warnings[] = "Nama kosong. Default: 'Karyawan Baru'";
+                }
+                if (empty($joinDateInput) && !empty($joinDateRaw)) {
+                    $warnings[] = "Format tanggal '{$joinDateRaw}' tidak terbaca, gunakan YYYY-MM-DD.";
+                }
+
+                $changesSummary[] = "Karyawan baru dibuat ({$statusInput})";
+            }
+
+            if (!empty($warnings)) {
+                $warningCount++;
+            }
+
+            $parsedRows[] = [
+                'action' => $action,
+                'existing_user_id' => $existingUser?->id,
+                'existing_user_name' => $existingUser?->name,
+                'nik' => $nikInput,
+                'name' => $nameInput ?: ($existingUser?->name ?: 'Karyawan Baru'),
+                'email' => $emailInput ?: ($existingUser?->email ?: ''),
+                'department_id' => $deptId,
+                'department_name' => $deptName,
+                'position' => $positionInput ?: ($existingUser?->position ?: '-'),
+                'role' => $role,
+                'gender' => $genderInput ?: ($existingUser?->gender ?: '-'),
+                'join_date' => $joinDateInput,
+                'join_date_formatted' => $joinDateInput ? date('d M Y', strtotime($joinDateInput)) : ($joinDateRaw ?: '-'),
+                'employee_status' => $statusInput,
+                'total_quota' => $totalQuotaInput,
+                'remaining_quota' => $remainingQuotaInput,
+                'password' => $passwordInput,
+                'extra_fields' => $extraData,
+                'warnings' => $warnings,
+                'changes_summary' => $changesSummary,
+            ];
+        }
+
+        fclose($handle);
+
+        return [
+            'summary' => [
+                'total' => count($parsedRows),
+                'update_count' => $updateCount,
+                'create_count' => $createCount,
+                'warning_count' => $warningCount,
+            ],
+            'rows' => $parsedRows,
+        ];
     }
 
     public function exportBiodataCsv(Request $request): StreamedResponse

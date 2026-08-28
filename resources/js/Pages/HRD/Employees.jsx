@@ -27,7 +27,15 @@ import {
   Sliders,
   FileText,
   Printer,
-  Info
+  Info,
+  CheckCircle2,
+  ArrowLeft,
+  CheckCheck,
+  FileCheck,
+  AlertCircle,
+  Sparkles,
+  RefreshCw,
+  Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -115,13 +123,30 @@ export default function HrdEmployees({ employees = [], departments = [], manager
   const [addAvatarPreview, setAddAvatarPreview] = useState(null);
   const [editAvatarPreview, setEditAvatarPreview] = useState(null);
 
+  // Import States & Step Management (2-Step Import with Interactive Preview)
+  const [importStep, setImportStep] = useState('upload'); // 'upload' | 'preview'
+  const [previewData, setPreviewData] = useState(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [previewFilter, setPreviewFilter] = useState('all'); // 'all' | 'update' | 'create' | 'warning'
+  const [previewSearch, setPreviewSearch] = useState('');
+  const [isCommitting, setIsCommitting] = useState(false);
+
   // Form for Importing Excel/CSV
   const importForm = useForm({
     file: null,
   });
 
-  const handleImportSubmit = (e) => {
-    e.preventDefault();
+  const handleOpenImportModal = () => {
+    setImportStep('upload');
+    setPreviewData(null);
+    setPreviewFilter('all');
+    setPreviewSearch('');
+    importForm.reset();
+    setIsImportOpen(true);
+  };
+
+  const handlePreviewUpload = async (e) => {
+    e?.preventDefault();
     if (!importForm.data.file) {
       showAlert({
         title: 'File Belum Dipilih',
@@ -130,13 +155,65 @@ export default function HrdEmployees({ employees = [], departments = [], manager
       });
       return;
     }
-    importForm.post(route('hrd.employees.import'), {
-      forceFormData: true,
+
+    setIsPreviewLoading(true);
+    const formData = new FormData();
+    formData.append('file', importForm.data.file);
+
+    try {
+      const response = await fetch(route('hrd.employees.import.preview'), {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+          'Accept': 'application/json',
+        },
+        body: formData,
+      });
+
+      const resJson = await response.json();
+
+      if (!response.ok || !resJson.success) {
+        throw new Error(resJson.error || 'Gagal membaca format file CSV.');
+      }
+
+      setPreviewData(resJson);
+      setImportStep('preview');
+      showToast(`Berhasil membaca ${resJson.summary.total} data karyawan! Silakan crosscheck.`);
+    } catch (err) {
+      showAlert({
+        title: 'Gagal Membaca File',
+        text: err.message || 'Terjadi kesalahan saat memproses file CSV. Pastikan format kolom sesuai template.',
+        icon: 'error'
+      });
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
+
+  const handleConfirmImport = () => {
+    if (!previewData || !previewData.rows || previewData.rows.length === 0) return;
+
+    setIsCommitting(true);
+    router.post(route('hrd.employees.import'), {
+      confirmed_rows: previewData.rows,
+    }, {
+      preserveScroll: true,
       onSuccess: () => {
         setIsImportOpen(false);
-        importForm.reset();
-        showToast('Proses import data karyawan berhasil dijalankan.');
+        setImportStep('upload');
+        setPreviewData(null);
+        showToast('Data karyawan berhasil di-import dan disimpan ke sistem!');
       },
+      onError: (errors) => {
+        showAlert({
+          title: 'Import Gagal',
+          text: Object.values(errors).join('\n') || 'Terjadi kesalahan saat menyimpan data ke database.',
+          icon: 'error'
+        });
+      },
+      onFinish: () => {
+        setIsCommitting(false);
+      }
     });
   };
 
@@ -344,7 +421,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
             </a>
 
             <button
-              onClick={() => setIsImportOpen(true)}
+              onClick={handleOpenImportModal}
               className="px-4 py-2.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-extrabold text-xs shadow-sm flex items-center space-x-2 transition-all duration-200"
             >
               <FileSpreadsheet size={16} className="text-emerald-600" />
@@ -1641,148 +1718,481 @@ export default function HrdEmployees({ employees = [], departments = [], manager
           </div>
         )}
 
-        {/* MODAL 5: IMPORT EXCEL / CSV KARYAWAN */}
+        {/* MODAL 5: IMPORT EXCEL / CSV KARYAWAN DENGAN LIVE PREVIEW & CROSSCHECK */}
         {isImportOpen && (
-          <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-3 sm:p-4 flex min-h-full items-center justify-center animate-fade-in">
-            <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setIsImportOpen(false)} />
-            <div className="relative z-10 w-full max-w-lg p-4 sm:p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-5 my-auto max-h-[90vh] overflow-y-auto overflow-x-hidden">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-3 sm:pb-4">
+          <div className="fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden p-2 sm:p-4 flex min-h-full items-center justify-center animate-fade-in">
+            <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm" onClick={() => !isCommitting && !isPreviewLoading && setIsImportOpen(false)} />
+            
+            <div className={`relative z-10 w-full ${importStep === 'preview' ? 'max-w-6xl' : 'max-w-2xl'} p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-4 sm:space-y-5 my-auto max-h-[94vh] flex flex-col transition-all duration-300`}>
+              
+              {/* Modal Header & Breadcrumb */}
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3 sm:pb-4 shrink-0">
                 <div className="flex items-center space-x-3 min-w-0">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shrink-0">
-                    <FileSpreadsheet size={20} />
+                  <div className={`w-10 h-10 rounded-2xl ${importStep === 'preview' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'} flex items-center justify-center font-bold shrink-0 transition-colors`}>
+                    {importStep === 'preview' ? <Eye size={20} /> : <FileSpreadsheet size={20} />}
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">Import Data Karyawan</h3>
-                    <p className="text-[11px] sm:text-xs text-slate-500 truncate">Migrasi massal data staf dari template Excel / CSV</p>
+                    <div className="flex items-center space-x-2">
+                      <h3 className="text-sm sm:text-base font-black text-slate-900 truncate">
+                        {importStep === 'preview' ? 'Crosscheck & Validasi Data Import' : 'Import Data Karyawan (CSV / Excel)'}
+                      </h3>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                        importStep === 'preview' ? 'bg-indigo-100 text-indigo-800' : 'bg-emerald-100 text-emerald-800'
+                      }`}>
+                        {importStep === 'preview' ? 'Langkah 2 dari 2' : 'Langkah 1 dari 2'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] sm:text-xs text-slate-500 truncate">
+                      {importStep === 'preview'
+                        ? 'Tinjau baris data, status update karyawan lama, dan penambahan karyawan baru sebelum disimpan'
+                        : 'Migrasi massal data staf, update tanggal bergabung, jabatan, dan kuota cuti tahunan'}
+                    </p>
                   </div>
                 </div>
-                <button onClick={() => setIsImportOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 shrink-0">
+
+                <button
+                  disabled={isCommitting || isPreviewLoading}
+                  onClick={() => setIsImportOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 shrink-0 disabled:opacity-40"
+                >
                   <X size={18} />
                 </button>
               </div>
 
-              {/* Step 1: Download Template */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3.5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                  <div>
-                    <span className="text-xs font-black text-slate-900 uppercase tracking-wider block">Langkah 1: Format Template CSV (12 Kolom Lengkap)</span>
-                    <span className="text-[11px] text-slate-500">Mendukung tambah staf baru maupun update massal Tanggal Bergabung, Kuota Cuti, Jabatan & Jenis Kelamin.</span>
+              {/* STEP 1: UPLOAD & PANDUAN CSV */}
+              {importStep === 'upload' && (
+                <div className="space-y-4 overflow-y-auto pr-1">
+                  {/* Step 1.1: Download Template */}
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div>
+                        <span className="text-xs font-black text-slate-900 uppercase tracking-wider block">Format Template CSV (12 Kolom Lengkap)</span>
+                        <span className="text-[11px] text-slate-500">Mendukung tambah staf baru maupun update massal Tanggal Bergabung, Kuota Cuti, Jabatan, & Status Karyawan.</span>
+                      </div>
+                      <a
+                        href={route('hrd.employees.template')}
+                        download
+                        className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center space-x-1.5 shadow-md shadow-emerald-600/20 transition-all self-start sm:self-auto shrink-0"
+                      >
+                        <Download size={14} />
+                        <span>Download Template CSV</span>
+                      </a>
+                    </div>
+
+                    {/* 12 Columns Guide */}
+                    <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-700">Struktur 12 Kolom Template:</span>
+                        <span className="text-[10px] font-bold text-slate-400">Urutan Kolom</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold">1. NIK SGIN (Opsional)</span>
+                        <span className="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-extrabold">2. Nama Lengkap (Wajib) *</span>
+                        <span className="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-extrabold">3. Email Login (Wajib) *</span>
+                        <span className="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 text-[10px] font-bold">4. Password (Opsional)</span>
+                        <span className="px-2 py-0.5 rounded-lg bg-purple-50 text-purple-800 border border-purple-200 text-[10px] font-bold">5. Role (Opsional)</span>
+                        <span className="px-2 py-0.5 rounded-lg bg-teal-50 text-teal-800 border border-teal-200 text-[10px] font-bold">6. Departemen (Opsional)</span>
+                        <span className="px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-300 text-[10px] font-black">7. Jabatan / Posisi 💼</span>
+                        <span className="px-2 py-0.5 rounded-lg bg-pink-50 text-pink-900 border border-pink-300 text-[10px] font-black">8. Jenis Kelamin (L/P) 👤</span>
+                        <span className="px-2 py-0.5 rounded-lg bg-sky-50 text-sky-900 border border-sky-300 text-[10px] font-black">9. Tanggal Bergabung 📅</span>
+                        <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-300 text-[10px] font-black">10. Total Jatah Kuota (Thn) 🎯</span>
+                        <span className="px-2 py-0.5 rounded-lg bg-lime-50 text-lime-900 border border-lime-300 text-[10px] font-black">11. Sisa Kuota Cuti (Desimal / 3.5) ⏳</span>
+                        <span className="px-2 py-0.5 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black">12. Status (PKWT / Magang / Alih Daya / Tetap)</span>
+                      </div>
+                    </div>
+
+                    {/* Batch Update Tip */}
+                    <div className="p-2.5 rounded-xl bg-blue-50/80 border border-blue-200 text-[11px] text-blue-900 space-y-1">
+                      <span className="font-extrabold flex items-center space-x-1">
+                        <span>💡 Tips Update Massal Karyawan Lama:</span>
+                      </span>
+                      <p className="text-[11px] text-blue-800 leading-relaxed">
+                        Cukup masukkan <strong>Email</strong> atau <strong>NIK</strong> karyawan yang sudah ada di CSV, lalu isi kolom <strong>Tanggal Bergabung</strong>, <strong>Status</strong>, atau <strong>Sisa Kuota (misal: 3.5)</strong>. Setelah diunggah, Anda akan melihat layar preview untuk memverifikasi data sebelum disimpan ke database.
+                      </p>
+                    </div>
                   </div>
-                  <a
-                    href={route('hrd.employees.template')}
-                    download
-                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center space-x-1.5 shadow-md shadow-emerald-600/20 transition-all self-start sm:self-auto shrink-0"
-                  >
-                    <Download size={14} />
-                    <span>Download Template CSV</span>
-                  </a>
+
+                  {/* Step 1.2: File Selector Form */}
+                  <form onSubmit={handlePreviewUpload} className="space-y-4">
+                    <div className="min-w-0">
+                      <label className="block text-[11px] sm:text-xs font-black text-slate-900 uppercase tracking-wider mb-1.5">
+                        Pilih File CSV / Excel
+                      </label>
+                      <div className="p-5 sm:p-7 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-300 hover:border-emerald-500 text-center transition-all">
+                        <UploadCloud size={36} className="mx-auto text-emerald-600 mb-2" />
+                        <input
+                          type="file"
+                          accept=".csv, .txt, .xlsx"
+                          onChange={(e) => importForm.setData('file', e.target.files[0])}
+                          className="hidden"
+                          id="employee-import-input"
+                          required
+                        />
+                        <label
+                          htmlFor="employee-import-input"
+                          className="cursor-pointer text-xs sm:text-sm font-bold text-emerald-600 hover:underline block truncate px-2"
+                        >
+                          {importForm.data.file ? importForm.data.file.name : 'Klik di sini untuk memilih file CSV / Excel'}
+                        </label>
+                        <span className="text-[10px] sm:text-[11px] text-slate-400 block mt-1">Format yang didukung: .csv, .txt, .xlsx (maks 15MB)</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => setIsImportOpen(false)}
+                        className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isPreviewLoading || !importForm.data.file}
+                        className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-md shadow-emerald-600/20 disabled:opacity-50 transition-all flex items-center space-x-2"
+                      >
+                        {isPreviewLoading ? (
+                          <>
+                            <RefreshCw size={14} className="animate-spin" />
+                            <span>Membaca & Memvalidasi File...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Eye size={14} />
+                            <span>Lanjut ke Preview Data ({importForm.data.file ? importForm.data.file.name.slice(0, 16) + '...' : 'Pilih File'})</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
                 </div>
+              )}
 
-                {/* 12 Columns Guide with distinct colors */}
-                <div className="space-y-2.5 text-xs">
-                  <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-black uppercase tracking-wider text-slate-700">Struktur 12 Kolom Template:</span>
-                      <span className="text-[10px] font-bold text-slate-400">Urutan Kolom</span>
+              {/* STEP 2: INTERACTIVE LIVE PREVIEW & CROSSCHECK TABLE */}
+              {importStep === 'preview' && previewData && (
+                <div className="space-y-4 flex-1 flex flex-col min-h-0 overflow-hidden">
+                  
+                  {/* Summary Metric Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 shrink-0">
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center space-x-3">
+                      <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold shrink-0">
+                        <Users size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider truncate">Total Baris</span>
+                        <span className="text-base font-black text-slate-900">{previewData.summary.total} Data</span>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold">1. NIK SGIN (Opsional)</span>
-                      <span className="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-extrabold">2. Nama Lengkap (Wajib) *</span>
-                      <span className="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-extrabold">3. Email Login (Wajib) *</span>
-                      <span className="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 text-[10px] font-bold">4. Password (Opsional)</span>
-                      <span className="px-2 py-0.5 rounded-lg bg-purple-50 text-purple-800 border border-purple-200 text-[10px] font-bold">5. Role (Opsional)</span>
-                      <span className="px-2 py-0.5 rounded-lg bg-teal-50 text-teal-800 border border-teal-200 text-[10px] font-bold">6. Departemen (Opsional)</span>
-                      <span className="px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-300 text-[10px] font-black">7. Jabatan / Posisi 💼</span>
-                      <span className="px-2 py-0.5 rounded-lg bg-pink-50 text-pink-900 border border-pink-300 text-[10px] font-black">8. Jenis Kelamin (L/P) 👤</span>
-                      <span className="px-2 py-0.5 rounded-lg bg-sky-50 text-sky-900 border border-sky-300 text-[10px] font-black">9. Tanggal Bergabung 📅</span>
-                      <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-300 text-[10px] font-black">10. Total Jatah Kuota (Thn) 🎯</span>
-                      <span className="px-2 py-0.5 rounded-lg bg-lime-50 text-lime-900 border border-lime-300 text-[10px] font-black">11. Sisa Kuota Cuti ⏳</span>
-                      <span className="px-2 py-0.5 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black">12. Status (PKWT / Magang / Alih Daya / Tetap)</span>
+
+                    <div className="p-3 rounded-2xl bg-blue-50/70 border border-blue-200 flex items-center space-x-3">
+                      <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold shrink-0">
+                        <RefreshCw size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-bold text-blue-600 block uppercase tracking-wider truncate">Update Lama</span>
+                        <span className="text-base font-black text-blue-900">{previewData.summary.update_count} Data</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200 flex items-center space-x-3">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shrink-0">
+                        <UserPlus size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-bold text-emerald-600 block uppercase tracking-wider truncate">Karyawan Baru</span>
+                        <span className="text-base font-black text-emerald-900">{previewData.summary.create_count} Data</span>
+                      </div>
+                    </div>
+
+                    <div className={`p-3 rounded-2xl ${previewData.summary.warning_count > 0 ? 'bg-amber-50/80 border-amber-200' : 'bg-slate-50 border-slate-200'} border flex items-center space-x-3`}>
+                      <div className={`w-9 h-9 rounded-xl ${previewData.summary.warning_count > 0 ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-600'} flex items-center justify-center font-bold shrink-0`}>
+                        <AlertCircle size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider truncate">Catatan / Warning</span>
+                        <span className={`text-base font-black ${previewData.summary.warning_count > 0 ? 'text-amber-900' : 'text-slate-900'}`}>{previewData.summary.warning_count} Baris</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Filter Tabs & Search Bar */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shrink-0 bg-slate-50/80 p-2 rounded-2xl border border-slate-200/80">
+                    <div className="flex flex-wrap items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewFilter('all')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          previewFilter === 'all'
+                            ? 'bg-slate-900 text-white shadow-sm'
+                            : 'text-slate-600 hover:bg-slate-200/60'
+                        }`}
+                      >
+                        Semua ({previewData.summary.total})
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setPreviewFilter('update')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          previewFilter === 'update'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'text-blue-700 hover:bg-blue-100/60'
+                        }`}
+                      >
+                        Update Lama ({previewData.summary.update_count})
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setPreviewFilter('create')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          previewFilter === 'create'
+                            ? 'bg-emerald-600 text-white shadow-sm'
+                            : 'text-emerald-700 hover:bg-emerald-100/60'
+                        }`}
+                      >
+                        Karyawan Baru ({previewData.summary.create_count})
+                      </button>
+
+                      {previewData.summary.warning_count > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setPreviewFilter('warning')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                            previewFilter === 'warning'
+                              ? 'bg-amber-600 text-white shadow-sm'
+                              : 'text-amber-700 hover:bg-amber-100/60'
+                          }`}
+                        >
+                          Ada Catatan ({previewData.summary.warning_count})
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="relative min-w-[200px] sm:w-64">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        value={previewSearch}
+                        onChange={(e) => setPreviewSearch(e.target.value)}
+                        placeholder="Cari nama, NIK, email, dept..."
+                        className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder-slate-400 text-xs font-semibold focus:border-indigo-500 outline-none shadow-2xs"
+                      />
+                      {previewSearch && (
+                        <button onClick={() => setPreviewSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                          <X size={12} />
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  {/* Batch Update Tip */}
-                  <div className="p-2.5 rounded-xl bg-blue-50/80 border border-blue-200 text-[11px] text-blue-900 space-y-1">
-                    <span className="font-extrabold flex items-center space-x-1">
-                      <span>💡 Tips Update Massal Karyawan Lama:</span>
-                    </span>
-                    <p className="text-[11px] text-blue-800 leading-relaxed">
-                      Cukup masukkan <strong>Email</strong> atau <strong>NIK</strong> karyawan yang sudah ada di CSV, lalu isi kolom <strong>Tanggal Bergabung</strong>, <strong>Total Kuota</strong>, <strong>Sisa Kuota</strong>, <strong>Jabatan</strong>, atau <strong>Jenis Kelamin</strong>. Password lama karyawan <strong>tidak akan ter-reset</strong> jika kolom password dikosongkan.
-                    </p>
+                  {/* Scrollable Crosscheck Table */}
+                  <div className="flex-1 overflow-auto rounded-2xl border border-slate-200 bg-white min-h-[220px] max-h-[46vh] shadow-inner">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="sticky top-0 z-10 bg-slate-100/95 backdrop-blur-xs text-slate-700 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200">
+                        <tr>
+                          <th className="py-2.5 px-3 w-10 text-center">#</th>
+                          <th className="py-2.5 px-3">Tindakan</th>
+                          <th className="py-2.5 px-3">NIK & Nama Lengkap</th>
+                          <th className="py-2.5 px-3">Departemen & Posisi</th>
+                          <th className="py-2.5 px-3">Status Karyawan</th>
+                          <th className="py-2.5 px-3">Tgl Bergabung</th>
+                          <th className="py-2.5 px-3">Kuota Cuti</th>
+                          <th className="py-2.5 px-3">Detail & Catatan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-700">
+                        {(() => {
+                          const rows = (previewData?.rows || []).filter((row) => {
+                            if (previewFilter === 'update' && row.action !== 'update') return false;
+                            if (previewFilter === 'create' && row.action !== 'create') return false;
+                            if (previewFilter === 'warning' && (!row.warnings || row.warnings.length === 0)) return false;
+
+                            if (previewSearch) {
+                              const q = previewSearch.toLowerCase();
+                              const matchName = (row.name || '').toLowerCase().includes(q);
+                              const matchNik = (row.nik || '').toLowerCase().includes(q);
+                              const matchEmail = (row.email || '').toLowerCase().includes(q);
+                              const matchDept = (row.department_name || '').toLowerCase().includes(q);
+                              const matchPos = (row.position || '').toLowerCase().includes(q);
+                              const matchStatus = (row.employee_status || '').toLowerCase().includes(q);
+                              return matchName || matchNik || matchEmail || matchDept || matchPos || matchStatus;
+                            }
+                            return true;
+                          });
+
+                          if (rows.length === 0) {
+                            return (
+                              <tr>
+                                <td colSpan={8} className="py-10 text-center text-slate-400">
+                                  <FileSpreadsheet size={32} className="mx-auto text-slate-300 mb-2" />
+                                  <p className="text-xs font-bold text-slate-500">Tidak ada baris data yang cocok dengan filter atau pencarian.</p>
+                                </td>
+                              </tr>
+                            );
+                          }
+
+                          return rows.map((row, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/90 transition-colors">
+                              <td className="py-2.5 px-3 text-center text-slate-400 font-mono text-[11px]">
+                                {idx + 1}
+                              </td>
+
+                              <td className="py-2.5 px-3 whitespace-nowrap">
+                                {row.action === 'update' ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-100 text-blue-800 border border-blue-200">
+                                    🔄 UPDATE
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    ➕ BARU
+                                  </span>
+                                )}
+                              </td>
+
+                              <td className="py-2.5 px-3 min-w-[180px]">
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center space-x-1.5">
+                                    <span className="font-mono text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200">
+                                      {row.nik || 'Auto-Generate'}
+                                    </span>
+                                    <span className="font-extrabold text-slate-900 text-xs truncate max-w-[160px]" title={row.name}>
+                                      {row.name}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-slate-500 truncate" title={row.email}>
+                                    {row.email || '<tanpa email>'}
+                                  </p>
+                                </div>
+                              </td>
+
+                              <td className="py-2.5 px-3 min-w-[140px]">
+                                <div className="space-y-0.5">
+                                  <span className="inline-block px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-bold text-[10px] border border-slate-200">
+                                    {row.department_name || 'General'}
+                                  </span>
+                                  <p className="text-[11px] text-slate-600 font-medium truncate" title={row.position}>
+                                    {row.position || '-'}
+                                  </p>
+                                </div>
+                              </td>
+
+                              <td className="py-2.5 px-3 whitespace-nowrap">
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border inline-block ${
+                                  row.employee_status === 'Tetap' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
+                                  row.employee_status === 'PKWT' || row.employee_status === 'Kontrak' ? 'bg-blue-50 text-blue-800 border-blue-200' :
+                                  row.employee_status === 'Magang' ? 'bg-purple-50 text-purple-800 border-purple-200' :
+                                  row.employee_status === 'Alih Daya' ? 'bg-amber-50 text-amber-800 border-amber-200' :
+                                  'bg-slate-100 text-slate-700 border-slate-200'
+                                }`}>
+                                  {row.employee_status || 'Tetap'}
+                                </span>
+                              </td>
+
+                              <td className="py-2.5 px-3 whitespace-nowrap font-medium text-slate-700">
+                                {row.join_date_formatted !== '-' ? (
+                                  <span className="inline-flex items-center space-x-1 bg-sky-50 text-sky-900 px-1.5 py-0.5 rounded border border-sky-200 font-semibold text-[11px]">
+                                    <span>📅</span>
+                                    <span>{row.join_date_formatted}</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 text-[11px]">-</span>
+                                )}
+                              </td>
+
+                              <td className="py-2.5 px-3 whitespace-nowrap">
+                                {row.total_quota !== null || row.remaining_quota !== null ? (
+                                  <span className="inline-flex items-center space-x-1 font-bold text-[11px] text-slate-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                    <span>🎯</span>
+                                    <span>{row.total_quota ?? 12} / {row.remaining_quota ?? 12} Hari</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 text-[11px]">Bawaan (12 Hari)</span>
+                                )}
+                              </td>
+
+                              <td className="py-2.5 px-3 min-w-[200px]">
+                                <div className="space-y-1">
+                                  {/* Changes summary */}
+                                  {row.changes_summary && row.changes_summary.length > 0 && (
+                                    <div className="flex flex-wrap gap-1">
+                                      {row.changes_summary.map((change, cIdx) => (
+                                        <span key={cIdx} className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 text-[10px] font-medium border border-slate-200">
+                                          {change}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {/* Warnings if any */}
+                                  {row.warnings && row.warnings.length > 0 && (
+                                    <div className="flex flex-wrap gap-1">
+                                      {row.warnings.map((warn, wIdx) => (
+                                        <span key={wIdx} className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200 flex items-center space-x-1">
+                                          <span>⚠️</span>
+                                          <span>{warn}</span>
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ));
+                        })()}
+                      </tbody>
+                    </table>
                   </div>
 
-                  {/* Dynamic Department List */}
-                  <div className="p-2.5 rounded-xl bg-teal-50/70 border border-teal-200/80 text-[11px]">
-                    <span className="font-extrabold text-teal-950 block mb-1">🏢 Kode Departemen yang Terdaftar:</span>
-                    <div className="flex flex-wrap gap-1">
-                      {departments.map((d) => (
-                        <span key={d.id} className="px-2 py-0.5 rounded-md bg-white border border-teal-200 text-teal-900 font-mono font-bold text-[10px]">
-                          {d.code}: {d.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Dynamic Role List */}
-                  <div className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-200/80 text-[11px]">
-                    <span className="font-extrabold text-purple-950 block mb-1">🛡️ Role yang Tersedia di Sistem:</span>
-                    <div className="flex flex-wrap gap-1">
-                      {allRoles.map((r) => (
-                        <span key={r.value} className="px-2 py-0.5 rounded-md bg-white border border-purple-200 text-purple-900 font-mono font-bold text-[10px]">
-                          {r.value}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Step 2: Upload File */}
-              <form onSubmit={handleImportSubmit} className="space-y-4 sm:space-y-5">
-                <div className="min-w-0">
-                  <label className="block text-[11px] sm:text-xs font-black text-slate-900 uppercase tracking-wider mb-1.5">
-                    Langkah 2: Upload File CSV / Excel
-                  </label>
-                  <div className="p-4 sm:p-6 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-300 hover:border-emerald-500 text-center transition-all">
-                    <UploadCloud size={32} className="mx-auto text-emerald-600 mb-1.5" />
-                    <input
-                      type="file"
-                      accept=".csv, .txt, .xlsx"
-                      onChange={(e) => importForm.setData('file', e.target.files[0])}
-                      className="hidden"
-                      id="employee-import-input"
-                      required
-                    />
-                    <label
-                      htmlFor="employee-import-input"
-                      className="cursor-pointer text-xs font-bold text-emerald-600 hover:underline block truncate px-2"
+                  {/* Step 2 Footer: Confirmation & Actions */}
+                  <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-200 shrink-0">
+                    <button
+                      type="button"
+                      disabled={isCommitting}
+                      onClick={() => {
+                        setImportStep('upload');
+                        setPreviewData(null);
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors flex items-center justify-center space-x-1.5 self-start sm:self-auto"
                     >
-                      {importForm.data.file ? importForm.data.file.name : 'Klik di sini untuk memilih file CSV / Excel'}
-                    </label>
-                    <span className="text-[10px] sm:text-[11px] text-slate-400 block mt-1">Format: .csv, .xlsx (maks 5MB)</span>
-                  </div>
-                  {importForm.errors.file && (
-                    <p className="mt-1 text-xs text-rose-600 font-bold">{importForm.errors.file}</p>
-                  )}
-                </div>
+                      <ArrowLeft size={14} />
+                      <span>Pilih Ulang File CSV</span>
+                    </button>
 
-                <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => setIsImportOpen(false)}
-                    className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={importForm.processing || !importForm.data.file}
-                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 disabled:opacity-50 transition-all"
-                  >
-                    Proses Import Data
-                  </button>
+                    <div className="flex items-center space-x-2 self-end sm:self-auto">
+                      <button
+                        type="button"
+                        disabled={isCommitting}
+                        onClick={() => setIsImportOpen(false)}
+                        className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
+                      >
+                        Batal
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleConfirmImport}
+                        disabled={isCommitting || !previewData || previewData.rows.length === 0}
+                        className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-lg shadow-emerald-600/25 disabled:opacity-50 transition-all flex items-center space-x-2"
+                      >
+                        {isCommitting ? (
+                          <>
+                            <RefreshCw size={14} className="animate-spin" />
+                            <span>Menyimpan ke Sistem Database...</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCheck size={16} />
+                            <span>Konfirmasi & Simpan ke Sistem ({previewData.summary.total} Data)</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
                 </div>
-              </form>
+              )}
+
             </div>
           </div>
         )}

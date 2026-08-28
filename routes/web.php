@@ -68,6 +68,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/hrd/employees', [HrdController::class, 'employees'])->name('hrd.employees');
     Route::get('/hrd/employees/template', [HrdController::class, 'downloadTemplate'])->name('hrd.employees.template');
     Route::post('/hrd/employees/import', [HrdController::class, 'importEmployees'])->name('hrd.employees.import');
+    Route::post('/hrd/employees/import/preview', [HrdController::class, 'previewImport'])->name('hrd.employees.import.preview');
     Route::get('/hrd/employees/export-biodata', [HrdController::class, 'exportBiodataCsv'])->name('hrd.employees.export-biodata');
     Route::get('/hrd/employees/{userId}/biodata', [HrdController::class, 'employeeBiodata'])->name('hrd.employees.biodata');
     Route::get('/hrd/employees/biodata/{userId}', [HrdController::class, 'employeeBiodata'])->name('hrd.employees.biodata.alt');
