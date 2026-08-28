@@ -50,6 +50,197 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.2, ease: 'easeOut' } }
 };
 
+function SearchableEmployeeSelect({
+  label,
+  value,
+  onChange,
+  employees = [],
+  placeholder = "Ketik nama atau NIK atasan...",
+  emptyLabel = "-- Tanpa Atasan (Kosong) --",
+  helperText,
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const wrapperRef = React.useRef(null);
+
+  const selectedEmp = React.useMemo(() => {
+    if (!value) return null;
+    return employees.find((emp) => String(emp.id) === String(value)) || null;
+  }, [value, employees]);
+
+  const filteredEmployees = React.useMemo(() => {
+    if (!query.trim()) return employees;
+    const q = query.toLowerCase();
+    return employees.filter((emp) => {
+      const matchName = (emp.name || '').toLowerCase().includes(q);
+      const matchNik = (emp.nik || '').toLowerCase().includes(q);
+      const matchEmail = (emp.email || '').toLowerCase().includes(q);
+      const matchRole = (emp.role || '').toLowerCase().includes(q);
+      return matchName || matchNik || matchEmail || matchRole;
+    });
+  }, [query, employees]);
+
+  React.useEffect(() => {
+    function handleClickOutside(event) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="space-y-1.5" ref={wrapperRef}>
+      <label className="block text-xs font-bold text-slate-700">
+        {label}
+      </label>
+
+      {/* Selected Employee Card */}
+      {selectedEmp && !isOpen ? (
+        <div className="p-2.5 rounded-xl bg-white border-2 border-emerald-500/40 shadow-xs flex items-center justify-between gap-2 transition-all">
+          <div className="flex items-center space-x-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center shrink-0 uppercase">
+              {selectedEmp.name.slice(0, 2)}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-black text-slate-900 truncate">
+                {selectedEmp.name}
+              </p>
+              <div className="flex items-center space-x-1.5 text-[10px] text-slate-500 font-medium">
+                <span className="font-mono bg-slate-100 px-1 py-0.2 rounded text-slate-700 font-bold">{selectedEmp.nik || 'No NIK'}</span>
+                <span>•</span>
+                <span className="uppercase text-emerald-700 font-bold">{selectedEmp.role}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpen(true);
+                setQuery('');
+              }}
+              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-extrabold transition-colors flex items-center space-x-1"
+            >
+              <Search size={12} />
+              <span>Ganti</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+              title="Kosongkan Atasan"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Search Box & Autocomplete List */
+        <div className="relative">
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                if (!isOpen) setIsOpen(true);
+              }}
+              onFocus={() => setIsOpen(true)}
+              placeholder={selectedEmp ? `Sedang dipilih: ${selectedEmp.name}` : placeholder}
+              className="w-full pl-8 pr-8 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none shadow-2xs placeholder-slate-400"
+            />
+            {query ? (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X size={13} />
+              </button>
+            ) : isOpen ? (
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X size={13} />
+              </button>
+            ) : null}
+          </div>
+
+          {/* Autocomplete Dropdown List */}
+          {isOpen && (
+            <div className="absolute z-[120] left-0 right-0 mt-1 max-h-52 overflow-y-auto rounded-xl bg-white border border-slate-200 shadow-xl divide-y divide-slate-100">
+              {/* Option to clear / empty */}
+              <button
+                type="button"
+                onClick={() => {
+                  onChange('');
+                  setIsOpen(false);
+                  setQuery('');
+                }}
+                className={`w-full p-2.5 text-left text-xs flex items-center space-x-2 transition-colors ${
+                  !value ? 'bg-slate-100 font-bold text-slate-800' : 'hover:bg-slate-50 text-slate-500'
+                }`}
+              >
+                <span className="text-sm">🚫</span>
+                <span>{emptyLabel}</span>
+              </button>
+
+              {filteredEmployees.length === 0 ? (
+                <div className="p-3 text-center text-[11px] text-slate-400">
+                  Tidak ditemukan karyawan dengan kata kunci "{query}"
+                </div>
+              ) : (
+                filteredEmployees.map((emp) => {
+                  const isSelected = String(emp.id) === String(value);
+                  return (
+                    <button
+                      key={emp.id}
+                      type="button"
+                      onClick={() => {
+                        onChange(String(emp.id));
+                        setIsOpen(false);
+                        setQuery('');
+                      }}
+                      className={`w-full p-2.5 text-left text-xs flex items-center justify-between gap-2 transition-colors ${
+                        isSelected ? 'bg-emerald-50 text-emerald-950 font-bold' : 'hover:bg-slate-50 text-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 text-[11px] font-bold flex items-center justify-center shrink-0 uppercase border border-slate-200">
+                          {emp.name.slice(0, 2)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-900 truncate">{emp.name}</p>
+                          <p className="text-[10px] text-slate-400 font-mono truncate">
+                            {emp.nik || 'No NIK'} • <span className="uppercase text-emerald-700 font-semibold">{emp.role}</span>
+                          </p>
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <Check size={15} className="text-emerald-600 shrink-0 font-bold" />
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {helperText && (
+        <p className="text-[10px] text-slate-400">{helperText}</p>
+      )}
+    </div>
+  );
+}
+
 export default function DepartmentsIndex({ departments = [], employees = [], stats = {}, filters = {} }) {
   const [search, setSearch] = useState(filters.search || '');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -654,59 +845,41 @@ export default function DepartmentsIndex({ departments = [], employees = [], sta
 
                     {/* Approver 1 (Supervisor) */}
                     {(editingDept ? editForm.data.approval_type : createForm.data.approval_type) === '3_tier' && (
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
-                          Atasan 1 (Supervisor Departemen)
-                        </label>
-                        <select
-                          value={editingDept ? (editForm.data.approver_1_id || '') : (createForm.data.approver_1_id || '')}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (editingDept) editForm.setData('approver_1_id', val);
-                            else createForm.setData('approver_1_id', val);
-                          }}
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none shadow-xs"
-                        >
-                          <option value="">-- Tanpa Atasan 1 (Kosong) --</option>
-                          {employees.map((emp) => (
-                            <option key={emp.id} value={emp.id}>
-                              {emp.name} ({emp.nik || 'No NIK'}) - {emp.role.toUpperCase()}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <SearchableEmployeeSelect
+                        label="Atasan 1 (Supervisor Departemen)"
+                        value={editingDept ? (editForm.data.approver_1_id || '') : (createForm.data.approver_1_id || '')}
+                        onChange={(val) => {
+                          if (editingDept) editForm.setData('approver_1_id', val);
+                          else createForm.setData('approver_1_id', val);
+                        }}
+                        employees={employees}
+                        placeholder="Ketik nama atau NIK Supervisor..."
+                        emptyLabel="-- Tanpa Atasan 1 (Kosong) --"
+                        helperText="Ketik nama atau NIK untuk mencari staf atasan 1 secara instan."
+                      />
                     )}
 
                     {/* Approver 2 (Manager / Kepala Departemen) */}
                     {(editingDept ? editForm.data.approval_type : createForm.data.approval_type) !== '1_tier' && (
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
-                          Atasan 2 / Manager Departemen
-                        </label>
-                        <select
-                          value={
-                            editingDept
-                              ? (editForm.data.approver_2_id || editForm.data.manager_id || '')
-                              : (createForm.data.approver_2_id || createForm.data.manager_id || '')
+                      <SearchableEmployeeSelect
+                        label="Atasan 2 / Manager Departemen"
+                        value={
+                          editingDept
+                            ? (editForm.data.approver_2_id || editForm.data.manager_id || '')
+                            : (createForm.data.approver_2_id || createForm.data.manager_id || '')
+                        }
+                        onChange={(val) => {
+                          if (editingDept) {
+                            editForm.setData((prev) => ({ ...prev, approver_2_id: val, manager_id: val }));
+                          } else {
+                            createForm.setData((prev) => ({ ...prev, approver_2_id: val, manager_id: val }));
                           }
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (editingDept) {
-                              editForm.setData((prev) => ({ ...prev, approver_2_id: val, manager_id: val }));
-                            } else {
-                              createForm.setData((prev) => ({ ...prev, approver_2_id: val, manager_id: val }));
-                            }
-                          }}
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none shadow-xs"
-                        >
-                          <option value="">-- Tanpa Atasan 2 (Kosong) --</option>
-                          {employees.map((emp) => (
-                            <option key={emp.id} value={emp.id}>
-                              {emp.name} ({emp.nik || 'No NIK'}) - {emp.role.toUpperCase()}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                        }}
+                        employees={employees}
+                        placeholder="Ketik nama atau NIK Manager..."
+                        emptyLabel="-- Tanpa Atasan 2 (Kosong) --"
+                        helperText="Ketik nama atau NIK untuk mencari Manager / Kepala Departemen."
+                      />
                     )}
                   </div>
 

@@ -56,7 +56,7 @@
     "file": "assets/vendor-swal-6ddcfacf.js"
   },
   "resources/css/app.css": {
-    "file": "assets/app-6680b131.css",
+    "file": "assets/app-8ea42c73.css",
     "src": "resources/js/app.css"
   },
   "resources/js/Pages/Approvals/Index.jsx": {
@@ -98,7 +98,7 @@
     "src": "resources/js/Pages/Dashboard.jsx"
   },
   "resources/js/Pages/HRD/Departments.jsx": {
-    "file": "assets/Departments-dce87a71.js",
+    "file": "assets/Departments-94d3d20c.js",
     "imports": [
       "_vendor-core-d7a8e992.js",
       "_AuthenticatedLayout-966362e5.js",
@@ -268,12 +268,12 @@
     "src": "resources/js/Pages/Superadmin/RolePermission/Index.jsx"
   },
   "resources/js/app.css": {
-    "file": "assets/app-6680b131.css",
+    "file": "assets/app-8ea42c73.css",
     "src": "resources/js/app.css"
   },
   "resources/js/app.jsx": {
     "css": [
-      "assets/app-6680b131.css"
+      "assets/app-8ea42c73.css"
     ],
     "dynamicImports": [
       "resources/js/Pages/Approvals/Index.jsx",
@@ -293,7 +293,7 @@
       "resources/js/Pages/Profile/PrintBiodata.jsx",
       "resources/js/Pages/Superadmin/RolePermission/Index.jsx"
     ],
-    "file": "assets/app-8c9d884e.js",
+    "file": "assets/app-000743b7.js",
     "imports": [
       "_vendor-core-d7a8e992.js"
     ],
