@@ -757,17 +757,17 @@ export default function HrdEmployees({ employees = [], departments = [], manager
 
               {/* DESKTOP TABLE VIEW (>= md) */}
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left text-xs">
+                <table className="w-full text-left text-xs border-collapse min-w-[1000px]">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                      <th className="py-3.5 px-4">Karyawan & NIK</th>
-                      <th className="py-3.5 px-4">Email</th>
-                      <th className="py-3.5 px-4">Departemen</th>
-                      <th className="py-3.5 px-4">Role System</th>
-                      <th className="py-3.5 px-4">Data Diri</th>
-                      <th className="py-3.5 px-4">Alur Approval (Atasan 1 & 2)</th>
-                      <th className="py-3.5 px-4">Kuota Cuti ({new Date().getFullYear()})</th>
-                      <th className="py-3.5 px-4 text-right">Aksi HRD</th>
+                    <tr className="bg-slate-50/90 border-b border-slate-200 text-[11px] font-extrabold text-slate-600 uppercase tracking-wider select-none">
+                      <th className="py-3.5 px-4 min-w-[240px]">Karyawan</th>
+                      <th className="py-3.5 px-3 min-w-[180px]">Email & Kontak</th>
+                      <th className="py-3.5 px-3 min-w-[160px] whitespace-nowrap">Departemen</th>
+                      <th className="py-3.5 px-3 min-w-[120px]">Role Sistem</th>
+                      <th className="py-3.5 px-3 min-w-[130px]">Data Diri</th>
+                      <th className="py-3.5 px-3 min-w-[170px]">Alur Approval</th>
+                      <th className="py-3.5 px-3 min-w-[130px]">Sisa Kuota ({new Date().getFullYear()})</th>
+                      <th className="py-3.5 px-4 min-w-[100px] text-right">Aksi HRD</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -780,26 +780,25 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                       const isInherited = !emp.approver_1_id && !emp.approver_2_id && emp.department_id;
                       const effApprover1 = emp.approver1 || (emp.department?.approver1);
                       const effApprover2 = emp.approver2 || emp.manager || (emp.department?.approver2 || emp.department?.manager);
+                      const rBadge = getRoleBadge(emp.role);
 
                       return (
-                        <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3.5 px-4">
+                        <tr key={emp.id} className="hover:bg-emerald-50/30 transition-colors group">
+                          {/* 1. KARYAWAN & NIK */}
+                          <td className="py-3 px-4 align-middle">
                             <div className="flex items-center space-x-3">
-                              <UserAvatar user={emp} size="w-9 h-9" textSize="text-xs" />
-                              <div>
-                                <span className="font-extrabold text-slate-900 text-xs block">{emp.name}</span>
-                                <div className="flex flex-wrap items-center gap-1 mt-0.5">
-                                  <span className="font-mono text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 inline-block">
+                              <UserAvatar user={emp} size="w-9 h-9 shadow-xs shrink-0" textSize="text-xs" />
+                              <div className="min-w-0">
+                                <span className="font-extrabold text-slate-900 text-[13px] tracking-tight group-hover:text-emerald-800 transition-colors truncate block">
+                                  {emp.name}
+                                </span>
+                                <div className="flex items-center flex-wrap gap-1 mt-0.5">
+                                  <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/80 inline-block">
                                     {emp.nik || 'EMP-???'}
                                   </span>
                                   {emp.position && (
-                                    <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200 inline-block">
+                                    <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50/90 px-1.5 py-0.5 rounded border border-indigo-100 inline-block">
                                       {emp.position}
-                                    </span>
-                                  )}
-                                  {emp.join_date && (
-                                    <span className="text-[9px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded inline-block" title={`Bergabung: ${emp.join_date}`}>
-                                      📅 {new Date(emp.join_date).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })}
                                     </span>
                                   )}
                                   {emp.employee_status && (
@@ -808,7 +807,7 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                                       emp.employee_status === 'PKWT' || emp.employee_status === 'Kontrak' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                                       emp.employee_status === 'Magang' ? 'bg-purple-50 text-purple-700 border-purple-200' :
                                       emp.employee_status === 'Alih Daya' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                      'bg-slate-100 text-slate-700 border-slate-200'
+                                      'bg-slate-50 text-slate-600 border-slate-200'
                                     }`}>
                                       {emp.employee_status}
                                     </span>
@@ -818,129 +817,165 @@ export default function HrdEmployees({ employees = [], departments = [], manager
                             </div>
                           </td>
 
-                          <td className="py-3.5 px-4 text-slate-600 font-medium">
-                            {emp.email}
-                          </td>
-
-                          <td className="py-3.5 px-4 font-semibold text-slate-800">
-                            {emp.department?.name || 'General'}
-                          </td>
-
-                          <td className="py-3.5 px-4">
-                            {(() => {
-                              const rBadge = getRoleBadge(emp.role);
-                              return (
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${rBadge.cls}`}>
-                                  {rBadge.label}
-                                </span>
-                              );
-                            })()}
-                          </td>
-
-                          <td className="py-3.5 px-4">
-                            <div className="flex flex-col space-y-1">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                emp.is_profile_completed ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'
-                              }`}>
-                                {emp.is_profile_completed ? '✓ Lengkap' : 'Belum Lengkap'}
+                          {/* 2. EMAIL & KONTAK */}
+                          <td className="py-3 px-3 align-middle">
+                            <div className="space-y-0.5">
+                              <span className="font-medium text-slate-700 text-xs truncate block select-all" title={emp.email}>
+                                {emp.email}
                               </span>
-                              <div className="w-16 bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                              {emp.join_date && (
+                                <span className="text-[10px] text-slate-400 font-semibold block">
+                                  Masuk: {new Date(emp.join_date).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* 3. DEPARTEMEN */}
+                          <td className="py-3 px-3 align-middle whitespace-nowrap">
+                            <span className="font-bold text-slate-800 text-xs block">
+                              {emp.department?.name || 'General'}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">
+                              {emp.department?.code || 'DIVISI'}
+                            </span>
+                          </td>
+
+                          {/* 4. ROLE SYSTEM */}
+                          <td className="py-3 px-3 align-middle">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${rBadge.cls}`}>
+                              {rBadge.label}
+                            </span>
+                          </td>
+
+                          {/* 5. DATA DIRI */}
+                          <td className="py-3 px-3 align-middle">
+                            <div className="space-y-1 w-28">
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className={`font-bold text-[10px] uppercase tracking-wider ${emp.is_profile_completed ? 'text-emerald-700' : 'text-amber-700'}`}>
+                                  {emp.is_profile_completed ? '✓ Lengkap' : 'Belum Lengkap'}
+                                </span>
+                                <span className="text-[10px] font-extrabold text-slate-500">
+                                  {emp.profile_completeness || 0}%
+                                </span>
+                              </div>
+                              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                                 <div
-                                  className="bg-emerald-500 h-full rounded-full"
+                                  className={`h-full rounded-full transition-all duration-300 ${
+                                    emp.is_profile_completed ? 'bg-emerald-500' : (emp.profile_completeness >= 50 ? 'bg-amber-500' : 'bg-rose-400')
+                                  }`}
                                   style={{ width: `${Math.min(100, emp.profile_completeness || 0)}%` }}
                                 />
                               </div>
                             </div>
                           </td>
 
-                          <td className="py-3.5 px-4 text-slate-600 font-medium">
-                            <div className="text-xs space-y-1">
-                              <div className="flex items-center space-x-1.5">
+                          {/* 6. ALUR APPROVAL */}
+                          <td className="py-3 px-3 align-middle">
+                            <div className="space-y-1">
+                              <div>
                                 {isInherited ? (
-                                  <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-extrabold">
-                                    🛡️ Ikut {emp.department?.name}
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold whitespace-nowrap">
+                                    🛡️ Ikut Departemen
                                   </span>
                                 ) : (emp.approver_1_id || emp.approver_2_id) ? (
-                                  <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-extrabold">
-                                    ⚙️ Kustom
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold whitespace-nowrap">
+                                    ⚙️ Kustom Atasan
                                   </span>
                                 ) : (
-                                  <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-extrabold">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold whitespace-nowrap">
                                     Direct HRD
                                   </span>
                                 )}
                               </div>
-                              <div className="space-y-0.5 text-[11px]">
+                              <div className="text-[10px] font-semibold text-slate-600 space-y-0.5">
                                 {effApprover1 && (
-                                  <div className="text-blue-800 font-semibold truncate">
-                                    T1: {effApprover1.name}
+                                  <div className="truncate max-w-[150px]" title={`Atasan 1 (Supervisor): ${effApprover1.name}`}>
+                                    <span className="text-slate-400 font-normal">T1:</span> {effApprover1.name}
                                   </div>
                                 )}
                                 {effApprover2 && (
-                                  <div className="text-purple-800 font-semibold truncate">
-                                    T2: {effApprover2.name}
+                                  <div className="truncate max-w-[150px]" title={`Atasan 2 (Manager): ${effApprover2.name}`}>
+                                    <span className="text-slate-400 font-normal">T2:</span> {effApprover2.name}
                                   </div>
+                                )}
+                                {!effApprover1 && !effApprover2 && (
+                                  <span className="text-slate-400 italic">Langsung HRD</span>
                                 )}
                               </div>
                             </div>
                           </td>
 
-                          <td className="py-3.5 px-4">
-                            <div className="font-extrabold text-slate-900">
-                              Sisa: <span className="text-emerald-600 font-black">{remaining}</span> / {total} Hari
-                            </div>
-                            <div className="w-24 bg-slate-100 h-1.5 rounded-full overflow-hidden mt-1">
-                              <div
-                                className="bg-emerald-500 h-full rounded-full"
-                                style={{ width: `${Math.min(100, (remaining / total) * 100)}%` }}
-                              />
+                          {/* 7. SISA KUOTA CUTI */}
+                          <td className="py-3 px-3 align-middle whitespace-nowrap">
+                            <div className="space-y-1 w-28">
+                              <div className="flex items-baseline space-x-1">
+                                <span className={`text-sm font-black ${
+                                  remaining <= 0 ? 'text-rose-600' : remaining <= 3 ? 'text-amber-600' : 'text-emerald-600'
+                                }`}>
+                                  {remaining}
+                                </span>
+                                <span className="text-xs font-bold text-slate-400">
+                                  / {total} Hari
+                                </span>
+                              </div>
+                              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-300 ${
+                                    remaining <= 0 ? 'bg-rose-500' : remaining <= 3 ? 'bg-amber-500' : 'bg-emerald-500'
+                                  }`}
+                                  style={{ width: `${Math.min(100, Math.max(0, (remaining / total) * 100))}%` }}
+                                />
+                              </div>
                             </div>
                           </td>
 
-                          <td className="py-3.5 px-4 text-right">
-                            <div className="flex items-center justify-end space-x-1">
-                              <Button
-                                variant="outline"
-                                size="sm"
+                          {/* 8. AKSI HRD */}
+                          <td className="py-3 px-4 align-middle text-right">
+                            <div className="flex items-center justify-end space-x-1.5 whitespace-nowrap">
+                              <button
+                                type="button"
                                 onClick={() => handleOpenEditModal(emp)}
-                                className="h-8 px-2.5 rounded-xl text-xs font-bold space-x-1 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50"
+                                className="h-8 px-2.5 rounded-xl bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 font-bold text-xs inline-flex items-center space-x-1 transition-all shadow-2xs hover:shadow-xs active:scale-95"
                               >
-                                <Edit3 size={14} />
-                                <span className="hidden sm:inline">Edit</span>
-                              </Button>
+                                <Edit3 size={13} />
+                                <span>Edit</span>
+                              </button>
 
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-slate-500 hover:text-slate-900">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100">
                                     <MoreVertical size={15} />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-52">
-                                  <DropdownMenuLabel>Aksi Karyawan</DropdownMenuLabel>
-                                  <DropdownMenuItem onClick={() => handleOpenEditModal(emp)}>
+                                <DropdownMenuContent align="end" className="w-52 shadow-xl border-slate-200 rounded-2xl p-1.5 z-50">
+                                  <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 py-1.5">
+                                    Aksi Karyawan
+                                  </DropdownMenuLabel>
+                                  <DropdownMenuItem onClick={() => handleOpenEditModal(emp)} className="rounded-xl font-semibold text-xs py-2 cursor-pointer">
                                     <Edit3 className="mr-2 h-4 w-4 text-emerald-600" />
                                     <span>Edit Profil & Approval</span>
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem asChild>
+                                  <DropdownMenuItem asChild className="rounded-xl font-semibold text-xs py-2 cursor-pointer">
                                     <Link href={route('hrd.employees.biodata', emp.id)} className="flex items-center w-full">
                                       <FileText className="mr-2 h-4 w-4 text-blue-600" />
                                       <span>Form Data Diri (Detail)</span>
                                     </Link>
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem asChild>
+                                  <DropdownMenuItem asChild className="rounded-xl font-semibold text-xs py-2 cursor-pointer">
                                     <a href={route('hrd.employees.biodata.print', emp.id)} target="_blank" rel="noopener noreferrer" className="flex items-center w-full">
                                       <Printer className="mr-2 h-4 w-4 text-purple-600" />
                                       <span>Cetak Form Data Diri</span>
                                     </a>
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleOpenQuotaModal(emp)}>
+                                  <DropdownMenuItem onClick={() => handleOpenQuotaModal(emp)} className="rounded-xl font-semibold text-xs py-2 cursor-pointer">
                                     <Calendar className="mr-2 h-4 w-4 text-teal-600" />
                                     <span>Atur Kuota Cuti</span>
                                   </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
+                                  <DropdownMenuSeparator className="my-1" />
                                   <DropdownMenuItem
                                     onClick={() => setDeletingEmployee(emp)}
-                                    className="text-rose-600 focus:bg-rose-50 focus:text-rose-700"
+                                    className="rounded-xl font-semibold text-xs py-2 text-rose-600 focus:bg-rose-50 focus:text-rose-700 cursor-pointer"
                                   >
                                     <Trash2 className="mr-2 h-4 w-4" />
                                     <span>Hapus Karyawan</span>
