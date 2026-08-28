@@ -293,9 +293,13 @@ class MonitoringController extends Controller
      */
     protected function getAnnualReportData(int $year, ?string $departmentId = null, ?string $search = null): array
     {
-        $query = User::with(['department', 'leaveQuotas' => function ($q) use ($year) {
-            $q->where('year', $year);
-        }]);
+        $query = User::with([
+            'department',
+            'leaveQuotas' => function ($q) use ($year) {
+                $q->where('year', $year);
+            },
+            'currentQuota'
+        ]);
 
         if ($departmentId && $departmentId !== 'all') {
             $query->where('department_id', $departmentId);
@@ -331,9 +335,16 @@ class MonitoringController extends Controller
         $grandTotalSisa = 0.0;
 
         foreach ($users as $index => $u) {
-            $quota = $u->leaveQuotas->first();
+            // Find quota for the specific report year, or fallback to currentQuota or most recent quota record
+            $quota = $u->leaveQuotas->first() 
+                ?? $u->currentQuota 
+                ?? LeaveQuota::where('user_id', $u->id)->where('year', $year)->first()
+                ?? LeaveQuota::where('user_id', $u->id)->latest('year')->first();
+
+            // Hak cuti (Total Quota configured for employee)
             $hakCuti = $quota ? (float) $quota->total_quota : 12.0;
 
+            // Monthly breakdown of approved leaves in this year
             $userReqs = $groupedRequests->get($u->id, collect());
             $months = array_fill(1, 12, 0.0);
 
@@ -342,8 +353,21 @@ class MonitoringController extends Controller
                 $months[$m] += (float) $req->amount;
             }
 
-            $totalDiambil = array_sum($months);
-            $sisaCuti = $hakCuti - $totalDiambil;
+            $approvedMonthsTotal = (float) array_sum($months);
+
+            // Sisa Cuti: Use real-time remaining quota from LeaveQuota table if present, or compute remaining
+            if ($quota && $quota->remaining_quota !== null) {
+                $sisaCuti = (float) $quota->remaining_quota;
+            } elseif ($quota && $quota->used_quota !== null) {
+                $sisaCuti = max(0.0, (float) $quota->total_quota - (float) $quota->used_quota);
+            } else {
+                $sisaCuti = max(0.0, $hakCuti - $approvedMonthsTotal);
+            }
+
+            $totalDiambil = max($approvedMonthsTotal, (float) ($quota ? $quota->used_quota : 0.0));
+            if ($totalDiambil == 0 && $hakCuti > $sisaCuti) {
+                $totalDiambil = $hakCuti - $sisaCuti;
+            }
 
             $grandTotalHak += $hakCuti;
             $grandTotalDiambil += $totalDiambil;
@@ -352,7 +376,10 @@ class MonitoringController extends Controller
                 $monthlyGrandTotals[$m] += $months[$m];
             }
 
-            $joinDateFormatted = $u->created_at ? $u->created_at->format('d-M-y') : '-';
+            $joinDateFormatted = $u->join_date 
+                ? Carbon::parse($u->join_date)->format('d-M-y') 
+                : ($u->created_at ? $u->created_at->format('d-M-y') : '-');
+
             $gender = $u->gender ? strtoupper(substr($u->gender, 0, 1)) : ($u->id % 2 === 0 ? 'P' : 'L');
             $status = $u->marital_status ?: ($u->id % 3 === 0 ? 'K/1' : ($u->id % 2 === 0 ? 'K/0' : 'TK/0'));
 
