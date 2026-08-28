@@ -114,6 +114,17 @@ class SettingController extends Controller
         return redirect()->back()->with('success', 'Pengaturan aplikasi & logo berhasil disimpan!');
     }
 
+    public function testR2()
+    {
+        $user = Auth::user();
+        if (!$user->isAdmin()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $result = \App\Services\CloudflareR2::testConnection();
+        return response()->json($result);
+    }
+
     public function manifest()
     {
         $manifest = $this->settingService->generateManifest();

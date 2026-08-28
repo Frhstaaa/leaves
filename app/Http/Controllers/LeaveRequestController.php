@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\LeaveCategory;
 use App\Models\LeaveRequest;
 use App\Repositories\Contracts\LeaveRequestRepositoryInterface;
+use App\Services\CloudflareR2;
 use App\Services\LeaveQuotaService;
 use App\Services\LeaveRequestService;
 use Illuminate\Http\JsonResponse;
@@ -394,6 +395,25 @@ class LeaveRequestController extends Controller
             ]);
         }
 
+        // 5. Fallback check Cloudflare R2 (Cloud Storage)
+        if (CloudflareR2::isConfigured() && CloudflareR2::exists($path)) {
+            $content = CloudflareR2::get($path);
+            if ($content !== null) {
+                $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+                $mime = match ($ext) {
+                    'pdf' => 'application/pdf',
+                    'png' => 'image/png',
+                    'jpg', 'jpeg' => 'image/jpeg',
+                    'webp' => 'image/webp',
+                    default => 'application/octet-stream',
+                };
+                return response($content, 200, [
+                    'Content-Type' => $mime,
+                    'Content-Disposition' => 'inline; filename="' . ($leaveRequest->attachment_name ?: basename($path)) . '"',
+                ]);
+            }
+        }
+
         abort(404, 'File lampiran fisik tidak ditemukan di penyimpanan server.');
     }
 
@@ -426,6 +446,25 @@ class LeaveRequestController extends Controller
         $directPublic = storage_path('app/public/' . ltrim($path, '/'));
         if (file_exists($directPublic)) {
             return response()->download($directPublic, $leaveRequest->attachment_name ?: basename($path));
+        }
+
+        // Fallback check Cloudflare R2
+        if (CloudflareR2::isConfigured() && CloudflareR2::exists($path)) {
+            $content = CloudflareR2::get($path);
+            if ($content !== null) {
+                $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+                $mime = match ($ext) {
+                    'pdf' => 'application/pdf',
+                    'png' => 'image/png',
+                    'jpg', 'jpeg' => 'image/jpeg',
+                    'webp' => 'image/webp',
+                    default => 'application/octet-stream',
+                };
+                return response($content, 200, [
+                    'Content-Type' => $mime,
+                    'Content-Disposition' => 'attachment; filename="' . ($leaveRequest->attachment_name ?: basename($path)) . '"',
+                ]);
+            }
         }
 
         abort(404, 'File lampiran fisik tidak ditemukan di penyimpanan server.');

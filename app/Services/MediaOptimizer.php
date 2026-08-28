@@ -118,11 +118,20 @@ class MediaOptimizer
 
         $filename = $folder . '/' . uniqid('opt_') . '_' . time() . '.webp';
         
-        // 1. Upload to Cloudflare R2 if configured
-        if (CloudflareR2::isConfigured()) {
-            CloudflareR2::put($filename, $webpBuffer, 'image/webp');
-        } else {
+        // 1. Always save to local public storage
+        try {
             Storage::disk('public')->put($filename, $webpBuffer);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Local storage write failed: ' . $e->getMessage());
+        }
+
+        // 2. Dual-write & sync to Cloudflare R2 if configured
+        if (CloudflareR2::isConfigured()) {
+            try {
+                CloudflareR2::put($filename, $webpBuffer, 'image/webp');
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Cloudflare R2 sync failed: ' . $e->getMessage());
+            }
         }
 
         return $filename;
@@ -153,15 +162,25 @@ class MediaOptimizer
         $sourceToUpload = (file_exists($tempOut) && filesize($tempOut) > 0) ? $tempOut : $realPath;
         $pdfData = file_get_contents($sourceToUpload);
 
-        if (CloudflareR2::isConfigured()) {
-            CloudflareR2::put($targetRelativePath, $pdfData, 'application/pdf');
-        } else {
+        // 1. Always save to local public storage
+        try {
             $targetFullPath = storage_path('app/public/' . $targetRelativePath);
             $targetDir = dirname($targetFullPath);
             if (!is_dir($targetDir)) {
                 File::makeDirectory($targetDir, 0755, true);
             }
             File::put($targetFullPath, $pdfData);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Local PDF write failed: ' . $e->getMessage());
+        }
+
+        // 2. Dual-write & sync to Cloudflare R2 if configured
+        if (CloudflareR2::isConfigured()) {
+            try {
+                CloudflareR2::put($targetRelativePath, $pdfData, 'application/pdf');
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Cloudflare R2 PDF sync failed: ' . $e->getMessage());
+            }
         }
 
         if (file_exists($tempOut)) {

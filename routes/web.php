@@ -107,6 +107,7 @@ Route::middleware(['auth'])->group(function () {
     // App Settings Routes
     Route::get('/hrd/settings', [\App\Http\Controllers\SettingController::class, 'index'])->name('hrd.settings');
     Route::post('/hrd/settings', [\App\Http\Controllers\SettingController::class, 'update'])->name('hrd.settings.update');
+    Route::post('/hrd/settings/test-r2', [\App\Http\Controllers\SettingController::class, 'testR2'])->name('hrd.settings.test-r2');
 
     // Profile & Biodata Routes
     Route::get('/profile/biodata', [\App\Http\Controllers\ProfileController::class, 'biodata'])->name('profile.biodata');

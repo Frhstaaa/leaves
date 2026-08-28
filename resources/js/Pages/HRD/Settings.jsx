@@ -17,7 +17,11 @@ import {
   Sparkles,
   Download,
   Palette,
-  ShieldAlert
+  ShieldAlert,
+  Cloud,
+  RefreshCw,
+  AlertCircle,
+  Database
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -75,6 +79,35 @@ export default function Settings({ settings = {} }) {
 
   const triggerPwaModal = () => {
     window.dispatchEvent(new CustomEvent('open-pwa-install-modal'));
+  };
+
+  const [isTestingR2, setIsTestingR2] = useState(false);
+  const [r2TestResult, setR2TestResult] = useState(null);
+
+  const handleTestR2 = async () => {
+    setIsTestingR2(true);
+    setR2TestResult(null);
+    try {
+      const response = await fetch(route('hrd.settings.test-r2'), {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+          'Accept': 'application/json',
+        },
+      });
+      const resJson = await response.json();
+      setR2TestResult(resJson);
+      if (resJson.success) {
+        showToast('Koneksi Cloudflare R2 Berhasil Terverifikasi!', 'success');
+      } else {
+        showToast(resJson.message || 'Koneksi Cloudflare R2 Gagal', 'error');
+      }
+    } catch (e) {
+      setR2TestResult({ success: false, message: e.message || 'Gagal menghubungi server' });
+      showToast('Gagal menjalankan tes Cloudflare R2', 'error');
+    } finally {
+      setIsTestingR2(false);
+    }
   };
 
   const themeColors = [
@@ -219,6 +252,73 @@ export default function Settings({ settings = {} }) {
                       </button>
                     ))}
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Cloudflare R2 Cloud Storage Card */}
+              <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Cloud size={18} className="text-sky-600" />
+                      <CardTitle className="text-sm font-bold text-slate-900">Cloudflare R2 Storage</CardTitle>
+                    </div>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                      Cloud Sync
+                    </span>
+                  </div>
+                  <CardDescription className="text-xs text-slate-500">
+                    Penyimpanan awan terdistribusi & backup lampiran dokumen, slip gaji, dan logo.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 font-medium">Bucket</span>
+                      <span className="font-bold text-slate-800 font-mono text-[11px]">sgin</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 font-medium">Driver Hybrid</span>
+                      <span className="font-semibold text-emerald-700">Local + R2 Dual-Sync</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 font-medium">Status Arsitektur</span>
+                      <span className="font-semibold text-sky-700">Zero 404 Auto-Fallback</span>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleTestR2}
+                    disabled={isTestingR2}
+                    className="w-full rounded-xl text-xs font-bold space-x-2 border-sky-200 hover:bg-sky-50 text-sky-800"
+                  >
+                    <RefreshCw size={14} className={isTestingR2 ? 'animate-spin text-sky-600' : 'text-sky-600'} />
+                    <span>{isTestingR2 ? 'Menguji Koneksi R2...' : 'Tes Koneksi Cloudflare R2'}</span>
+                  </Button>
+
+                  {r2TestResult && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`p-3 rounded-xl border text-xs flex items-start space-x-2 ${
+                        r2TestResult.success
+                          ? 'bg-emerald-50/80 border-emerald-200 text-emerald-800'
+                          : 'bg-rose-50/80 border-rose-200 text-rose-800'
+                      }`}
+                    >
+                      {r2TestResult.success ? (
+                        <CheckCircle size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertCircle size={16} className="text-rose-600 shrink-0 mt-0.5" />
+                      )}
+                      <div className="space-y-0.5">
+                        <p className="font-bold">{r2TestResult.success ? 'Koneksi Sukses' : 'Koneksi Gagal'}</p>
+                        <p className="text-[11px] leading-relaxed opacity-90">{r2TestResult.message}</p>
+                      </div>
+                    </motion.div>
+                  )}
                 </CardContent>
               </Card>
             </div>

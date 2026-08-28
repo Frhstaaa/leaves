@@ -9,13 +9,30 @@ class CloudflareR2
      */
     public static function getCredentials(): array
     {
-        $getEnv = function ($key, $default = null) {
+        $r2Config = function_exists('config') ? config('filesystems.disks.r2', []) : [];
+
+        $getEnv = function ($key, $default = null) use ($r2Config) {
+            // 1. First check Laravel config
+            $configKeyMap = [
+                'CLOUDFLARE_R2_ACCESS_KEY_ID' => 'key',
+                'CLOUDFLARE_R2_SECRET_ACCESS_KEY' => 'secret',
+                'CLOUDFLARE_R2_ENDPOINT' => 'endpoint',
+                'CLOUDFLARE_R2_BUCKET' => 'bucket',
+                'CLOUDFLARE_R2_URL' => 'url',
+            ];
+            if (isset($configKeyMap[$key]) && !empty($r2Config[$configKeyMap[$key]])) {
+                return $r2Config[$configKeyMap[$key]];
+            }
+
+            // 2. Then check env helper
             if (function_exists('env')) {
                 $val = env($key);
                 if ($val !== null && $val !== '') {
                     return $val;
                 }
             }
+
+            // 3. Fallback to getenv
             $val = getenv($key);
             return ($val !== false && $val !== '') ? $val : $default;
         };
@@ -37,6 +54,50 @@ class CloudflareR2
     {
         $cred = self::getCredentials();
         return !empty($cred['key']) && !empty($cred['secret']) && !empty($cred['endpoint']) && !empty($cred['bucket']);
+    }
+
+    /**
+     * Test connection to Cloudflare R2 and return detailed diagnostics.
+     */
+    public static function testConnection(): array
+    {
+        if (!self::isConfigured()) {
+            return [
+                'success' => false,
+                'message' => 'Cloudflare R2 belum terkonfigurasi dengan lengkap.',
+                'details' => self::getCredentials(),
+            ];
+        }
+
+        $testKey = '_health_check_' . time() . '.txt';
+        $testPayload = 'Cloudflare R2 Health Check OK at ' . date('c');
+
+        $putOk = self::put($testKey, $testPayload, 'text/plain');
+        if (!$putOk) {
+            return [
+                'success' => false,
+                'message' => 'Gagal mengunggah test object ke Cloudflare R2. Periksa permission API token R2.',
+                'details' => ['endpoint' => self::getCredentials()['endpoint'], 'bucket' => self::getCredentials()['bucket']],
+            ];
+        }
+
+        $exists = self::exists($testKey);
+        $downloaded = self::get($testKey);
+        self::delete($testKey);
+
+        if (!$exists || $downloaded !== $testPayload) {
+            return [
+                'success' => false,
+                'message' => 'Upload berhasil namun verifikasi retrieval data Cloudflare R2 gagal.',
+            ];
+        }
+
+        return [
+            'success' => true,
+            'message' => 'Koneksi Cloudflare R2 aktif, terverifikasi, dan berfungsi 100%!',
+            'bucket' => self::getCredentials()['bucket'],
+            'endpoint' => self::getCredentials()['endpoint'],
+        ];
     }
 
     /**
