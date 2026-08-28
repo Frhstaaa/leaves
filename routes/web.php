@@ -47,6 +47,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/leave-requests', [LeaveRequestController::class, 'index'])->name('leave-requests.index');
     Route::get('/leave-requests/create', [LeaveRequestController::class, 'create'])->name('leave-requests.create');
     Route::get('/leave-requests/report/print', [LeaveRequestController::class, 'printPersonalReport'])->name('leave-requests.report.print');
+    Route::get('/leave-requests/{id}/attachment', [LeaveRequestController::class, 'viewAttachment'])->name('leave-requests.attachment');
+    Route::get('/leave-requests/{id}/attachment/view', [LeaveRequestController::class, 'viewAttachment'])->name('leave-requests.attachment.view');
+    Route::get('/leave-requests/{id}/attachment/download', [LeaveRequestController::class, 'downloadAttachment'])->name('leave-requests.attachment.download');
     Route::post('/leave-requests', [LeaveRequestController::class, 'store'])->name('leave-requests.store');
     Route::get('/leave-requests/{id}', [LeaveRequestController::class, 'show'])->name('leave-requests.show');
     Route::delete('/leave-requests/{id}', [LeaveRequestController::class, 'destroy'])->name('leave-requests.destroy');

@@ -702,7 +702,7 @@ export default function HrdIndex({ requests = { data: [] }, departments = [], ca
                     <span className="font-bold text-slate-800 truncate">Lampiran Dokumen</span>
                   </div>
                   <a
-                    href={`/storage/${selectedRequest.attachment_path}`}
+                    href={selectedRequest.attachment_url || route('leave-requests.attachment', selectedRequest.id)}
                     target="_blank"
                     rel="noreferrer"
                     className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-[11px] shadow-sm hover:bg-emerald-700 transition-colors"

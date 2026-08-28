@@ -324,7 +324,7 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
                         {req.attachment_path && (
                           <div className="pt-1">
                             <a
-                              href={`/storage/${req.attachment_path}`}
+                              href={req.attachment_url || route('leave-requests.attachment', req.id)}
                               target="_blank"
                               rel="noreferrer"
                               className="text-teal-700 font-bold hover:underline flex items-center space-x-1"
@@ -410,7 +410,7 @@ export default function ApprovalsIndex({ requests, departments = [], filters = {
                             <p className="text-xs text-slate-600 truncate mt-0.5">{req.reason}</p>
                             {req.attachment_path && (
                               <a
-                                href={`/storage/${req.attachment_path}`}
+                                href={req.attachment_url || route('leave-requests.attachment', req.id)}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="text-teal-700 font-bold hover:underline text-xs block mt-1"

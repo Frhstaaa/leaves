@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -323,5 +324,110 @@ class LeaveRequestController extends Controller
         } catch (\Exception $e) {
             return redirect()->route('leave-requests.index')->with('error', $e->getMessage());
         }
+    }
+
+    /**
+     * Securely stream attachment inline (PDF / Image) with subfolder & cross-device compatibility.
+     */
+    public function viewAttachment(int $id)
+    {
+        $user = Auth::user();
+        $leaveRequest = $this->leaveRequestRepo->findById($id);
+
+        if (!$leaveRequest || !$leaveRequest->attachment_path) {
+            abort(404, 'File lampiran tidak ditemukan pada pengajuan ini.');
+        }
+
+        // Authorization: Owner, Approvers, HRD / Admin
+        $isOwner = (int) $leaveRequest->user_id === (int) $user->id;
+        $isApprover = (int) $leaveRequest->approved_by_1 === (int) $user->id || (int) $leaveRequest->approved_by_2 === (int) $user->id || (int) $leaveRequest->approved_by_hrd === (int) $user->id;
+        $canView = $isOwner || $isApprover || $user->isAdmin() || $user->isApprover() || in_array($user->role, ['superadmin', 'admin', 'hrd', 'manager']);
+
+        if (!$canView) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melihat dokumen lampiran ini.');
+        }
+
+        $path = $leaveRequest->attachment_path;
+
+        // If path is full external URL (e.g. S3 / R2)
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return redirect()->away($path);
+        }
+
+        // 1. Check in Storage::disk('public')
+        if (Storage::disk('public')->exists($path)) {
+            $filePath = Storage::disk('public')->path($path);
+            $mime = Storage::disk('public')->mimeType($path) ?: 'application/octet-stream';
+            return response()->file($filePath, [
+                'Content-Type' => $mime,
+                'Content-Disposition' => 'inline; filename="' . ($leaveRequest->attachment_name ?: basename($path)) . '"',
+            ]);
+        }
+
+        // 2. Fallback check storage_path('app/public/...')
+        $directPublic = storage_path('app/public/' . ltrim($path, '/'));
+        if (file_exists($directPublic)) {
+            $mime = mime_content_type($directPublic) ?: 'application/octet-stream';
+            return response()->file($directPublic, [
+                'Content-Type' => $mime,
+                'Content-Disposition' => 'inline; filename="' . ($leaveRequest->attachment_name ?: basename($path)) . '"',
+            ]);
+        }
+
+        // 3. Fallback check storage_path('app/...')
+        $directApp = storage_path('app/' . ltrim($path, '/'));
+        if (file_exists($directApp)) {
+            $mime = mime_content_type($directApp) ?: 'application/octet-stream';
+            return response()->file($directApp, [
+                'Content-Type' => $mime,
+                'Content-Disposition' => 'inline; filename="' . ($leaveRequest->attachment_name ?: basename($path)) . '"',
+            ]);
+        }
+
+        // 4. Fallback check public_path('storage/...')
+        $publicStorage = public_path('storage/' . ltrim($path, '/'));
+        if (file_exists($publicStorage)) {
+            $mime = mime_content_type($publicStorage) ?: 'application/octet-stream';
+            return response()->file($publicStorage, [
+                'Content-Type' => $mime,
+                'Content-Disposition' => 'inline; filename="' . ($leaveRequest->attachment_name ?: basename($path)) . '"',
+            ]);
+        }
+
+        abort(404, 'File lampiran fisik tidak ditemukan di penyimpanan server.');
+    }
+
+    /**
+     * Download attachment file with original name.
+     */
+    public function downloadAttachment(int $id)
+    {
+        $user = Auth::user();
+        $leaveRequest = $this->leaveRequestRepo->findById($id);
+
+        if (!$leaveRequest || !$leaveRequest->attachment_path) {
+            abort(404, 'File lampiran tidak ditemukan pada pengajuan ini.');
+        }
+
+        $isOwner = (int) $leaveRequest->user_id === (int) $user->id;
+        $isApprover = (int) $leaveRequest->approved_by_1 === (int) $user->id || (int) $leaveRequest->approved_by_2 === (int) $user->id || (int) $leaveRequest->approved_by_hrd === (int) $user->id;
+        $canView = $isOwner || $isApprover || $user->isAdmin() || $user->isApprover() || in_array($user->role, ['superadmin', 'admin', 'hrd', 'manager']);
+
+        if (!$canView) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mendownload lampiran ini.');
+        }
+
+        $path = $leaveRequest->attachment_path;
+
+        if (Storage::disk('public')->exists($path)) {
+            return Storage::disk('public')->download($path, $leaveRequest->attachment_name ?: basename($path));
+        }
+
+        $directPublic = storage_path('app/public/' . ltrim($path, '/'));
+        if (file_exists($directPublic)) {
+            return response()->download($directPublic, $leaveRequest->attachment_name ?: basename($path));
+        }
+
+        abort(404, 'File lampiran fisik tidak ditemukan di penyimpanan server.');
     }
 }

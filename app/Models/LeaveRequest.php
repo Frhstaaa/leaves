@@ -62,14 +62,11 @@ class LeaveRequest extends Model
             return $this->attachment_path;
         }
 
-        $r2Url = env('CLOUDFLARE_R2_URL');
-        $defaultDisk = config('filesystems.default', 'public');
-
-        if (($defaultDisk === 'r2' || $defaultDisk === 's3') && $r2Url) {
-            return rtrim($r2Url, '/') . '/' . ltrim($this->attachment_path, '/');
+        try {
+            return route('leave-requests.attachment', $this->id);
+        } catch (\Throwable $e) {
+            return url('leave-requests/' . $this->id . '/attachment');
         }
-
-        return url('storage/' . ltrim($this->attachment_path, '/'));
     }
 
     public function user()

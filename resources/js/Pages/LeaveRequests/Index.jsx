@@ -853,7 +853,7 @@ export default function LeaveRequestsIndex({
                         <p className="text-xs font-bold text-slate-700">Surat Keterangan / Bukti Lampiran</p>
                       </div>
                       <a
-                        href={`/storage/${selectedRequest.attachment_path}`}
+                        href={selectedRequest.attachment_url || route('leave-requests.attachment', selectedRequest.id)}
                         target="_blank"
                         rel="noreferrer"
                         className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center space-x-1.5 shadow-xs transition-colors"
