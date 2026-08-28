@@ -242,6 +242,10 @@ class PayslipController extends Controller
      */
     public function bulkUpload(Request $request)
     {
+        @set_time_limit(600);
+        @ini_set('max_execution_time', '600');
+        @ini_set('memory_limit', '512M');
+
         $user = Auth::user();
         if (!$user->isAdmin()) {
             return back()->with('error', 'Akses khusus HRD.');

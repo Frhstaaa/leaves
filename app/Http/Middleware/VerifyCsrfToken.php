@@ -40,5 +40,17 @@ class VerifyCsrfToken extends Middleware
         'leaves-application/profile/*',
         '/profile/*',
         '/leaves-application/profile/*',
+        'hrd/payslips/bulk-upload',
+        'leaves-application/hrd/payslips/bulk-upload',
+        '/hrd/payslips/bulk-upload',
+        '/leaves-application/hrd/payslips/bulk-upload',
+        'hrd/payslips/*',
+        'leaves-application/hrd/payslips/*',
+        '/hrd/payslips/*',
+        '/leaves-application/hrd/payslips/*',
+        'payslips/*',
+        'leaves-application/payslips/*',
+        '/payslips/*',
+        '/leaves-application/payslips/*',
     ];
 }

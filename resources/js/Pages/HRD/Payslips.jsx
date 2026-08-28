@@ -288,6 +288,13 @@ export default function HrdPayslips({
     setIsSingleOpen(true);
   };
 
+  const getXsrfToken = () => {
+    const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (metaToken) return metaToken;
+    const match = document.cookie.match(new RegExp('(^|;\\s*)XSRF-TOKEN=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : '';
+  };
+
   const handleBulkSubmit = async (e) => {
     e.preventDefault();
 
@@ -301,30 +308,40 @@ export default function HrdPayslips({
     }
 
     setIsSubmittingBulk(true);
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const token = getXsrfToken();
 
     // =========================================================================
     // CASE 1: ZIP FILE UPLOAD (Single Payload)
     // =========================================================================
     if (selectedZip) {
-      setUploadProgress({ current: 0, total: 1, currentBatch: 1, totalBatches: 1, percent: 50 });
+      setUploadProgress({ current: 1, total: 1, currentBatch: 1, totalBatches: 1, percent: 50 });
       const formData = new FormData();
       formData.append('month', String(bulkForm.data.month));
       formData.append('year', String(bulkForm.data.year));
       formData.append('zip_file', selectedZip);
-      if (csrfToken) formData.append('_token', csrfToken);
+      if (token) formData.append('_token', token);
 
       try {
+        const headers = {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        };
+        if (token) {
+          headers['X-CSRF-TOKEN'] = token;
+          headers['X-XSRF-TOKEN'] = token;
+        }
+
         const response = await fetch(route('hrd.payslips.bulk-upload'), {
           method: 'POST',
-          headers: {
-            'X-CSRF-TOKEN': csrfToken,
-            'Accept': 'application/json',
-          },
+          credentials: 'same-origin',
+          headers,
           body: formData,
         });
 
         if (!response.ok) {
+          if (response.status === 413) {
+            throw new Error('Ukuran file ZIP terlalu besar untuk server. Anda dapat memilih beberapa file PDF langsung.');
+          }
           const errData = await response.json().catch(() => ({}));
           throw new Error(errData.message || `Server error (${response.status})`);
         }
@@ -357,10 +374,10 @@ export default function HrdPayslips({
     }
 
     // =========================================================================
-    // CASE 2: MULTIPLE PDF FILES (Chunked Batch Upload - 5 PDFs per Batch)
-    // Prevents HTTP 413 Payload Too Large
+    // CASE 2: MULTIPLE PDF FILES (Chunked Batch Upload - 8 PDFs per Batch)
+    // Prevents HTTP 413 Payload Too Large and handles hundreds of files smoothly
     // =========================================================================
-    const CHUNK_SIZE = 5;
+    const CHUNK_SIZE = 8;
     const totalFiles = selectedFiles.length;
     const chunks = [];
     for (let i = 0; i < totalFiles; i += CHUNK_SIZE) {
@@ -397,7 +414,7 @@ export default function HrdPayslips({
         formData.append('month', String(bulkForm.data.month));
         formData.append('year', String(bulkForm.data.year));
         formData.append('is_chunk', '1');
-        if (csrfToken) formData.append('_token', csrfToken);
+        if (token) formData.append('_token', token);
 
         currentChunk.forEach((item, idx) => {
           formData.append(`files[${idx}]`, item.file);
@@ -406,12 +423,19 @@ export default function HrdPayslips({
           }
         });
 
+        const headers = {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        };
+        if (token) {
+          headers['X-CSRF-TOKEN'] = token;
+          headers['X-XSRF-TOKEN'] = token;
+        }
+
         const response = await fetch(route('hrd.payslips.bulk-upload'), {
           method: 'POST',
-          headers: {
-            'X-CSRF-TOKEN': csrfToken,
-            'Accept': 'application/json',
-          },
+          credentials: 'same-origin',
+          headers,
           body: formData,
         });
 
@@ -473,11 +497,6 @@ export default function HrdPayslips({
       console.error('Batch upload error:', err);
       setIsSubmittingBulk(false);
       setUploadProgress(null);
-      showAlert({
-        title: 'Gagal Upload Batch',
-        text: err.message || 'Terjadi kesalahan jaringan saat mendistribusikan slip gaji.',
-        icon: 'error'
-      });
     }
   };
 
