@@ -277,16 +277,6 @@ class User extends Authenticatable
         return $this->hasMany(Payslip::class);
     }
 
-    public function leaveQuotas()
-    {
-        return $this->hasMany(LeaveQuota::class);
-    }
-
-    public function currentQuota()
-    {
-        return $this->hasOne(LeaveQuota::class)->where('year', (int) date('Y'));
-    }
-
     public function getPendingApprovalsQuery()
     {
         if ($this->isAdmin()) {

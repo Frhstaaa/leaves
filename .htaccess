@@ -1,13 +1,8 @@
-# php -- BEGIN cPanel-generated handler, do not edit
-# Set the “ea-php82” package as the default “PHP” programming language.
-<IfModule mime_module>
-  AddHandler application/x-httpd-ea-php82 .php .php8 .phtml
-</IfModule>
-# php -- END cPanel-generated handler, do not edit
-
-DirectoryIndex index.php index.html
-
 <IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
     RewriteEngine On
 
     # 1. Block direct access to sensitive files and folders
@@ -17,16 +12,20 @@ DirectoryIndex index.php index.html
     RewriteRule ^storage/(framework|logs)(/|$) - [F,L]
     RewriteRule ^(composer\.(json|lock)|package(-lock)?\.json|vite\.config\.js|artisan)$ - [F,L]
 
-    # 2. If already inside public directory, do not rewrite further
-    RewriteCond %{REQUEST_URI} ^.*/public/ [NC]
-    RewriteRule ^ - [L]
+    # 2. Pass Authorization Header to PHP
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-    # 3. Allow direct access to update.php and setup.php in root
-    RewriteRule ^(update\.php|setup\.php) - [L]
+    # 3. Direct route to public static assets
+    RewriteRule ^build/(.*)$ public/build/$1 [L]
+    RewriteRule ^storage/(.*)$ public/storage/$1 [L]
+    RewriteRule ^icons/(.*)$ public/icons/$1 [L]
+    RewriteRule ^(favicon\.ico|robots\.txt|sw\.js|manifest\.json|manifest\.webmanifest)$ public/$1 [L]
 
-    # 4. Route root URL and all other requests to public folder
-    RewriteRule ^$ public/ [L]
-    RewriteRule ^(.*)$ public/$1 [L]
+    # 4. Route all application requests directly to root index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [L]
 </IfModule>
 
 # Enable Long-lived Browser Caching & CORS for Static Assets

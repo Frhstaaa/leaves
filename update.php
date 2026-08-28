@@ -1,849 +1,674 @@
 <?php
 /**
- * ============================================================================
- * SGIN Leaves Application - Master Web Updater & Server Management Center
- * PT Sugiyama Indonesia (Leaves & Attendance Management System)
- * ============================================================================
+ * =========================================================================
+ * 🚀 SGIN LEAVES - MASTER UPDATER (FRONTEND & BACKEND)
+ * =========================================================================
+ * File ini digunakan untuk melakukan pembaruan otomatis (1-Click Update)
+ * untuk Frontend (React, Vite, CSS, Assets) dan Backend (PHP, Laravel, DB).
  * 
- * Tool Pembaruan Komprehensif (All-in-One):
- * 1. 🚀 1-Klik Update Total (GitHub Sync + Cache Purge + Safe Migrate + Permissions)
- * 2. ⚡ Update Frontend Saja (React / Inertia / Blade / CSS / PWA Assets)
- * 3. 🔄 Tarik Kode Terbaru dari GitHub (Hybrid cURL ZIP Sync & Git CLI)
- * 4. 🧹 Pembersihan Total Cache Aplikasi & OPcache
- * 5. 🛠️ Self-Healing: Perbaikan .env, APP_KEY & Izin Folder Storage
- * 6. 📦 Unggah & Ekstraksi Paket ZIP
- * 7. 🤖 Webhook Otomatis untuk GitHub Push
- * 
- * Akses: https://www.sgin.co.id/leaves-application/update.php
- * ============================================================================
+ * Akses Web: http(s)://domain-anda/update.php atau /leaves-application/update.php
+ * Repository: Frhstaaa/leaves (branch: main)
+ * =========================================================================
  */
 
 @set_time_limit(600);
-@ini_set('max_execution_time', 600);
+@ini_set('max_execution_time', '600');
 @ini_set('memory_limit', '512M');
-@ini_set('display_errors', 1);
+@ini_set('display_errors', '1');
 error_reporting(E_ALL);
 
-define('APP_NAME_SYSTEM', 'SGIN Leaves Management');
-define('GITHUB_REPO', 'Frhstaaa/leaves');
-define('GITHUB_BRANCH', 'main');
-define('WEBHOOK_SECRET', 'sgin-secret-webhook-key');
-
-// Determine base path
-$basePath = __DIR__;
-if (!file_exists($basePath . '/vendor/autoload.php')) {
-    if (file_exists(dirname(__DIR__) . '/vendor/autoload.php')) {
-        $basePath = dirname(__DIR__);
-    }
+// Matikan error exception mysqli otomatis pada PHP 8.1+
+if (function_exists('mysqli_report')) {
+    @mysqli_report(MYSQLI_REPORT_OFF);
 }
 
-// ----------------------------------------------------------------------------
-// 1. Storage & Directory Preparation
-// ----------------------------------------------------------------------------
-$storageDirs = [
-    $basePath . '/storage',
-    $basePath . '/storage/app',
-    $basePath . '/storage/app/public',
-    $basePath . '/storage/app/public/logos',
-    $basePath . '/storage/framework',
-    $basePath . '/storage/framework/cache',
-    $basePath . '/storage/framework/cache/data',
-    $basePath . '/storage/framework/sessions',
-    $basePath . '/storage/framework/views',
-    $basePath . '/storage/framework/testing',
-    $basePath . '/storage/logs',
-    $basePath . '/bootstrap/cache',
-    $basePath . '/public/build',
-    $basePath . '/public/build/assets',
-];
-
-foreach ($storageDirs as $dir) {
-    if (!is_dir($dir)) {
-        @mkdir($dir, 0777, true);
-    }
-    @chmod($dir, 0777);
+// 1. Deteksi Path Root Proyek Laravel
+$currentDir = __DIR__;
+if (file_exists($currentDir . '/artisan')) {
+    $basePath = $currentDir;
+} elseif (file_exists(dirname($currentDir) . '/artisan')) {
+    $basePath = dirname($currentDir);
+} else {
+    $basePath = $currentDir;
 }
 
-// ----------------------------------------------------------------------------
-// 2. Safe Shell Execution Helper
-// ----------------------------------------------------------------------------
-function runShell($cmd, $dir) {
-    if (!function_exists('shell_exec')) {
-        return "shell_exec() tidak aktif di PHP server ini.";
-    }
-    $full = "cd " . escapeshellarg($dir) . " && " . $cmd . " 2>&1";
-    return trim(@shell_exec($full) ?: '');
-}
+$isPublic = (basename($currentDir) === 'public');
+$envFile = $basePath . '/.env';
+$envContent = file_exists($envFile) ? file_get_contents($envFile) : '';
 
-// ----------------------------------------------------------------------------
-// 3. Ensure & Auto-Heal .env File & APP_KEY
-// ----------------------------------------------------------------------------
-function ensureEnvFile($basePath) {
-    $envPath = $basePath . '/.env';
-    $defaultAppKey = 'base64:fn2kAMl3S31maRCtRvzVAluYwEGHTrVblVjLr4rxokE=';
+// 2. Helper Functions Eksekusi Perintah CLI / Shell
+function executeCmd($cmd, $cwd) {
+    $output = '';
+    if (function_exists('proc_open')) {
+        $descriptors = [
+            0 => ["pipe", "r"],
+            1 => ["pipe", "w"],
+            2 => ["pipe", "w"]
+        ];
+        $process = @proc_open($cmd, $descriptors, $pipes, $cwd);
+        if (is_resource($process)) {
+            fclose($pipes[0]);
+            $stdout = stream_get_contents($pipes[1]);
+            $stderr = stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            proc_close($process);
+            $output = trim($stdout . ($stderr ? "\n" . $stderr : ''));
+        }
+    }
     
-    if (!file_exists($envPath)) {
-        $envTemplate = <<<ENV
-APP_NAME="Form SGIN"
-APP_ENV=production
-APP_KEY={$defaultAppKey}
-APP_DEBUG=false
-APP_URL=https://www.sgin.co.id/leaves-application
-
-LOG_CHANNEL=stack
-LOG_DEPRECATIONS_CHANNEL=null
-LOG_LEVEL=error
-
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=sginco_leav
-DB_USERNAME=sginco_leav
-DB_PASSWORD="@SginC01!!!"
-
-BROADCAST_DRIVER=log
-CACHE_DRIVER=file
-FILESYSTEM_DISK=local
-QUEUE_CONNECTION=sync
-SESSION_DRIVER=file
-SESSION_LIFETIME=120
-
-MEMCACHED_HOST=127.0.0.1
-
-REDIS_HOST=127.0.0.1
-REDIS_PASSWORD=null
-REDIS_PORT=6379
-
-MAIL_MAILER=smtp
-MAIL_HOST=mailpit
-MAIL_PORT=1025
-MAIL_USERNAME=null
-MAIL_PASSWORD=null
-MAIL_ENCRYPTION=null
-MAIL_FROM_ADDRESS="leaves@sgin.co.id"
-MAIL_FROM_NAME="\${APP_NAME}"
-ENV;
-        @file_put_contents($envPath, $envTemplate);
-        @chmod($envPath, 0644);
-        return "File .env baru berhasil dibuat otomatis dengan kredensial produksi & APP_KEY.";
-    } else {
-        $content = @file_get_contents($envPath);
-        if (!str_contains($content, 'APP_KEY=') || preg_match('/APP_KEY=\s*$/m', $content) || preg_match('/APP_KEY=\s*\r?\n/', $content)) {
-            if (str_contains($content, 'APP_KEY=')) {
-                $content = preg_replace('/APP_KEY=.*$/m', "APP_KEY={$defaultAppKey}", $content);
-            } else {
-                $content = "APP_KEY={$defaultAppKey}\n" . $content;
-            }
-            @file_put_contents($envPath, $content);
-            return "APP_KEY berhasil ditambahkan/diperbaiki di file .env.";
-        }
+    if (empty($output) && function_exists('shell_exec')) {
+        $output = @shell_exec("cd " . escapeshellarg($cwd) . " && " . $cmd . " 2>&1");
     }
-    return "File .env sudah ada dan valid.";
-}
-
-ensureEnvFile($basePath);
-
-// ----------------------------------------------------------------------------
-// 4. Direct File Cache Cleaning (Without Laravel Kernel)
-// ----------------------------------------------------------------------------
-function directFileCacheClear($basePath) {
-    $cleared = [];
-
-    // Delete bootstrap cache files
-    foreach (glob($basePath . '/bootstrap/cache/*.php') as $f) {
-        if (basename($f) !== '.gitignore') {
-            @unlink($f);
-            $cleared[] = 'bootstrap/cache/' . basename($f);
-        }
-    }
-
-    // Delete compiled blade views
-    foreach (glob($basePath . '/storage/framework/views/*.php') as $f) {
-        if (basename($f) !== '.gitignore') {
-            @unlink($f);
-            $cleared[] = 'views/' . basename($f);
-        }
-    }
-
-    // Delete data cache files
-    $cacheData = $basePath . '/storage/framework/cache/data';
-    if (is_dir($cacheData)) {
-        try {
-            $it = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($cacheData, RecursiveDirectoryIterator::SKIP_DOTS),
-                RecursiveIteratorIterator::CHILD_FIRST
-            );
-            foreach ($it as $file) {
-                if ($file->isFile() && $file->getFilename() !== '.gitignore') {
-                    @unlink($file->getRealPath());
-                } elseif ($file->isDir()) {
-                    @rmdir($file->getRealPath());
-                }
-            }
-            $cleared[] = 'storage/framework/cache/data/*';
-        } catch (\Throwable $e) {}
-    }
-
-    // Reset OPcache if present
-    if (function_exists('opcache_reset')) {
-        @opcache_reset();
-        $cleared[] = 'PHP OPcache Memory';
-    }
-
-    return $cleared;
-}
-
-// ----------------------------------------------------------------------------
-// 5. GitHub Direct ZIP Sync (Bypasses Git CLI)
-// ----------------------------------------------------------------------------
-function syncFromGitHubZip($repo, $branch, $basePath, $frontendOnly = false) {
-    $zipUrl = "https://github.com/$repo/archive/refs/heads/$branch.zip";
     
-    if (!function_exists('curl_init')) {
-        return ['success' => false, 'msg' => 'cURL tidak tersedia pada server PHP.'];
+    if (empty($output) && function_exists('exec')) {
+        @exec("cd " . escapeshellarg($cwd) . " && " . $cmd . " 2>&1", $outLines);
+        $output = implode("\n", $outLines ?? []);
     }
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $zipUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'SGIN-Master-Updater/3.0');
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 180);
-    $zipData = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlErr = curl_error($ch);
-    curl_close($ch);
-
-    if ($httpCode !== 200 || empty($zipData)) {
-        return ['success' => false, 'msg' => "Gagal mengunduh ZIP dari GitHub (HTTP $httpCode): $curlErr"];
-    }
-
-    $tempZip = $basePath . '/storage/github_sync_temp.zip';
-    file_put_contents($tempZip, $zipData);
-
-    if (!class_exists('ZipArchive')) {
-        @unlink($tempZip);
-        return ['success' => false, 'msg' => 'Ekstensi PHP ZipArchive tidak aktif pada server.'];
-    }
-
-    $extractPath = $basePath . '/storage/github_sync_extracted';
-    if (is_dir($extractPath)) {
-        $old = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($extractPath, RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::CHILD_FIRST
-        );
-        foreach ($old as $f) { $f->isDir() ? @rmdir($f->getPathname()) : @unlink($f->getPathname()); }
-        @rmdir($extractPath);
-    }
-    @mkdir($extractPath, 0777, true);
-
-    $zip = new ZipArchive();
-    if ($zip->open($tempZip) !== TRUE) {
-        @unlink($tempZip);
-        return ['success' => false, 'msg' => 'Gagal membuka file ZIP hasil unduhan.'];
-    }
-    $zip->extractTo($extractPath);
-    $zip->close();
-    @unlink($tempZip);
-
-    $sourceDir = '';
-    foreach (scandir($extractPath) as $item) {
-        if ($item !== '.' && $item !== '..' && is_dir("$extractPath/$item")) {
-            $sourceDir = "$extractPath/$item";
-            break;
-        }
-    }
-
-    if (!$sourceDir) {
-        return ['success' => false, 'msg' => 'Folder root repositori tidak ditemukan dalam file ZIP.'];
-    }
-
-    // Safety rules: Never overwrite .env or uploaded user storage
-    $ignoreList = ['.env', '.env.production', 'storage/app/public/', 'public/storage', '.git/', 'node_modules/'];
-    $allowedFrontend = ['public/build/', 'resources/', 'public/sw.js', 'public/manifest.webmanifest', 'public/icons/'];
-
-    $count = 0;
-    $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($sourceDir, RecursiveDirectoryIterator::SKIP_DOTS),
-        RecursiveIteratorIterator::SELF_FIRST
-    );
-
-    foreach ($iterator as $item) {
-        $subPath = str_replace('\\', '/', substr($item->getPathname(), strlen($sourceDir) + 1));
-        $destPath = $basePath . '/' . $subPath;
-
-        // Check if ignored
-        $skip = false;
-        foreach ($ignoreList as $ig) {
-            if (str_starts_with($subPath, rtrim($ig, '/'))) {
-                $skip = true;
-                break;
-            }
-        }
-        if ($skip) continue;
-
-        // If Frontend Only mode
-        if ($frontendOnly) {
-            $isFront = false;
-            foreach ($allowedFrontend as $af) {
-                if (str_starts_with($subPath, rtrim($af, '/'))) {
-                    $isFront = true;
-                    break;
-                }
-            }
-            if (!$isFront) continue;
-        }
-
-        if ($item->isDir()) {
-            if (!is_dir($destPath)) {
-                @mkdir($destPath, 0777, true);
-            }
-        } else {
-            $destDir = dirname($destPath);
-            if (!is_dir($destDir)) {
-                @mkdir($destDir, 0777, true);
-            }
-            if (@copy($item->getPathname(), $destPath)) {
-                @chmod($destPath, 0644);
-                $count++;
-            }
-        }
-    }
-
-    // Clean up temp extraction folder
-    try {
-        $old = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($extractPath, RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::CHILD_FIRST
-        );
-        foreach ($old as $f) { $f->isDir() ? @rmdir($f->getPathname()) : @unlink($f->getPathname()); }
-        @rmdir($extractPath);
-    } catch (\Throwable $e) {}
-
-    return ['success' => true, 'count' => $count];
+    return trim($output ?: 'Perintah dieksekusi (tidak ada output teks).');
 }
 
-// ----------------------------------------------------------------------------
-// 6. Bootstrap Laravel Kernel Helper
-// ----------------------------------------------------------------------------
-function getLaravelApp($basePath) {
-    if (file_exists($basePath . '/vendor/autoload.php') && file_exists($basePath . '/bootstrap/app.php')) {
-        try {
-            require_once $basePath . '/vendor/autoload.php';
-            $app = require_once $basePath . '/bootstrap/app.php';
-            $app->usePublicPath($basePath . '/public');
-            $kernel = $app->make(\Illuminate\Contracts\Console\Kernel::class);
-            $kernel->bootstrap();
-            return $app;
-        } catch (\Throwable $e) {
-            return null;
-        }
-    }
-    return null;
-}
-
-// ----------------------------------------------------------------------------
-// 7. Handle Webhook from GitHub
-// ----------------------------------------------------------------------------
-if (isset($_GET['webhook']) || isset($_GET['key']) && $_GET['key'] === WEBHOOK_SECRET) {
-    header('Content-Type: application/json; charset=utf-8');
-    $sync = syncFromGitHubZip(GITHUB_REPO, GITHUB_BRANCH, $basePath);
-    $cleared = directFileCacheClear($basePath);
-    
-    $app = getLaravelApp($basePath);
-    if ($app) {
-        try {
-            \Illuminate\Support\Facades\Artisan::call('optimize:clear');
-            \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-        } catch (\Throwable $e) {}
-    }
-
-    echo json_encode([
-        'status' => $sync['success'] ? 'success' : 'error',
-        'message' => $sync['success'] ? "Pembaruan otomatis webhook selesai! ({$sync['count']} file diperbarui)" : $sync['msg'],
-        'cleared_cache_items' => count($cleared),
-        'timestamp' => date('Y-m-d H:i:s'),
-    ]);
-    exit;
-}
-
-// ----------------------------------------------------------------------------
-// 8. Handle Form Actions
-// ----------------------------------------------------------------------------
-$action = $_POST['action'] ?? (!empty($_GET['run']) ? $_GET['run'] : null);
-$logs = [];
-$statusType = 'info';
-
-if ($action === 'full_update' || $action === '1') {
-    $logs[] = "=================================================================";
-    $logs[] = "  🚀 MEMULAI PEMBARUAN TOTAL APLIKASI SGIN LEAVES...             ";
-    $logs[] = "=================================================================\n";
-
-    // Step 1: Ensure .env
-    $logs[] = "[1/6] Memeriksa integritas file .env & APP_KEY...";
-    $envMsg = ensureEnvFile($basePath);
-    $logs[] = "✓ Status .env: " . $envMsg;
-
-    // Step 2: Sync Code from GitHub
-    $logs[] = "\n[2/6] Mengambil kodingan terbaru dari GitHub (" . GITHUB_REPO . ":" . GITHUB_BRANCH . ")...";
-    $gitVer = runShell("git --version", $basePath);
-    $syncSuccess = false;
-
-    if (str_contains(strtolower($gitVer), 'git version')) {
-        $fetch = runShell("git fetch origin " . GITHUB_BRANCH, $basePath);
-        $reset = runShell("git reset --hard origin/" . GITHUB_BRANCH, $basePath);
-        $logs[] = "✓ Git Sync: " . ($reset ?: $fetch ?: 'Selesai');
-        $syncSuccess = true;
-    }
-
-    if (!$syncSuccess) {
-        $zipRes = syncFromGitHubZip(GITHUB_REPO, GITHUB_BRANCH, $basePath);
-        if ($zipRes['success']) {
-            $logs[] = "✓ Direct ZIP Sync: Berhasil memperbarui {$zipRes['count']} file dari GitHub.";
-        } else {
-            $logs[] = "⚠️ ZIP Sync: " . $zipRes['msg'];
-        }
-    }
-
-    // Step 3: Direct Cache Purge
-    $logs[] = "\n[3/6] Membersihkan seluruh cache file & template...";
-    $cleared = directFileCacheClear($basePath);
-    $logs[] = "✓ Cache yang dibersihkan: " . count($cleared) . " entri (Blade views, bootstrap, data cache).";
-
-    // Step 4: Bootstrap Laravel & Safe Migrations
-    $logs[] = "\n[4/6] Menghubungkan Laravel Kernel & Memeriksa Database...";
-    $app = getLaravelApp($basePath);
-    if ($app) {
-        try {
-            \Illuminate\Support\Facades\Artisan::call('optimize:clear');
-            $logs[] = "✓ Artisan optimize:clear: " . trim(\Illuminate\Support\Facades\Artisan::output());
-        } catch (\Throwable $e) {
-            $logs[] = "ℹ️ optimize:clear: " . $e->getMessage();
-        }
-
-        try {
-            \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-            $logs[] = "✓ Artisan migrate: " . trim(\Illuminate\Support\Facades\Artisan::output() ?: 'Database up-to-date.');
-        } catch (\Throwable $e) {
-            $logs[] = "ℹ️ migrate: " . $e->getMessage();
-        }
-
-        try {
-            if (class_exists('Database\\Seeders\\RolePermissionSeeder')) {
-                \Illuminate\Support\Facades\Artisan::call('db:seed', [
-                    '--class' => 'Database\\Seeders\\RolePermissionSeeder',
-                    '--force' => true,
-                ]);
-                $logs[] = "✓ Role & Permission Sync: Selesai!";
-            }
-        } catch (\Throwable $e) {}
-
-        try {
-            if (class_exists('\\App\\Models\\LeaveQuota')) {
-                \App\Models\LeaveQuota::syncAllUsers();
-                $logs[] = "✓ Kuota Cuti Karyawan: Terverifikasi!";
-            }
-        } catch (\Throwable $e) {}
-    } else {
-        $logs[] = "ℹ️ Kernel bootstrap dilewati (menggunakan native filesystem updater).";
-    }
-
-    // Step 5: Storage Symlink & Permissions
-    $logs[] = "\n[5/6] Memperbaiki izin folder storage & symlink...";
-    $pubStorage = $basePath . '/public/storage';
-    $appStorage = $basePath . '/storage/app/public';
-    if (!file_exists($pubStorage) && !is_link($pubStorage)) {
-        @symlink($appStorage, $pubStorage);
-    }
-    foreach ($storageDirs as $dir) {
-        @chmod($dir, 0777);
-    }
-    $logs[] = "✓ Izin folder (0777) & Public Storage Symlink: Siap!";
-
-    // Step 6: PWA & Service Worker Cache Buster
-    $logs[] = "\n[6/6] Memperbarui timestamp Service Worker & Cache Browser...";
-    $swFile = $basePath . '/public/sw.js';
-    if (file_exists($swFile)) {
-        @touch($swFile);
-    }
-    $logs[] = "✓ Service Worker timestamp diperbarui.";
-
-    $logs[] = "\n=================================================================";
-    $logs[] = "  🎉 PEMBARUAN TOTAL SELESAI! APLIKASI KEMBALI NORMAL & CEPAT     ";
-    $logs[] = "=================================================================";
-    $statusType = 'success';
-
-} elseif ($action === 'frontend_only') {
-    $logs[] = "=================================================================";
-    $logs[] = "  ⚡ MEMULAI PEMBARUAN KHUSUS FRONTEND (DATABASE AMAN)...        ";
-    $logs[] = "=================================================================\n";
-
-    $zipRes = syncFromGitHubZip(GITHUB_REPO, GITHUB_BRANCH, $basePath, true);
-    if ($zipRes['success']) {
-        $logs[] = "✓ Berhasil memperbarui {$zipRes['count']} file frontend (React, Blade, CSS, JS, PWA).";
-    } else {
-        $logs[] = "⚠️ Sync Frontend: " . $zipRes['msg'];
-    }
-
-    $cleared = directFileCacheClear($basePath);
-    $logs[] = "✓ " . count($cleared) . " file cache Blade & template dibersihkan.";
-
-    $swFile = $basePath . '/public/sw.js';
-    if (file_exists($swFile)) {
-        @touch($swFile);
-    }
-    $logs[] = "✓ Service Worker & PWA cache-buster aktif.";
-
-    $logs[] = "\n=================================================================";
-    $logs[] = "  🎉 FRONTEND BERHASIL DIPERBARUI!                                ";
-    $logs[] = "=================================================================";
-    $statusType = 'success';
-
-} elseif ($action === 'clear_cache') {
-    $cleared = directFileCacheClear($basePath);
-    $app = getLaravelApp($basePath);
-    if ($app) {
-        try {
-            \Illuminate\Support\Facades\Artisan::call('optimize:clear');
-        } catch (\Throwable $e) {}
-    }
-    $logs[] = "✓ Pembersihan cache selesai! (" . count($cleared) . " komponen dibersihkan).";
-    $statusType = 'success';
-
-} elseif ($action === 'fix_permissions') {
-    ensureEnvFile($basePath);
-    foreach ($storageDirs as $dir) {
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0777, true);
-        }
-        @chmod($dir, 0777);
-    }
-    $pubStorage = $basePath . '/public/storage';
-    $appStorage = $basePath . '/storage/app/public';
-    if (!file_exists($pubStorage) && !is_link($pubStorage)) {
-        @symlink($appStorage, $pubStorage);
-    }
-    $logs[] = "✓ Hak akses folder storage (0777) & perbaikan .env selesai!";
-    $statusType = 'success';
-
-} elseif ($action === 'upload_zip') {
-    if (isset($_FILES['zip_package']) && $_FILES['zip_package']['error'] === UPLOAD_ERR_OK) {
-        $tmp = $_FILES['zip_package']['tmp_name'];
-        $zip = new ZipArchive();
-        if ($zip->open($tmp) === TRUE) {
-            $extracted = 0;
-            $ignore = ['.env', '.env.production', 'storage/app/public/'];
-            for ($i = 0; $i < $zip->numFiles; $i++) {
-                $name = $zip->getNameIndex($i);
-                $skip = false;
-                foreach ($ignore as $ig) {
-                    if (str_starts_with($name, $ig)) { $skip = true; break; }
-                }
-                if ($skip) continue;
-                $dest = $basePath . '/' . $name;
-                if (str_ends_with($name, '/')) {
-                    if (!is_dir($dest)) @mkdir($dest, 0777, true);
-                } else {
-                    $d = dirname($dest);
-                    if (!is_dir($d)) @mkdir($d, 0777, true);
-                    file_put_contents($dest, $zip->getFromIndex($i));
-                    $extracted++;
-                }
-            }
-            $zip->close();
-            directFileCacheClear($basePath);
-            $logs[] = "✓ Paket ZIP berhasil diekstrak! ($extracted file diterapkan).";
-            $statusType = 'success';
-        } else {
-            $logs[] = "❌ Gagal membuka file ZIP yang diunggah.";
-            $statusType = 'error';
-        }
-    } else {
-        $logs[] = "⚠️ Silakan pilih file ZIP terlebih dahulu sebelum mengunggah.";
-        $statusType = 'warning';
-    }
-}
-
-// ----------------------------------------------------------------------------
-// 9. Diagnostics & Status Data
-// ----------------------------------------------------------------------------
-$manifestPath = $basePath . '/public/build/manifest.json';
-$manifestInfo = null;
-if (file_exists($manifestPath)) {
-    $manifestData = json_decode(file_get_contents($manifestPath), true);
-    $manifestInfo = [
-        'entries' => count($manifestData ?: []),
-        'last_modified' => date('d M Y, H:i:s', filemtime($manifestPath)),
-        'size' => round(filesize($manifestPath) / 1024, 2) . ' KB',
+function findBinary($name) {
+    $paths = [
+        "/usr/local/bin/$name",
+        "/usr/bin/$name",
+        "/bin/$name",
+        getenv("HOME") . "/.nvm/versions/node/*/bin/$name",
+        getenv("HOME") . "/bin/$name",
     ];
+    foreach ($paths as $pattern) {
+        $matches = glob($pattern);
+        if ($matches) {
+            foreach ($matches as $m) {
+                if (is_executable($m)) return $m;
+            }
+        }
+    }
+    $which = executeCmd("which $name 2>/dev/null", __DIR__);
+    if ($which && !str_contains($which, 'not found') && is_executable($which)) {
+        return $which;
+    }
+    return $name;
 }
 
-// Check database connectivity
-$dbStatus = 'Belum dicek';
-$dbConnected = false;
-try {
-    if (function_exists('mysqli_report')) {
-        @mysqli_report(MYSQLI_REPORT_OFF);
-    }
-    $envContent = file_exists($basePath . '/.env') ? file_get_contents($basePath . '/.env') : '';
+// 3. Helper Cek Koneksi Database Langsung
+function testDbConnection($envContent) {
     preg_match('/DB_HOST=(.*)/', $envContent, $mHost);
     preg_match('/DB_PORT=(.*)/', $envContent, $mPort);
     preg_match('/DB_DATABASE=(.*)/', $envContent, $mDb);
     preg_match('/DB_USERNAME=(.*)/', $envContent, $mUser);
     preg_match('/DB_PASSWORD=(.*)/', $envContent, $mPass);
 
-    $h = trim($mHost[1] ?? '127.0.0.1');
-    $p = trim($mPort[1] ?? '3306');
-    $d = trim($mDb[1] ?? 'sginco_dbleav_fix');
-    $u = trim($mUser[1] ?? 'sginco_dbleav_fix');
+    $host = trim($mHost[1] ?? '127.0.0.1');
+    $port = (int)trim($mPort[1] ?? '3306');
+    $db = trim($mDb[1] ?? '');
+    $user = trim($mUser[1] ?? '');
     $pass = trim(trim($mPass[1] ?? '', '"'), "'");
 
-    if ($h && $d && $u) {
-        $mysqli = @new mysqli($h, $u, $pass, $d, (int)$p);
-        if ($mysqli && !$mysqli->connect_errno) {
-            $dbConnected = true;
-            $res = $mysqli->query("SELECT COUNT(*) as c FROM information_schema.tables WHERE table_schema = '$d'");
-            $rowCount = $res ? ($res->fetch_assoc()['c'] ?? 0) : 0;
-            $dbStatus = "Terhubung ($d, $rowCount Tabel Aktif)";
-            $mysqli->close();
-        } else {
-            $dbStatus = "Koneksi Gagal: " . ($mysqli ? $mysqli->connect_error : 'Error');
-        }
+    if (empty($db) || empty($user)) {
+        return ['status' => false, 'message' => 'Konfigurasi DB di .env belum lengkap'];
     }
-} catch (\Throwable $e) {
-    $dbStatus = "Pemeriksaan Gagal: " . $e->getMessage();
+
+    try {
+        $mysqli = @new mysqli($host, $user, $pass, $db, $port);
+        if ($mysqli->connect_errno) {
+            return ['status' => false, 'message' => "Gagal: {$mysqli->connect_error} (Host: $host, DB: $db)"];
+        }
+        $res = $mysqli->query("SELECT COUNT(*) as total_users FROM users");
+        $userCount = ($res && $row = $res->fetch_assoc()) ? $row['total_users'] : 0;
+        $mysqli->close();
+        return ['status' => true, 'message' => "Terhubung! Database: $db ($userCount user terdaftar)"];
+    } catch (\Throwable $e) {
+        return ['status' => false, 'message' => 'Exception: ' . $e->getMessage()];
+    }
 }
 
-// Read last 40 lines of error logs
-$recentLogs = '';
-$logFile = $basePath . '/storage/logs/laravel.log';
-if (file_exists($logFile)) {
-    $lines = file($logFile);
-    if (!empty($lines)) {
-        $recentLogs = implode("", array_slice($lines, -40));
+// 4. Proses Eksekusi Aksi Form
+$action = $_POST['action'] ?? '';
+$actionLog = [];
+$actionStatus = null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($action)) {
+    $phpBin = PHP_BINARY ?: findBinary('php');
+
+    switch ($action) {
+        // =========================================================================
+        // AKSI 1: UPDATE TOTAL (FRONTEND & BACKEND)
+        // =========================================================================
+        case 'full_update':
+            $actionLog[] = "🚀 [1/6] Memulai Pembaruan Menyeluruh (Frontend & Backend)...";
+
+            // A. Git Pull dari GitHub
+            $actionLog[] = "📥 [2/6] Menarik pembaruan kode dari GitHub (git pull origin main)...";
+            $gitOutput = executeCmd("git pull origin main 2>&1", $basePath);
+            $actionLog[] = ">>> " . $gitOutput;
+
+            // Jika Git pull gagal atau bukan repo git, coba download arsip zip GitHub
+            if (str_contains($gitOutput, 'fatal') || str_contains($gitOutput, 'not a git repository')) {
+                $actionLog[] = "⚠️ Git pull tidak tersedia, mencoba auto-sync via GitHub Zip Archive...";
+                $zipUrl = "https://github.com/Frhstaaa/leaves/archive/refs/heads/main.zip";
+                $zipPath = $basePath . '/latest_release.zip';
+                $fp = @fopen($zipPath, 'w+');
+                $ch = @curl_init($zipUrl);
+                if ($ch && $fp) {
+                    curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+                    curl_setopt($ch, CURLOPT_FILE, $fp);
+                    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                    curl_setopt($ch, CURLOPT_USERAGENT, 'Leaves-AutoUpdater');
+                    curl_exec($ch);
+                    curl_close($ch);
+                    fclose($fp);
+
+                    if (class_exists('ZipArchive') && file_exists($zipPath) && filesize($zipPath) > 1000) {
+                        $zip = new ZipArchive();
+                        if ($zip->open($zipPath) === TRUE) {
+                            $zip->extractTo($basePath . '/temp_update');
+                            $zip->close();
+                            // Copy files from extracted dir
+                            $extractedFolder = glob($basePath . '/temp_update/leaves-*')[0] ?? '';
+                            if ($extractedFolder && is_dir($extractedFolder)) {
+                                executeCmd("cp -rf {$extractedFolder}/* " . escapeshellarg($basePath) . "/", $basePath);
+                                $actionLog[] = "✅ Sukses menerapkan file update dari GitHub Zip Archive.";
+                            }
+                            @executeCmd("rm -rf " . escapeshellarg($basePath . '/temp_update') . " " . escapeshellarg($zipPath), $basePath);
+                        }
+                    }
+                }
+            }
+
+            // B. Migrasi Database Backend
+            $actionLog[] = "🗄️ [3/6] Menjalankan Database Migration...";
+            $migrateOutput = executeCmd("$phpBin artisan migrate --force 2>&1", $basePath);
+            $actionLog[] = ">>> " . $migrateOutput;
+
+            // C. Sinkronisasi Asset Frontend & Manifest
+            $actionLog[] = "🎨 [4/6] Memeriksa Asset Frontend (React/Inertia/CSS)...";
+            $buildDir = $basePath . '/public/build';
+            if (file_exists($buildDir . '/manifest.json')) {
+                $actionLog[] = "✅ Asset Frontend terdeteksi di public/build (Manifest valid).";
+            } else {
+                $actionLog[] = "⚠️ File public/build/manifest.json belum terdeteksi. Mencoba compile via npm jika ada...";
+                $npmBin = findBinary('npm');
+                if ($npmBin) {
+                    $buildOutput = executeCmd("$npmBin run build 2>&1", $basePath);
+                    $actionLog[] = ">>> " . $buildOutput;
+                }
+            }
+
+            // D. Membersihkan & Mengoptimalkan Seluruh Cache
+            $actionLog[] = "🧹 [5/6] Membersihkan dan menyusun ulang cache Laravel...";
+            executeCmd("$phpBin artisan optimize:clear 2>&1", $basePath);
+            executeCmd("$phpBin artisan config:clear 2>&1", $basePath);
+            executeCmd("$phpBin artisan route:clear 2>&1", $basePath);
+            executeCmd("$phpBin artisan view:clear 2>&1", $basePath);
+            executeCmd("$phpBin artisan cache:clear 2>&1", $basePath);
+
+            // Rebuild Caches
+            $cacheOutput = executeCmd("$phpBin artisan config:cache 2>&1", $basePath);
+            $actionLog[] = ">>> Config Cached: " . $cacheOutput;
+            $routeCacheOutput = executeCmd("$phpBin artisan route:cache 2>&1", $basePath);
+            $actionLog[] = ">>> Route Cached: " . $routeCacheOutput;
+            $viewCacheOutput = executeCmd("$phpBin artisan view:cache 2>&1", $basePath);
+            $actionLog[] = ">>> View Cached: " . $viewCacheOutput;
+
+            // E. Reset OPcache & Izin Folder
+            $actionLog[] = "🔒 [6/6] Memperbaiki izin folder storage & cache...";
+            if (function_exists('opcache_reset')) {
+                @opcache_reset();
+                $actionLog[] = "✅ PHP OPcache berhasil di-reset.";
+            }
+
+            $storageDirs = [
+                $basePath . '/storage',
+                $basePath . '/storage/app',
+                $basePath . '/storage/app/public',
+                $basePath . '/storage/framework',
+                $basePath . '/storage/framework/cache',
+                $basePath . '/storage/framework/cache/data',
+                $basePath . '/storage/framework/sessions',
+                $basePath . '/storage/framework/views',
+                $basePath . '/storage/logs',
+                $basePath . '/bootstrap/cache',
+            ];
+            foreach ($storageDirs as $dir) {
+                if (!is_dir($dir)) @mkdir($dir, 0777, true);
+                @chmod($dir, 0777);
+            }
+            executeCmd("$phpBin artisan storage:link 2>&1", $basePath);
+
+            $actionStatus = 'success';
+            $actionLog[] = "🎉 Pembaruan Total (Frontend & Backend) BERHASIL DISELESAIKAN!";
+            break;
+
+        // =========================================================================
+        // AKSI 2: UPDATE FRONTEND SAJA
+        // =========================================================================
+        case 'frontend_only':
+            $actionLog[] = "🎨 [1/3] Memulai sinkronisasi Asset Frontend...";
+            $gitOutput = executeCmd("git pull origin main 2>&1", $basePath);
+            $actionLog[] = ">>> " . $gitOutput;
+
+            $actionLog[] = "🧹 [2/3] Membersihkan cache compiled views & cache Inertia...";
+            executeCmd("$phpBin artisan view:clear 2>&1", $basePath);
+            executeCmd("$phpBin artisan view:cache 2>&1", $basePath);
+
+            if (function_exists('opcache_reset')) {
+                @opcache_reset();
+            }
+
+            $actionLog[] = "✅ [3/3] Frontend React, CSS, dan Blade view berhasil diperbarui.";
+            $actionStatus = 'success';
+            break;
+
+        // =========================================================================
+        // AKSI 3: UPDATE BACKEND SAJA
+        // =========================================================================
+        case 'backend_only':
+            $actionLog[] = "⚙️ [1/4] Menarik pembaruan PHP backend dari GitHub...";
+            $gitOutput = executeCmd("git pull origin main 2>&1", $basePath);
+            $actionLog[] = ">>> " . $gitOutput;
+
+            $actionLog[] = "🗄️ [2/4] Menjalankan Database Migration...";
+            $migrateOutput = executeCmd("$phpBin artisan migrate --force 2>&1", $basePath);
+            $actionLog[] = ">>> " . $migrateOutput;
+
+            $actionLog[] = "🧹 [3/4] Membersihkan dan me-refresh cache routing & konfigurasi...";
+            executeCmd("$phpBin artisan optimize:clear 2>&1", $basePath);
+            executeCmd("$phpBin artisan config:cache 2>&1", $basePath);
+            executeCmd("$phpBin artisan route:cache 2>&1", $basePath);
+
+            $actionLog[] = "✅ [4/4] Backend & Database berhasil diperbarui.";
+            $actionStatus = 'success';
+            break;
+
+        // =========================================================================
+        // AKSI 4: BERSIHKAN SEMUA CACHE
+        // =========================================================================
+        case 'clear_cache':
+            $actionLog[] = "🧹 Membersihkan seluruh cache sistem...";
+            executeCmd("$phpBin artisan optimize:clear 2>&1", $basePath);
+            executeCmd("$phpBin artisan config:clear 2>&1", $basePath);
+            executeCmd("$phpBin artisan route:clear 2>&1", $basePath);
+            executeCmd("$phpBin artisan view:clear 2>&1", $basePath);
+            executeCmd("$phpBin artisan cache:clear 2>&1", $basePath);
+
+            // Bersihkan file manual di bootstrap/cache
+            $bootstrapFiles = glob($basePath . '/bootstrap/cache/*.php');
+            foreach ($bootstrapFiles as $f) {
+                @unlink($f);
+            }
+
+            if (function_exists('opcache_reset')) {
+                @opcache_reset();
+                $actionLog[] = "✅ PHP OPcache di-reset.";
+            }
+
+            $actionLog[] = "✅ Seluruh cache aplikasi, route, view, dan konfigurasi bersih.";
+            $actionStatus = 'success';
+            break;
+
+        // =========================================================================
+        // AKSI 5: PERBAIKI IZIN FOLDER & STORAGE LINK
+        // =========================================================================
+        case 'fix_permissions':
+            $actionLog[] = "🔒 Memperbaiki folder storage, bootstrap/cache, dan symlink...";
+            $storageDirs = [
+                $basePath . '/storage',
+                $basePath . '/storage/app',
+                $basePath . '/storage/app/public',
+                $basePath . '/storage/framework',
+                $basePath . '/storage/framework/cache',
+                $basePath . '/storage/framework/cache/data',
+                $basePath . '/storage/framework/sessions',
+                $basePath . '/storage/framework/views',
+                $basePath . '/storage/logs',
+                $basePath . '/bootstrap/cache',
+            ];
+            foreach ($storageDirs as $dir) {
+                if (!is_dir($dir)) @mkdir($dir, 0777, true);
+                @chmod($dir, 0777);
+            }
+
+            $linkOutput = executeCmd("$phpBin artisan storage:link 2>&1", $basePath);
+            $actionLog[] = ">>> " . $linkOutput;
+            $actionLog[] = "✅ Izin folder dipulihkan ke 0777 dan storage:link aktif.";
+            $actionStatus = 'success';
+            break;
+
+        // =========================================================================
+        // AKSI 6: EKSEKUSI CUSTOM ARTISAN COMMAND
+        // =========================================================================
+        case 'custom_artisan':
+            $customCmd = trim($_POST['artisan_command'] ?? '');
+            if (!empty($customCmd)) {
+                // Filter keamanan sederhana
+                $cleanCmd = preg_replace('/[^a-zA-Z0-9:\-_ ]/', '', $customCmd);
+                $actionLog[] = "💻 Menjalankan: php artisan $cleanCmd ...";
+                $artisanOutput = executeCmd("$phpBin artisan $cleanCmd 2>&1", $basePath);
+                $actionLog[] = ">>>\n" . $artisanOutput;
+                $actionStatus = 'success';
+            } else {
+                $actionLog[] = "⚠️ Perintah artisan tidak boleh kosong.";
+                $actionStatus = 'error';
+            }
+            break;
+
+        default:
+            $actionLog[] = "⚠️ Aksi tidak dikenali: $action";
+            $actionStatus = 'error';
+            break;
     }
 }
-if (empty($recentLogs)) {
-    $recentLogs = "Tidak ada catatan error pada storage/logs/laravel.log (Server Bersih).";
+
+// 5. Data Diagnostik untuk Tampilan UI
+$dbCheck = testDbConnection($envContent);
+$gitCommit = executeCmd("git log -1 --format=\"%h - %s (%ci)\" 2>&1", $basePath);
+if (str_contains($gitCommit, 'fatal') || empty($gitCommit)) {
+    $gitCommit = 'Git CLI tidak terdeteksi / rilis manual';
 }
+
+$gitBranch = executeCmd("git rev-parse --abbrev-ref HEAD 2>&1", $basePath);
+if (str_contains($gitBranch, 'fatal') || empty($gitBranch)) {
+    $gitBranch = 'main (default)';
+}
+
+// Ambil log error terbaru
+$logFile = $basePath . '/storage/logs/laravel.log';
+$recentLogs = 'Belum ada catatan error di laravel.log.';
+if (file_exists($logFile) && is_readable($logFile)) {
+    $lines = file($logFile);
+    if ($lines) {
+        $recentLogs = implode("", array_slice($lines, -35));
+    }
+}
+
+$hasBuildManifest = file_exists($basePath . '/public/build/manifest.json');
 ?>
 <!DOCTYPE html>
-<html lang="id" class="h-full bg-slate-950 text-slate-100">
+<html lang="id" class="dark">
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SGIN Leaves - Master Updater & Server Management</title>
+    <title>SGIN Leaves - Master Updater (Frontend & Backend)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#ecfdf5',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        code, pre { font-family: 'JetBrains Mono', monospace; }
+        .glass-card {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
     </style>
 </head>
-<body class="min-h-full bg-slate-950 text-slate-100 p-4 sm:p-8 flex flex-col justify-between">
-    <div class="max-w-6xl mx-auto w-full space-y-6">
-        
-        <!-- Top Bar Header -->
-        <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl relative overflow-hidden">
-            <div class="absolute -right-10 -top-10 w-56 h-56 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
-            <div class="absolute -left-10 -bottom-10 w-56 h-56 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-emerald-500 selection:text-slate-950">
 
-            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
-                <div class="flex items-center gap-4">
-                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-400 flex items-center justify-center font-black text-3xl text-white shadow-xl shadow-emerald-600/30">
-                        ⚡
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2.5 flex-wrap">
-                            <h1 class="text-xl sm:text-2xl font-black tracking-tight text-white">SGIN Leaves Master Updater</h1>
-                            <span class="px-3 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">v3.0 Production</span>
+    <!-- Background Decorative Glow -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div class="absolute -top-40 -left-40 w-96 h-96 bg-emerald-600/15 rounded-full blur-3xl"></div>
+        <div class="absolute top-1/3 -right-40 w-96 h-96 bg-teal-600/15 rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-40 left-1/3 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl"></div>
+    </div>
+
+    <div class="relative z-10 max-w-5xl mx-auto px-4 py-8 space-y-6">
+
+        <!-- Header Card -->
+        <header class="glass-card rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-800">
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xl shadow-lg shadow-emerald-500/10">
+                            🚀
                         </div>
-                        <p class="text-slate-400 text-xs sm:text-sm mt-0.5">Pusat Kendali Pembaruan Aplikasi, Sinkronisasi GitHub, Frontend Build & Pemulihan Sistem</p>
+                        <div>
+                            <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">SGIN Leaves Updater</h1>
+                            <p class="text-xs text-slate-400 font-medium">Universal One-Click Update Tool for Frontend & Backend</p>
+                        </div>
                     </div>
                 </div>
-
-                <div class="flex items-center gap-2.5 flex-wrap">
-                    <a href="./" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs sm:text-sm font-bold shadow-lg shadow-emerald-900/40 transition-all">
-                        <span>Buka Aplikasi</span>
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                <div class="flex flex-wrap items-center gap-2">
+                    <a href="./" target="_blank" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition flex items-center gap-1.5 shadow-sm">
+                        <span>🌐 Buka Aplikasi</span>
                     </a>
-                    <a href="./update-front-end.php" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm font-semibold border border-slate-700 transition-all">
-                        <span>Frontend Only</span>
+                    <a href="?refresh=1" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition flex items-center gap-1.5 shadow-sm">
+                        <span>🔄 Refresh</span>
                     </a>
                 </div>
             </div>
 
-            <!-- System Info Badges -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-800/80 font-mono text-xs">
-                <div class="p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
-                    <div class="text-slate-500 text-[10px] uppercase tracking-wider font-sans font-semibold">PHP Version</div>
-                    <div class="text-slate-200 font-bold mt-0.5"><?= PHP_VERSION ?></div>
+            <!-- Status Badges Bar -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-800/80 text-xs">
+                <div class="bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
+                    <span class="text-slate-500 text-[10px] font-bold uppercase tracking-wider block">Database Status</span>
+                    <span class="font-bold <?= $dbCheck['status'] ? 'text-emerald-400' : 'text-rose-400' ?> flex items-center gap-1 mt-1 truncate" title="<?= htmlspecialchars($dbCheck['message']) ?>">
+                        <span class="w-2 h-2 rounded-full <?= $dbCheck['status'] ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400' ?>"></span>
+                        <?= $dbCheck['status'] ? 'Connected' : 'Error DB' ?>
+                    </span>
                 </div>
-                <div class="p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
-                    <div class="text-slate-500 text-[10px] uppercase tracking-wider font-sans font-semibold">Database</div>
-                    <div class="<?= $dbConnected ? 'text-emerald-400' : 'text-amber-400' ?> font-bold mt-0.5 truncate" title="<?= htmlspecialchars($dbStatus) ?>">
-                        <?= $dbConnected ? '✓ Terhubung' : '⚠️ Periksa' ?>
-                    </div>
-                </div>
-                <div class="p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
-                    <div class="text-slate-500 text-[10px] uppercase tracking-wider font-sans font-semibold">GitHub Source</div>
-                    <div class="text-slate-200 font-bold mt-0.5 truncate"><?= GITHUB_REPO ?></div>
-                </div>
-                <div class="p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
-                    <div class="text-slate-500 text-[10px] uppercase tracking-wider font-sans font-semibold">Vite Build</div>
-                    <div class="text-slate-200 font-bold mt-0.5"><?= $manifestInfo ? $manifestInfo['last_modified'] : 'Belum Ada' ?></div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Notification / Execution Log Output -->
-        <?php if (!empty($logs)): ?>
-        <div class="bg-slate-900 border <?= $statusType === 'success' ? 'border-emerald-500/40' : ($statusType === 'error' ? 'border-rose-500/40' : 'border-amber-500/40') ?> rounded-3xl p-6 shadow-2xl space-y-3 animate-fade-in">
-            <div class="flex items-center justify-between">
-                <h2 class="text-xs sm:text-sm font-bold tracking-wider uppercase text-slate-300 flex items-center gap-2 font-mono">
-                    <span>📋</span> Log Terminal Eksekusi Pembaruan
-                </h2>
-                <span class="text-xs <?= $statusType === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20' ?> px-3 py-1 rounded-full font-bold">
-                    <?= $statusType === 'success' ? 'Berhasil' : 'Selesai' ?>
-                </span>
+                <div class="bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
+                    <span class="text-slate-500 text-[10px] font-bold uppercase tracking-wider block">Frontend Build</span>
+                    <span class="font-bold <?= $hasBuildManifest ? 'text-teal-400' : 'text-amber-400' ?> flex items-center gap-1 mt-1">
+                        <span class="w-2 h-2 rounded-full <?= $hasBuildManifest ? 'bg-teal-400' : 'bg-amber-400 animate-ping' ?>"></span>
+                        <?= $hasBuildManifest ? 'Manifest Ready' : 'Need Build' ?>
+                    </span>
+                </div>
+
+                <div class="bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
+                    <span class="text-slate-500 text-[10px] font-bold uppercase tracking-wider block">Branch</span>
+                    <span class="font-bold text-slate-200 mt-1 truncate block font-mono">
+                        🌿 <?= htmlspecialchars($gitBranch) ?>
+                    </span>
+                </div>
+
+                <div class="bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
+                    <span class="text-slate-500 text-[10px] font-bold uppercase tracking-wider block">PHP Version</span>
+                    <span class="font-bold text-indigo-400 mt-1 block font-mono">
+                        🐘 PHP <?= PHP_VERSION ?>
+                    </span>
+                </div>
             </div>
-            <div class="p-4 rounded-2xl bg-black border border-slate-800 font-mono text-xs text-slate-300 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-72">
-                <?= htmlspecialchars(implode("\n", $logs)) ?>
+        </header>
+
+        <!-- Notification Execution Output (Jika ada action POST) -->
+        <?php if (!empty($actionLog)): ?>
+            <div class="glass-card rounded-3xl p-6 border <?= $actionStatus === 'success' ? 'border-emerald-500/40 bg-emerald-950/20' : 'border-rose-500/40 bg-rose-950/20' ?> shadow-2xl space-y-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-bold <?= $actionStatus === 'success' ? 'text-emerald-300' : 'text-rose-300' ?> flex items-center gap-2">
+                        <span><?= $actionStatus === 'success' ? '✅' : '⚠️' ?></span>
+                        Hasil Eksekusi Pembaruan
+                    </h3>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-400">
+                        <?= date('H:i:s') ?> WIB
+                    </span>
+                </div>
+                <div class="p-4 rounded-2xl bg-black/90 border border-slate-800 text-xs font-mono text-emerald-400 overflow-x-auto whitespace-pre-wrap max-h-80 leading-relaxed shadow-inner">
+                    <?= htmlspecialchars(implode("\n", $actionLog)) ?>
+                </div>
             </div>
-        </div>
         <?php endif; ?>
 
-        <!-- Primary Action: 1-Click Total Update -->
-        <div class="bg-gradient-to-r from-emerald-950/60 via-slate-900 to-teal-950/60 border border-emerald-500/30 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-4">
-            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div class="space-y-1">
-                    <div class="flex items-center gap-2">
-                        <span class="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase bg-emerald-500 text-slate-950">Rekomendasi Utama</span>
-                        <h2 class="text-lg sm:text-xl font-black text-white">1-Klik Pembaruan Total (Full Sync)</h2>
+        <!-- Primary Hero Action: Update Total -->
+        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-900/80 via-teal-900/60 to-slate-900 border border-emerald-500/40 p-6 sm:p-8 shadow-2xl">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
+                <div class="space-y-2 max-w-xl">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20">
+                        ⭐ Rekomendasi Utama
                     </div>
-                    <p class="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
-                        Secara otomatis mendownload kodingan terbaru dari GitHub, memperbarui asset React/Inertia, membersihkan seluruh cache, menjalankan migrasi database non-destruktif, dan memulihkan seluruh izin folder.
+                    <h2 class="text-xl sm:text-2xl font-black text-white tracking-tight">1-Klik Pembaruan Total (Frontend & Backend)</h2>
+                    <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                        Menarik kodingan terbaru dari GitHub, menyinkronkan asset Frontend (React/Vite), mengeksekusi migrasi database, membersihkan & menyusun seluruh cache Laravel, serta memulihkan izin storage.
                     </p>
                 </div>
 
                 <form method="POST" class="shrink-0 w-full sm:w-auto">
                     <input type="hidden" name="action" value="full_update">
-                    <button type="submit" class="w-full sm:w-auto py-4 px-8 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm sm:text-base shadow-xl shadow-emerald-500/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2.5">
+                    <button type="submit" onclick="return confirm('Jalankan pembaruan total Frontend & Backend sekarang?')" class="w-full sm:w-auto py-4 px-8 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-black text-sm sm:text-base shadow-xl shadow-emerald-500/25 transition transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2">
                         <span>🚀 Jalankan Pembaruan Total</span>
                     </button>
                 </form>
             </div>
         </div>
 
-        <!-- Quick Action Modular Cards Grid -->
+        <!-- Modular Quick Actions Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            
-            <!-- Modular Card 1: Frontend Only -->
-            <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col justify-between hover:border-slate-700 transition-all space-y-4">
+
+            <!-- Card 1: Frontend Only -->
+            <div class="glass-card rounded-3xl p-5 shadow-xl flex flex-col justify-between hover:border-teal-500/40 transition space-y-4">
                 <div class="space-y-2">
-                    <div class="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center font-bold text-lg">
-                        ⚡
+                    <div class="w-10 h-10 rounded-2xl bg-teal-500/10 text-teal-400 border border-teal-500/20 flex items-center justify-center font-bold text-lg">
+                        🎨
                     </div>
                     <h3 class="text-sm font-bold text-white">Update Frontend Saja</h3>
                     <p class="text-xs text-slate-400 leading-relaxed">
-                        Hanya menarik bundle React, CSS, Blade views, dan PWA tanpa menyentuh database atau backend.
+                        Tarik file React, CSS, Blade views, dan asset bundle tanpa mengubah database atau migrasi.
                     </p>
                 </div>
                 <form method="POST">
                     <input type="hidden" name="action" value="frontend_only">
-                    <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-400 border border-teal-500/30 text-xs font-bold transition-all">
+                    <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-300 border border-teal-500/30 text-xs font-bold transition">
                         Sync Frontend Aja
                     </button>
                 </form>
             </div>
 
-            <!-- Modular Card 2: Purge Cache -->
-            <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col justify-between hover:border-slate-700 transition-all space-y-4">
+            <!-- Card 2: Backend Only -->
+            <div class="glass-card rounded-3xl p-5 shadow-xl flex flex-col justify-between hover:border-indigo-500/40 transition space-y-4">
                 <div class="space-y-2">
-                    <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold text-lg">
+                    <div class="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center font-bold text-lg">
+                        ⚙️
+                    </div>
+                    <h3 class="text-sm font-bold text-white">Update Backend Saja</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Tarik controller, model, route, jalankan database migration, dan susun cache config backend.
+                    </p>
+                </div>
+                <form method="POST">
+                    <input type="hidden" name="action" value="backend_only">
+                    <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 text-xs font-bold transition">
+                        Sync Backend & DB
+                    </button>
+                </form>
+            </div>
+
+            <!-- Card 3: Clear All Cache -->
+            <div class="glass-card rounded-3xl p-5 shadow-xl flex flex-col justify-between hover:border-amber-500/40 transition space-y-4">
+                <div class="space-y-2">
+                    <div class="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center font-bold text-lg">
                         🧹
                     </div>
-                    <h3 class="text-sm font-bold text-white">Bersihkan Cache Total</h3>
+                    <h3 class="text-sm font-bold text-white">Bersihkan Semua Cache</h3>
                     <p class="text-xs text-slate-400 leading-relaxed">
-                        Hapus seluruh file cache compiled blade, config, routes, bootstrap cache, dan reset PHP OPcache.
+                        Hapus seluruh cache Laravel (config, routes, views, sessions) dan lakukan PHP OPcache reset.
                     </p>
                 </div>
                 <form method="POST">
                     <input type="hidden" name="action" value="clear_cache">
-                    <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all">
+                    <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-xs font-bold transition">
                         Purge Seluruh Cache
                     </button>
                 </form>
             </div>
 
-            <!-- Modular Card 3: Fix Permissions & .env -->
-            <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col justify-between hover:border-slate-700 transition-all space-y-4">
+            <!-- Card 4: Fix Permissions -->
+            <div class="glass-card rounded-3xl p-5 shadow-xl flex flex-col justify-between hover:border-emerald-500/40 transition space-y-4">
                 <div class="space-y-2">
-                    <div class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold text-lg">
+                    <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-bold text-lg">
                         🔒
                     </div>
-                    <h3 class="text-sm font-bold text-white">Perbaiki Izin & .env</h3>
+                    <h3 class="text-sm font-bold text-white">Perbaiki Izin Storage</h3>
                     <p class="text-xs text-slate-400 leading-relaxed">
-                        Pulihkan APP_KEY, periksa .env, perbaiki symlink storage publik, dan terapkan permission 0777.
+                        Terapkan izin 0777 pada folder storage, framework cache, logs, dan buat ulang symlink publik.
                     </p>
                 </div>
                 <form method="POST">
                     <input type="hidden" name="action" value="fix_permissions">
-                    <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-400 border border-indigo-500/30 text-xs font-bold transition-all">
-                        Self-Healing Permissions
-                    </button>
-                </form>
-            </div>
-
-            <!-- Modular Card 4: Upload Custom ZIP -->
-            <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col justify-between hover:border-slate-700 transition-all space-y-4">
-                <div class="space-y-2">
-                    <div class="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center font-bold text-lg">
-                        📦
-                    </div>
-                    <h3 class="text-sm font-bold text-white">Unggah Paket ZIP</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">
-                        Unggah dan ekstrak file ZIP rilis langsung ke server tanpa menimpa .env & data user.
-                    </p>
-                </div>
-                <form method="POST" enctype="multipart/form-data" class="space-y-2">
-                    <input type="hidden" name="action" value="upload_zip">
-                    <input type="file" name="zip_package" accept=".zip" class="block w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-slate-800 file:text-slate-200">
-                    <button type="submit" class="w-full py-2 px-3 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 text-xs font-bold transition-all">
-                        Upload & Terapkan
+                    <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 text-xs font-bold transition">
+                        Perbaiki Permissions
                     </button>
                 </form>
             </div>
 
         </div>
 
-        <!-- Diagnostic & Server Error Log Viewer -->
-        <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
-            <div class="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                    <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                        <span>📜</span> Catatan Log Server (storage/logs/laravel.log)
+        <!-- Custom Artisan Command Runner & Error Logs -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            
+            <!-- Artisan Runner -->
+            <div class="glass-card rounded-3xl p-6 shadow-xl space-y-4 lg:col-span-1">
+                <div class="space-y-1">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                        <span>💻</span> Artisan CLI Runner
                     </h3>
-                    <p class="text-xs text-slate-400">Menampilkan 40 baris log error terakhir di server</p>
+                    <p class="text-xs text-slate-400">Jalankan perintah Artisan langsung</p>
                 </div>
-                <button onclick="window.location.reload()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono font-medium border border-slate-700">
-                    🔄 Refresh Log
-                </button>
+
+                <form method="POST" class="space-y-3">
+                    <input type="hidden" name="action" value="custom_artisan">
+                    <div>
+                        <label class="text-[10px] font-mono text-slate-400 block mb-1">Perintah (tanpa kata 'php artisan'):</label>
+                        <input type="text" name="artisan_command" placeholder="route:list, migrate, dsb" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <button type="submit" class="w-full py-2 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition">
+                        Jalankan Artisan
+                    </button>
+                </form>
+
+                <div class="pt-3 border-t border-slate-800 text-[11px] text-slate-500 font-mono">
+                    Commit Terakhir:<br>
+                    <span class="text-slate-400"><?= htmlspecialchars($gitCommit) ?></span>
+                </div>
             </div>
 
-            <div class="p-4 rounded-2xl bg-black border border-slate-800 text-[11px] font-mono text-slate-400 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-60">
-                <?= htmlspecialchars($recentLogs) ?>
+            <!-- Server Log Viewer -->
+            <div class="glass-card rounded-3xl p-6 shadow-xl space-y-4 lg:col-span-2">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                            <span>📜</span> Log Error Server (storage/logs/laravel.log)
+                        </h3>
+                        <p class="text-xs text-slate-400">35 baris log error terbaru</p>
+                    </div>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-black/80 border border-slate-800 text-[11px] font-mono text-slate-400 overflow-x-auto whitespace-pre-wrap max-h-56 leading-relaxed">
+                    <?= htmlspecialchars($recentLogs) ?>
+                </div>
             </div>
+
         </div>
 
         <!-- Footer -->
-        <div class="text-center text-xs text-slate-600 py-4">
-            PT Sugiyama Indonesia (SGIN) &bull; Leaves Management Master Updater &bull; <?= date('Y') ?>
-        </div>
+        <footer class="text-center text-xs text-slate-600 py-4">
+            PT Sugiyama Indonesia (SGIN) &bull; Leaves Master Auto-Updater &bull; <?= date('Y') ?>
+        </footer>
 
     </div>
+
 </body>
 </html>

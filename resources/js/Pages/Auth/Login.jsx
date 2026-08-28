@@ -34,20 +34,21 @@ export default function Login() {
   const [imgError, setImgError] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const getCsrfToken = () => (typeof document !== 'undefined' ? document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' : '');
+
   const { data, setData, post, processing, errors } = useForm({
     email: '',
     password: '',
     remember: true,
+    _token: getCsrfToken(),
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const csrfToken = typeof document !== 'undefined' ? document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') : '';
+    const currentToken = getCsrfToken();
+    data._token = currentToken || data._token;
+
     post(route('login'), {
-      data: {
-        ...data,
-        _token: csrfToken || undefined,
-      },
       preserveScroll: true,
       onError: (errs) => {
         // If empty error object (typical of 419 / session timeout), auto-refresh once

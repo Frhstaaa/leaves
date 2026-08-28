@@ -1206,4 +1206,194 @@ class HrdController extends Controller
             fclose($file);
         }, 200, $headers);
     }
+
+    /**
+     * Tampilkan halaman Form Data Diri Karyawan untuk HRD.
+     */
+    public function employeeBiodata(int $userId): Response
+    {
+        $user = Auth::user();
+        if (!$user || !$user->isAdmin()) {
+            abort(403, 'Akses khusus HRD.');
+        }
+
+        $employee = User::with('department')->findOrFail($userId);
+        $departments = \App\Models\Department::select('id', 'name', 'code')->orderBy('name')->get();
+
+        return Inertia::render('Profile/Biodata', [
+            'user' => $employee,
+            'departments' => $departments,
+            'isHrdView' => true,
+        ]);
+    }
+
+    /**
+     * Update Data Diri Karyawan oleh HRD.
+     */
+    public function updateEmployeeBiodata(Request $request, int $userId): RedirectResponse
+    {
+        try {
+            $currentUser = Auth::user();
+            if (!$currentUser || !$currentUser->isAdmin()) {
+                abort(403, 'Akses khusus HRD.');
+            }
+
+            $employee = User::findOrFail($userId);
+
+            $validated = $request->validate([
+                'department_id' => 'nullable|exists:departments,id',
+                'position' => 'nullable|string|max:100',
+                'employee_status' => 'nullable|string|max:50',
+                'join_date' => 'nullable|date',
+                'contract_end_date' => 'nullable|date',
+                'ktp_number' => 'nullable|string|max:30',
+                'gender' => 'nullable|in:Laki-laki,Perempuan',
+                'birth_place' => 'nullable|string|max:100',
+                'birth_date' => 'nullable|date',
+                'phone_number' => 'nullable|string|max:30',
+                'ktp_address' => 'nullable|string|max:1000',
+                'domicile_address' => 'nullable|string|max:1000',
+                'marital_status' => 'nullable|string|max:50',
+                'mother_maiden_name' => 'nullable|string|max:150',
+                'kk_number' => 'nullable|string|max:30',
+                'blood_type' => 'nullable|in:A,B,AB,O',
+                'education' => 'nullable|string|max:100',
+                'npwp' => 'nullable|string|max:50',
+                'bpjs_kesehatan_number' => 'nullable|string|max:50',
+                'bpjs_health_facility' => 'nullable|string|max:150',
+                'bpjs_ketenagakerjaan_number' => 'nullable|string|max:50',
+                'bank_name' => 'nullable|string|max:50',
+                'bank_account_number' => 'nullable|string|max:50',
+                'vehicle_plate_number' => 'nullable|string|max:30',
+                'sim_number' => 'nullable|string|max:50',
+                'sim_valid_until' => 'nullable|date',
+                'shoe_size' => 'nullable|string|max:10',
+                'emergency_contact_name' => 'nullable|string|max:150',
+                'emergency_contact_relationship' => 'nullable|string|max:50',
+                'emergency_contact_phone' => 'nullable|string|max:30',
+                'emergency_contact_address' => 'nullable|string|max:1000',
+                'spouse_name' => 'nullable|string|max:150',
+                'spouse_ktp_number' => 'nullable|string|max:30',
+                'spouse_birth_place' => 'nullable|string|max:100',
+                'spouse_birth_date' => 'nullable|date',
+                'child_1_name' => 'nullable|string|max:150',
+                'child_2_name' => 'nullable|string|max:150',
+                'child_3_name' => 'nullable|string|max:150',
+            ]);
+
+            $employee->fill($validated);
+            try {
+                $employee->is_profile_completed = ($employee->profile_completeness >= 75);
+            } catch (\Throwable $e) {}
+            $employee->save();
+
+            return redirect()->back()->with('success', "Biodata karyawan {$employee->name} berhasil diperbarui.");
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'Gagal menyimpan biodata: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Tampilan Cetak Biodata Karyawan untuk HRD.
+     */
+    public function printEmployeeBiodata(int $userId): Response
+    {
+        $user = Auth::user();
+        if (!$user || !$user->isAdmin()) {
+            abort(403, 'Akses khusus HRD.');
+        }
+
+        $employee = User::with('department')->findOrFail($userId);
+
+        return Inertia::render('Profile/PrintBiodata', [
+            'employee' => $employee,
+        ]);
+    }
+
+    /**
+     * Ekspor Seluruh Biodata Karyawan ke CSV.
+     */
+    public function exportBiodataCsv(Request $request): StreamedResponse
+    {
+        $user = Auth::user();
+        if (!$user || !$user->isAdmin()) {
+            abort(403, 'Akses khusus HRD.');
+        }
+
+        $employees = User::with('department')->orderBy('name')->get();
+        $filename = 'biodata_karyawan_' . date('Y-m-d_His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        return response()->stream(function () use ($employees) {
+            $file = fopen('php://output', 'w');
+            fputs($file, "\xEF\xBB\xBF"); // UTF-8 BOM
+
+            fputcsv($file, [
+                'NIK', 'Nama Lengkap', 'Email', 'Departemen', 'Jabatan', 'Status', 'Tanggal Masuk',
+                'No KTP', 'Jenis Kelamin', 'Tempat Lahir', 'Tanggal Lahir', 'No HP', 'Alamat KTP', 'Alamat Domisili',
+                'Status Nikah', 'Nama Ibu Kandung', 'No KK', 'Golongan Darah', 'Pendidikan',
+                'NPWP', 'BPJS Kesehatan', 'Faskes BPJS', 'BPJS Ketenagakerjaan', 'Nama Bank', 'No Rekening',
+                'No Polisi Kendaraan', 'No SIM', 'Masa Berlaku SIM', 'Ukuran Sepatu',
+                'Kontak Darurat - Nama', 'Kontak Darurat - Hubungan', 'Kontak Darurat - Telepon', 'Kontak Darurat - Alamat',
+                'Nama Pasangan', 'No KTP Pasangan', 'Tempat Lahir Pasangan', 'Tanggal Lahir Pasangan',
+                'Anak ke-1', 'Anak ke-2', 'Anak ke-3', 'Kelengkapan Biodata'
+            ]);
+
+            foreach ($employees as $emp) {
+                fputcsv($file, [
+                    $emp->nik,
+                    $emp->name,
+                    $emp->email,
+                    $emp->department ? $emp->department->name : '-',
+                    $emp->position ?: '-',
+                    $emp->employee_status ?: '-',
+                    $emp->join_date ? date('d/m/Y', strtotime($emp->join_date)) : '-',
+                    $emp->ktp_number ?: '-',
+                    $emp->gender ?: '-',
+                    $emp->birth_place ?: '-',
+                    $emp->birth_date ? date('d/m/Y', strtotime($emp->birth_date)) : '-',
+                    $emp->phone_number ?: '-',
+                    $emp->ktp_address ?: '-',
+                    $emp->domicile_address ?: '-',
+                    $emp->marital_status ?: '-',
+                    $emp->mother_maiden_name ?: '-',
+                    $emp->kk_number ?: '-',
+                    $emp->blood_type ?: '-',
+                    $emp->education ?: '-',
+                    $emp->npwp ?: '-',
+                    $emp->bpjs_kesehatan_number ?: '-',
+                    $emp->bpjs_health_facility ?: '-',
+                    $emp->bpjs_ketenagakerjaan_number ?: '-',
+                    $emp->bank_name ?: '-',
+                    $emp->bank_account_number ? "'" . $emp->bank_account_number : '-',
+                    $emp->vehicle_plate_number ?: '-',
+                    $emp->sim_number ?: '-',
+                    $emp->sim_valid_until ? date('d/m/Y', strtotime($emp->sim_valid_until)) : '-',
+                    $emp->shoe_size ?: '-',
+                    $emp->emergency_contact_name ?: '-',
+                    $emp->emergency_contact_relationship ?: '-',
+                    $emp->emergency_contact_phone ?: '-',
+                    $emp->emergency_contact_address ?: '-',
+                    $emp->spouse_name ?: '-',
+                    $emp->spouse_ktp_number ?: '-',
+                    $emp->spouse_birth_place ?: '-',
+                    $emp->spouse_birth_date ? date('d/m/Y', strtotime($emp->spouse_birth_date)) : '-',
+                    $emp->child_1_name ?: '-',
+                    $emp->child_2_name ?: '-',
+                    $emp->child_3_name ?: '-',
+                    ($emp->profile_completeness ?: 0) . '%',
+                ]);
+            }
+            fclose($file);
+        }, 200, $headers);
+    }
 }

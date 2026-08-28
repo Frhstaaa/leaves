@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Session\TokenMismatchException;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -43,6 +44,16 @@ class Handler extends ExceptionHandler
     {
         $this->reportable(function (Throwable $e) {
             //
+        });
+
+        // Graceful handling of CSRF Token Mismatch (419)
+        $this->renderable(function (TokenMismatchException $e, $request) {
+            if ($request->expectsJson() || $request->header('X-Inertia')) {
+                return back()->with([
+                    'error' => 'Sesi Anda telah diperbarui secara otomatis. Silakan coba kembali.',
+                ]);
+            }
+            return redirect()->guest(route('login'))->with('message', 'Sesi telah diperbarui.');
         });
     }
 }

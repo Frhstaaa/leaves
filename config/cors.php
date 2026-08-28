@@ -19,16 +19,25 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    'allowed_origins' => [
+        'https://sgin.co.id',
+        'https://www.sgin.co.id',
+        'http://sgin.co.id',
+        'http://www.sgin.co.id',
+        'http://localhost:*',
+        'http://127.0.0.1:*',
+    ],
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '#^https?://([a-z0-9-]+\.)?sgin\.co\.id$#',
+    ],
 
     'allowed_headers' => ['*'],
 
     'exposed_headers' => [],
 
-    'max_age' => 0,
+    'max_age' => 86400,
 
-    'supports_credentials' => false,
+    'supports_credentials' => true,
 
 ];

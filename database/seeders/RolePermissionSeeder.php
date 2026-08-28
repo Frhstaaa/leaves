@@ -131,28 +131,31 @@ class RolePermissionSeeder extends Seeder
         // 4. Create or update Superadmin user
         $deptIT = Department::where('code', 'DEPT-IT')->first() ?? Department::first();
         
-        $superUser = User::firstOrCreate(
-            ['email' => 'superadmin@sgin.com'],
-            [
-                'nik' => 'SA-001',
-                'name' => 'Superadmin SGIN',
-                'password' => Hash::make('password'),
-                'role' => 'superadmin',
-                'department_id' => $deptIT ? $deptIT->id : null,
-            ]
-        );
-        $superUser->assignRole($superadminRole);
-        $superUser->update(['role' => 'superadmin']);
+        $adminEmails = ['superadmin@sgin.com', 'admin@sugiyama.co.id', 'admin@sgin.co.id'];
+        foreach ($adminEmails as $email) {
+            $superUser = User::firstOrCreate(
+                ['email' => $email],
+                [
+                    'nik' => ($email === 'admin@sugiyama.co.id' ? 'ADM-001' : ($email === 'admin@sgin.co.id' ? 'ADM-002' : 'SA-001')),
+                    'name' => 'Superadmin / HRD Admin SGIN',
+                    'password' => Hash::make('password'),
+                    'role' => 'superadmin',
+                    'department_id' => $deptIT ? $deptIT->id : null,
+                ]
+            );
+            $superUser->assignRole($superadminRole);
+            $superUser->update(['role' => 'superadmin']);
 
-        // Give Superadmin initial leave quota
-        LeaveQuota::firstOrCreate(
-            ['user_id' => $superUser->id, 'year' => date('Y')],
-            [
-                'total_quota' => 12,
-                'used_quota' => 0,
-                'remaining_quota' => 12,
-            ]
-        );
+            // Give Superadmin initial leave quota
+            LeaveQuota::firstOrCreate(
+                ['user_id' => $superUser->id, 'year' => date('Y')],
+                [
+                    'total_quota' => 12,
+                    'used_quota' => 0,
+                    'remaining_quota' => 12,
+                ]
+            );
+        }
 
         // 5. Sync spatie roles to existing users in database based on their string 'role' column
         $users = User::all();

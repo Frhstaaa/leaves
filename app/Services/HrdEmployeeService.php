@@ -158,6 +158,12 @@ class HrdEmployeeService
                 $updateData['avatar'] = MediaOptimizer::convertImageToWebp($avatarFile, 'avatars', 85, 400, 400);
             }
 
+            $user->fill($updateData);
+            try {
+                $user->is_profile_completed = ($user->profile_completeness >= 75);
+                $updateData['is_profile_completed'] = $user->is_profile_completed;
+            } catch (\Throwable $e) {}
+
             $this->userRepo->update($user, $updateData);
 
             if (method_exists($user, 'syncRoles') && !empty($updateData['role'])) {

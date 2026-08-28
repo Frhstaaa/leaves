@@ -56,8 +56,12 @@ class HandleInertiaRequests extends Middleware
                     'email' => $user->email,
                     'nik' => $user->nik,
                     'role' => $user->role,
-                    'roles' => fn () => $user->getRoleNames(),
-                    'permissions' => fn () => $user->getAllPermissions()->pluck('name'),
+                    'roles' => function () use ($user) {
+                        try { return $user->getRoleNames(); } catch (\Throwable $e) { return [$user->role ?? 'employee']; }
+                    },
+                    'permissions' => function () use ($user) {
+                        try { return $user->getAllPermissions()->pluck('name'); } catch (\Throwable $e) { return []; }
+                    },
                     'is_superadmin' => $user->isSuperadmin(),
                     'is_admin' => $user->isAdmin(),
                     'is_manager' => $user->isManager(),
