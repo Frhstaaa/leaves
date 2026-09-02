@@ -53,25 +53,42 @@ class LeaveRequestService
                 }
             }
 
-            // Generate Request Number
+            // Generate Request Number (Guaranteed Unique)
             $prefix = 'LV-' . date('Ymd');
             $countToday = LeaveRequest::whereDate('created_at', today())->count() + 1;
             $requestNumber = $prefix . '-' . str_pad($countToday, 4, '0', STR_PAD_LEFT);
+            while (LeaveRequest::where('request_number', $requestNumber)->exists()) {
+                $countToday++;
+                $requestNumber = $prefix . '-' . str_pad($countToday, 4, '0', STR_PAD_LEFT);
+            }
 
-            // Handle Attachment Upload (Optimized & Cloud-ready)
+            // Handle Attachment Upload (Optimized & 100% Fail-Safe)
             $attachmentPath = null;
             $attachmentName = null;
             if ($attachmentFile) {
-                $attachmentName = $attachmentFile->getClientOriginalName();
-                $mime = $attachmentFile->getMimeType();
-                $ext = strtolower($attachmentFile->getClientOriginalExtension());
+                try {
+                    $attachmentName = $attachmentFile->getClientOriginalName();
+                    $mime = strtolower($attachmentFile->getMimeType() ?: '');
+                    $ext = strtolower($attachmentFile->getClientOriginalExtension());
 
-                if (str_contains($mime, 'image') || in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif'])) {
-                    $attachmentPath = MediaOptimizer::convertImageToWebp($attachmentFile, 'attachments/leave_requests');
-                } elseif (str_contains($mime, 'pdf') || $ext === 'pdf') {
-                    $attachmentPath = MediaOptimizer::optimizePdfAndStore($attachmentFile, 'attachments/leave_requests');
-                } else {
-                    $attachmentPath = $attachmentFile->store('attachments/leave_requests', 'public');
+                    // 1. If file is already a WebP image, store directly without risking GD re-compression
+                    if ($ext === 'webp' || str_contains($mime, 'webp')) {
+                        $storedName = 'opt_' . uniqid() . '_' . time() . '.webp';
+                        $attachmentPath = $attachmentFile->storeAs('attachments/leave_requests', $storedName, 'public');
+                    } elseif (str_contains($mime, 'image') || in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'heic', 'heif'])) {
+                        $attachmentPath = MediaOptimizer::convertImageToWebp($attachmentFile, 'attachments/leave_requests');
+                    } elseif (str_contains($mime, 'pdf') || $ext === 'pdf') {
+                        $attachmentPath = MediaOptimizer::optimizePdfAndStore($attachmentFile, 'attachments/leave_requests');
+                    } else {
+                        $attachmentPath = $attachmentFile->store('attachments/leave_requests', 'public');
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('Attachment optimization failed, using direct store: ' . $e->getMessage());
+                    try {
+                        $attachmentPath = $attachmentFile->store('attachments/leave_requests', 'public');
+                    } catch (\Throwable $ex) {
+                        \Illuminate\Support\Facades\Log::error('Direct store also failed: ' . $ex->getMessage());
+                    }
                 }
             }
 

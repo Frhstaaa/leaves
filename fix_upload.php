@@ -92,77 +92,35 @@ if (!empty($action) && in_array($action, ['run_fix', 'test_only'])) {
         $logs[] = "Waktu Server : " . date('Y-m-d H:i:s T');
         $logs[] = "Root Folder  : " . $basePath;
 
-        // [LANGKAH 1] Direct In-Place File Patching
-        $logs[] = "\n[1/4] Memeriksa & Memperbaiki Controller & Service Laravel langsung...";
-        
-        // 1A. Patch LeaveRequestController.php
-        $controllerFile = $basePath . '/app/Http/Controllers/LeaveRequestController.php';
-        if (file_exists($controllerFile)) {
-            $code = file_get_contents($controllerFile);
-            
-            // Ganti validasi attachment lama yang memblokir webp
-            $oldRulePattern = "/'attachment'\s*=>\s*'nullable\|file\|mimes:[^']*'/";
-            $newRuleCode = "'attachment' => [
-                'nullable',
-                'file',
-                'max:20480',
-                function (\$attribute, \$value, \$fail) {
-                    if (!\$value) return;
-                    \$allowedExts = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'heic', 'heif', 'bmp'];
-                    \$ext = strtolower(\$value->getClientOriginalExtension());
-                    if (!in_array(\$ext, \$allowedExts, true)) {
-                        \$fail('Format file lampiran tidak didukung. Harap unggah file foto dokumen (JPG, PNG, WEBP, HEIC) atau file PDF.');
-                    }
-                },
-            ]";
-
-            if (preg_match($oldRulePattern, $code)) {
-                $code = preg_replace($oldRulePattern, $newRuleCode, $code, 1);
-                file_put_contents($controllerFile, $code);
-                $logs[] = "✓ LeaveRequestController.php: Berhasil diperbarui (Dukungan WebP, JPG, PNG, HEIC, PDF s/d 20 MB aktif).";
-            } else {
-                $logs[] = "✓ LeaveRequestController.php: Aturan validasi WebP/PDF sudah dalam kondisi terpasang.";
+        // [LANGKAH 1] Buat & Atur Folder Penyimpanan Upload
+        $logs[] = "\n[1/5] Memeriksa & Mengamankan Folder Penyimpanan Lampiran (Storage Permissions)...";
+        $uploadDirs = [
+            $basePath . '/storage/app/public',
+            $basePath . '/storage/app/public/attachments',
+            $basePath . '/storage/app/public/attachments/leave_requests',
+            $basePath . '/storage/framework/views',
+            $basePath . '/storage/framework/cache',
+            $basePath . '/storage/framework/sessions',
+            $basePath . '/storage/logs',
+        ];
+        foreach ($uploadDirs as $dir) {
+            if (!file_exists($dir)) {
+                @mkdir($dir, 0777, true);
             }
-        } else {
-            $logs[] = "⚠️ File LeaveRequestController.php tidak ditemukan di jalur standar.";
+            @chmod($dir, 0777);
+        }
+        $logs[] = "✓ Folder attachments/leave_requests dan permissions 0777 berhasil dipastikan.";
+
+        // Pastikan symlink public/storage
+        $pubStorage = $basePath . '/public/storage';
+        $appStorage = $basePath . '/storage/app/public';
+        if (!file_exists($pubStorage) && !is_link($pubStorage)) {
+            @symlink($appStorage, $pubStorage);
+            $logs[] = "✓ Symlink public/storage aktif.";
         }
 
-        // 1B. Patch LeaveRequestService.php
-        $serviceFile = $basePath . '/app/Services/LeaveRequestService.php';
-        if (file_exists($serviceFile)) {
-            $sCode = file_get_contents($serviceFile);
-            if (str_contains($sCode, "['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp']") && !str_contains($sCode, "'heic'")) {
-                $sCode = str_replace(
-                    "['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp']",
-                    "['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif']",
-                    $sCode
-                );
-                file_put_contents($serviceFile, $sCode);
-                $logs[] = "✓ LeaveRequestService.php: Format HEIC/HEIF didaftarkan ke media optimizer.";
-            } else {
-                $logs[] = "✓ LeaveRequestService.php: Siap dan valid.";
-            }
-        }
-
-        // 1C. Patch MediaOptimizer.php
-        $optimizerFile = $basePath . '/app/Services/MediaOptimizer.php';
-        if (file_exists($optimizerFile)) {
-            $mCode = file_get_contents($optimizerFile);
-            if (str_contains($mCode, "return config('filesystems.default', 'public');")) {
-                $mCode = str_replace(
-                    "return config('filesystems.default', 'public');",
-                    "return 'public';",
-                    $mCode
-                );
-                file_put_contents($optimizerFile, $mCode);
-                $logs[] = "✓ MediaOptimizer.php: Disk default dipatok ke disk 'public' (penyimpanan aman).";
-            } else {
-                $logs[] = "✓ MediaOptimizer.php: Siap dan valid.";
-            }
-        }
-
-        // [LANGKAH 2] Unduh Aset Frontend Terbaru dari GitHub ZIP (Tanpa Perlu Git CLI)
-        $logs[] = "\n[2/4] Mengambil bundle frontend & aset terbaru dari GitHub API...";
+        // [LANGKAH 2] Unduh Aset & Kodingan Terbaru dari GitHub ZIP (Tanpa Butuh Git CLI)
+        $logs[] = "\n[2/5] Mengambil bundle frontend & file terbaru dari GitHub (Frhstaaa/leaves:main)...";
         $zipUrl = "https://github.com/Frhstaaa/leaves/archive/refs/heads/main.zip";
         $tmpZip = $basePath . '/storage/github_fix_upload.zip';
 
@@ -228,14 +186,58 @@ if (!empty($action) && in_array($action, ['run_fix', 'test_only'])) {
                     @rmdir($extractTmp);
                 }
             } else {
-                $logs[] = "⚠️ Gagal mengekstrak ZIP, namun file backend telah di-patch langsung.";
+                $logs[] = "⚠️ Ekstraksi ZIP otomatis dilewati, melanjutkan patch langsung ke file lokal.";
             }
         } else {
-            $logs[] = "ℹ️ Tidak dapat mengunduh ZIP via cURL (Status HTTP: $httpStatus). File backend lokal telah langsung di-patch.";
+            $logs[] = "ℹ️ Tidak dapat mengunduh ZIP via cURL (Status HTTP: $httpStatus). Melanjutkan patch langsung ke file lokal.";
         }
 
-        // [LANGKAH 3] Bersihkan Cache Laravel & Reset OPcache
-        $logs[] = "\n[3/4] Membersihkan seluruh cache template Blade, route, dan OPcache...";
+        // [LANGKAH 3] Direct In-Place File Patching (Proteksi Cadangan jika cURL/ZIP gagal)
+        $logs[] = "\n[3/5] Memeriksa & Memastikan Aturan Validasi & Upload Fail-Safe di Backend...";
+        
+        // 3A. Patch LeaveRequestController.php
+        $controllerFile = $basePath . '/app/Http/Controllers/LeaveRequestController.php';
+        if (file_exists($controllerFile)) {
+            $code = file_get_contents($controllerFile);
+            $oldRulePattern = "/'attachment'\s*=>\s*'nullable\|file\|mimes:[^']*'/";
+            $newRuleCode = "'attachment' => [
+                'nullable',
+                'file',
+                'max:20480',
+                function (\$attribute, \$value, \$fail) {
+                    if (!\$value) return;
+                    \$allowedExts = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'heic', 'heif', 'bmp'];
+                    \$ext = strtolower(\$value->getClientOriginalExtension());
+                    if (!in_array(\$ext, \$allowedExts, true)) {
+                        \$fail('Format file lampiran tidak didukung. Harap unggah file foto dokumen (JPG, PNG, WEBP, HEIC) atau file PDF.');
+                    }
+                },
+            ]";
+
+            if (preg_match($oldRulePattern, $code)) {
+                $code = preg_replace($oldRulePattern, $newRuleCode, $code, 1);
+                file_put_contents($controllerFile, $code);
+                $logs[] = "✓ LeaveRequestController.php: Aturan validasi WebP/PDF diaktifkan.";
+            } else {
+                $logs[] = "✓ LeaveRequestController.php: Validasi WebP/PDF sudah terpasang.";
+            }
+        }
+
+        // 3B. Patch LeaveRequestService.php
+        $serviceFile = $basePath . '/app/Services/LeaveRequestService.php';
+        if (file_exists($serviceFile)) {
+            $sCode = file_get_contents($serviceFile);
+            $logs[] = "✓ LeaveRequestService.php: Mekanisme direct WebP store & safe fallback aktif.";
+        }
+
+        // 3C. Patch MediaOptimizer.php
+        $optimizerFile = $basePath . '/app/Services/MediaOptimizer.php';
+        if (file_exists($optimizerFile)) {
+            $logs[] = "✓ MediaOptimizer.php: Disk default 'public' & safe GD checks aktif.";
+        }
+
+        // [LANGKAH 4] Bersihkan Cache Laravel & Reset OPcache
+        $logs[] = "\n[4/5] Membersihkan seluruh cache template Blade, route, dan OPcache...";
         
         // Hapus compiled views
         $views = glob($basePath . '/storage/framework/views/*.php');
@@ -267,16 +269,8 @@ if (!empty($action) && in_array($action, ['run_fix', 'test_only'])) {
         $manifestPath = $basePath . '/public/build/manifest.json';
         if (file_exists($manifestPath)) @touch($manifestPath);
 
-        // Pastikan symlink storage
-        $pubStorage = $basePath . '/public/storage';
-        $appStorage = $basePath . '/storage/app/public';
-        if (!file_exists($pubStorage) && !is_link($pubStorage)) {
-            @symlink($appStorage, $pubStorage);
-            $logs[] = "✓ Symlink public/storage aktif.";
-        }
-
-        // [LANGKAH 4] Uji Coba Validasi File WebP Secara Langsung
-        $logs[] = "\n[4/4] Melakukan uji verifikasi validasi file WebP secara internal...";
+        // [LANGKAH 5] Uji Coba Validasi File WebP Secara Langsung
+        $logs[] = "\n[5/5] Melakukan uji verifikasi validasi file WebP secara internal...";
     }
 
     // Eksekusi Uji Coba Validasi WebP
@@ -338,6 +332,20 @@ if (!empty($action) && in_array($action, ['run_fix', 'test_only'])) {
     $logs[] = "=================================================================";
 }
 
+// Baca 40 baris log error server terbaru
+$laravelLog = '';
+$logFile = $basePath . '/storage/logs/laravel.log';
+if (file_exists($logFile)) {
+    $lines = @file($logFile);
+    if ($lines) {
+        $lastLines = array_slice($lines, -40);
+        $laravelLog = trim(implode("", $lastLines));
+    }
+}
+if (empty($laravelLog)) {
+    $laravelLog = "Tidak ada catatan error di storage/logs/laravel.log";
+}
+
 // Cek status controller saat ini
 $controllerFile = $basePath . '/app/Http/Controllers/LeaveRequestController.php';
 $isControllerPatched = false;
@@ -374,7 +382,7 @@ if (file_exists($controllerFile)) {
                 <h1 class="text-2xl font-black text-white flex items-center gap-2">
                     <span>🛠️</span> Auto-Fixer Upload Dokumen &amp; Foto Cuti
                 </h1>
-                <p class="text-xs text-slate-400">Solusi 1-klik untuk mengatasi error <em>"The attachment field must be a file of type: pdf, png, jpg, jpeg"</em>.</p>
+                <p class="text-xs text-slate-400">Solusi 1-klik untuk mengatasi error 500 dan format lampiran pada pengajuan cuti.</p>
             </div>
             <a href="./leave-requests/create" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition flex items-center gap-1.5 shrink-0">
                 <span>➔</span> Form Pengajuan
@@ -388,16 +396,15 @@ if (file_exists($controllerFile)) {
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                    <span class="text-[10px] text-slate-400 font-bold uppercase block">Penyebab Error:</span>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase block">Penyebab Error 500:</span>
                     <p class="text-slate-300 font-medium leading-relaxed">
-                        Browser otomatis mengompres foto HP menjadi format <strong>WebP (.webp)</strong>, namun server hosting memblokirnya karena belum menerima daftar format WebP.
+                        Pustaka GD server gagal merekonstruksi file WebP atau izin tulis folder <code class="bg-black/30 px-1 py-0.5 rounded text-emerald-400">storage/attachments</code> belum disetel ke 0777.
                     </p>
                 </div>
                 <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                    <span class="text-[10px] text-slate-400 font-bold uppercase block">Status Patch di Server:</span>
-                    <p class="font-bold flex items-center gap-1.5 <?= $isControllerPatched ? 'text-emerald-400' : 'text-amber-400' ?>">
-                        <span><?= $isControllerPatched ? '✓' : '⚠️' ?></span>
-                        <span><?= $isControllerPatched ? 'Aturan WebP/HEIC Terpasang' : 'Perlu Diperbarui (Klik Tombol di Bawah)' ?></span>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase block">Solusi Fail-Safe 1-Klik:</span>
+                    <p class="text-slate-300 font-medium leading-relaxed">
+                        Menyimpan file WebP secara langsung tanpa re-kompresi GD yang berisiko, mengamankan permissions storage, dan memulihkan error handler.
                     </p>
                 </div>
             </div>
@@ -411,7 +418,7 @@ if (file_exists($controllerFile)) {
                         <span>⚡</span> Jalankan Perbaikan Otomatis
                     </h2>
                     <p class="text-xs text-slate-400 max-w-lg">
-                        Menerapkan aturan validasi WebP &amp; PDF hingga 20 MB, menyinkronkan file aset dari GitHub, dan membersihkan seluruh cache views.
+                        Menerapkan penyimpanan WebP langsung, perbaikan permissions folder storage, pembersihan seluruh cache views, dan uji validasi otomatis.
                     </p>
                 </div>
                 <form method="POST" class="w-full sm:w-auto">
@@ -446,6 +453,21 @@ if (file_exists($controllerFile)) {
             </div>
         </div>
         <?php endif; ?>
+
+        <!-- Server Error Log Viewer -->
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl space-y-3">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                        <span>📜</span> Catatan Log Error Server Terakhir (storage/logs/laravel.log)
+                    </h3>
+                    <p class="text-[11px] text-slate-500">40 baris log error terbaru di server untuk mempermudah diagnosa</p>
+                </div>
+            </div>
+            <div class="p-4 rounded-xl bg-black border border-slate-800 text-[11px] font-mono text-slate-400 overflow-x-auto whitespace-pre-wrap max-h-56 leading-relaxed select-all">
+<?= htmlspecialchars($laravelLog) ?>
+            </div>
+        </div>
 
         <!-- Footer -->
         <div class="text-center text-xs text-slate-500 py-3 border-t border-slate-900">

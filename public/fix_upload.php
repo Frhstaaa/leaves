@@ -5,5 +5,5 @@
 if (file_exists(__DIR__ . '/../fix_upload.php')) {
     require __DIR__ . '/../fix_upload.php';
 } else {
-    require __DIR__ . '/fix_upload.php';
+    echo "File fix_upload.php tidak ditemukan di direktori root.";
 }

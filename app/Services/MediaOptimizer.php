@@ -28,113 +28,131 @@ class MediaOptimizer
     public static function convertImageToWebp($file, string $folder = 'attachments', int $quality = 80, int $maxWidth = 1920, int $maxHeight = 1920): string
     {
         $disk = self::getDisk();
-        $realPath = $file instanceof UploadedFile ? $file->getRealPath() : $file;
-        $mime = $file instanceof UploadedFile ? $file->getMimeType() : (function_exists('mime_content_type') ? @mime_content_type($realPath) : '');
 
-        if (!file_exists($realPath)) {
-            if ($file instanceof UploadedFile) {
-                return $file->store($folder, $disk);
-            }
-            return '';
-        }
-
-        // Try creating image resource from various formats
-        $srcImage = match (true) {
-            str_contains($mime, 'jpeg') || str_contains($mime, 'jpg') => @imagecreatefromjpeg($realPath),
-            str_contains($mime, 'png') => @imagecreatefrompng($realPath),
-            str_contains($mime, 'webp') => @imagecreatefromwebp($realPath),
-            str_contains($mime, 'gif') => @imagecreatefromgif($realPath),
-            str_contains($mime, 'bmp') || str_contains($mime, 'x-ms-bmp') => function_exists('imagecreatefrombmp') ? @imagecreatefrombmp($realPath) : null,
-            default => null,
-        };
-
-        // Fallback if mime check failed but extension is image
-        if (!$srcImage) {
+        try {
+            $realPath = $file instanceof UploadedFile ? $file->getRealPath() : $file;
+            $mime = $file instanceof UploadedFile ? ($file->getMimeType() ?: '') : (function_exists('mime_content_type') ? @mime_content_type($realPath) : '');
             $ext = strtolower(pathinfo($realPath, PATHINFO_EXTENSION));
-            $srcImage = match ($ext) {
-                'jpg', 'jpeg' => @imagecreatefromjpeg($realPath),
-                'png' => @imagecreatefrompng($realPath),
-                'webp' => @imagecreatefromwebp($realPath),
-                'gif' => @imagecreatefromgif($realPath),
-                'bmp' => function_exists('imagecreatefrombmp') ? @imagecreatefrombmp($realPath) : null,
+
+            if (!file_exists($realPath)) {
+                if ($file instanceof UploadedFile) {
+                    return $file->store($folder, $disk);
+                }
+                return '';
+            }
+
+            // If GD imagewebp is unavailable, fallback immediately to direct store
+            if (!function_exists('imagewebp')) {
+                if ($file instanceof UploadedFile) {
+                    return $file->store($folder, $disk);
+                }
+                $filename = $folder . '/' . uniqid('img_') . '_' . time() . '.' . $ext;
+                Storage::disk($disk)->put($filename, file_get_contents($realPath));
+                return $filename;
+            }
+
+            // Try creating image resource from various formats safely with function_exists check
+            $srcImage = match (true) {
+                (str_contains($mime, 'jpeg') || str_contains($mime, 'jpg')) && function_exists('imagecreatefromjpeg') => @imagecreatefromjpeg($realPath),
+                str_contains($mime, 'png') && function_exists('imagecreatefrompng') => @imagecreatefrompng($realPath),
+                str_contains($mime, 'webp') && function_exists('imagecreatefromwebp') => @imagecreatefromwebp($realPath),
+                str_contains($mime, 'gif') && function_exists('imagecreatefromgif') => @imagecreatefromgif($realPath),
+                (str_contains($mime, 'bmp') || str_contains($mime, 'x-ms-bmp')) && function_exists('imagecreatefrombmp') => @imagecreatefrombmp($realPath),
                 default => null,
             };
-        }
 
-        // If GD is unavailable or image cannot be parsed, fallback to default store
-        if (!$srcImage || !function_exists('imagewebp')) {
-            if ($file instanceof UploadedFile) {
-                return $file->store($folder, $disk);
+            // Fallback if mime check failed but extension is image
+            if (!$srcImage) {
+                $srcImage = match ($ext) {
+                    'jpg', 'jpeg' => function_exists('imagecreatefromjpeg') ? @imagecreatefromjpeg($realPath) : null,
+                    'png' => function_exists('imagecreatefrompng') ? @imagecreatefrompng($realPath) : null,
+                    'webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($realPath) : null,
+                    'gif' => function_exists('imagecreatefromgif') ? @imagecreatefromgif($realPath) : null,
+                    'bmp' => function_exists('imagecreatefrombmp') ? @imagecreatefrombmp($realPath) : null,
+                    default => null,
+                };
             }
-            $filename = $folder . '/' . uniqid('img_') . '_' . time() . '.' . pathinfo($realPath, PATHINFO_EXTENSION);
-            Storage::disk($disk)->put($filename, file_get_contents($realPath));
-            return $filename;
-        }
 
-        // Fix EXIF orientation for phone camera photos if exif_read_data is available
-        if (function_exists('exif_read_data') && (str_contains($mime, 'jpeg') || str_contains($mime, 'jpg'))) {
-            try {
-                $exif = @exif_read_data($realPath);
-                if (!empty($exif['Orientation'])) {
-                    $srcImage = match ($exif['Orientation']) {
-                        3 => imagerotate($srcImage, 180, 0),
-                        6 => imagerotate($srcImage, -90, 0),
-                        8 => imagerotate($srcImage, 90, 0),
-                        default => $srcImage,
-                    };
+            // If image could not be loaded into GD, fallback to direct store
+            if (!$srcImage) {
+                if ($file instanceof UploadedFile) {
+                    return $file->store($folder, $disk);
                 }
-            } catch (\Throwable $e) {
-                // Ignore EXIF read errors
+                $filename = $folder . '/' . uniqid('img_') . '_' . time() . '.' . $ext;
+                Storage::disk($disk)->put($filename, file_get_contents($realPath));
+                return $filename;
             }
-        }
 
-        $origWidth = imagesx($srcImage);
-        $origHeight = imagesy($srcImage);
+            // Fix EXIF orientation for phone camera photos if exif_read_data is available
+            if (function_exists('exif_read_data') && function_exists('imagerotate') && (str_contains($mime, 'jpeg') || str_contains($mime, 'jpg'))) {
+                try {
+                    $exif = @exif_read_data($realPath);
+                    if (!empty($exif['Orientation'])) {
+                        $srcImage = match ($exif['Orientation']) {
+                            3 => imagerotate($srcImage, 180, 0),
+                            6 => imagerotate($srcImage, -90, 0),
+                            8 => imagerotate($srcImage, 90, 0),
+                            default => $srcImage,
+                        };
+                    }
+                } catch (\Throwable $e) {
+                    // Ignore EXIF read errors
+                }
+            }
 
-        // Calculate proportional scale if dimensions exceed max
-        $ratio = min($maxWidth / max(1, $origWidth), $maxHeight / max(1, $origHeight), 1.0);
-        $newWidth = (int) round($origWidth * $ratio);
-        $newHeight = (int) round($origHeight * $ratio);
+            $origWidth = imagesx($srcImage);
+            $origHeight = imagesy($srcImage);
 
-        // Create new truecolor image canvas
-        $targetImage = imagecreatetruecolor($newWidth, $newHeight);
+            // Calculate proportional scale if dimensions exceed max
+            $ratio = min($maxWidth / max(1, $origWidth), $maxHeight / max(1, $origHeight), 1.0);
+            $newWidth = (int) round($origWidth * $ratio);
+            $newHeight = (int) round($origHeight * $ratio);
 
-        // Preserve alpha transparency for PNG / WebP
-        imagealphablending($targetImage, false);
-        imagesavealpha($targetImage, true);
-        $transparent = imagecolorallocatealpha($targetImage, 255, 255, 255, 127);
-        imagefilledrectangle($targetImage, 0, 0, $newWidth, $newHeight, $transparent);
+            // Create new truecolor image canvas
+            $targetImage = imagecreatetruecolor($newWidth, $newHeight);
 
-        // Resample with anti-aliasing
-        imagecopyresampled($targetImage, $srcImage, 0, 0, 0, 0, $newWidth, $newHeight, $origWidth, $origHeight);
+            // Preserve alpha transparency for PNG / WebP
+            imagealphablending($targetImage, false);
+            imagesavealpha($targetImage, true);
+            $transparent = imagecolorallocatealpha($targetImage, 255, 255, 255, 127);
+            imagefilledrectangle($targetImage, 0, 0, $newWidth, $newHeight, $transparent);
 
-        // Encode to WebP buffer
-        ob_start();
-        imagewebp($targetImage, null, $quality);
-        $webpBuffer = ob_get_clean();
+            // Resample with anti-aliasing
+            imagecopyresampled($targetImage, $srcImage, 0, 0, 0, 0, $newWidth, $newHeight, $origWidth, $origHeight);
 
-        imagedestroy($srcImage);
-        imagedestroy($targetImage);
+            // Encode to WebP buffer
+            ob_start();
+            imagewebp($targetImage, null, $quality);
+            $webpBuffer = ob_get_clean();
 
-        $filename = $folder . '/' . uniqid('opt_') . '_' . time() . '.webp';
-        
-        // 1. Always save to local public storage
-        try {
-            Storage::disk('public')->put($filename, $webpBuffer);
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Local storage write failed: ' . $e->getMessage());
-        }
+            imagedestroy($srcImage);
+            imagedestroy($targetImage);
 
-        // 2. Dual-write & sync to Cloudflare R2 if configured
-        if (CloudflareR2::isConfigured()) {
+            $filename = $folder . '/' . uniqid('opt_') . '_' . time() . '.webp';
+            
+            // 1. Always save to local public storage
             try {
-                CloudflareR2::put($filename, $webpBuffer, 'image/webp');
+                Storage::disk('public')->put($filename, $webpBuffer);
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('Cloudflare R2 sync failed: ' . $e->getMessage());
+                \Illuminate\Support\Facades\Log::warning('Local storage write failed: ' . $e->getMessage());
+            }
+
+            // 2. Dual-write & sync to Cloudflare R2 if configured
+            if (CloudflareR2::isConfigured()) {
+                try {
+                    CloudflareR2::put($filename, $webpBuffer, 'image/webp');
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('Cloudflare R2 sync failed: ' . $e->getMessage());
+                }
+            }
+
+            return $filename;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('convertImageToWebp error, fallback to direct store: ' . $e->getMessage());
+            if ($file instanceof UploadedFile) {
+                return $file->store($folder, 'public');
             }
         }
-
-        return $filename;
     }
 
     /**

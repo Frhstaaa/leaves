@@ -292,11 +292,23 @@ class LeaveRequestController extends Controller
             'attachment.max' => 'Ukuran file lampiran tidak boleh melebihi 20 MB.',
         ]);
 
-        $leaveRequest = $this->leaveRequestService->createRequest(
-            $user,
-            array_merge($validated, ['category_id' => $validated['leave_category_id']]),
-            $request->file('attachment')
-        );
+        try {
+            $leaveRequest = $this->leaveRequestService->createRequest(
+                $user,
+                array_merge($validated, ['category_id' => $validated['leave_category_id']]),
+                $request->file('attachment')
+            );
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            throw $ve;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error submitting leave request: ' . $e->getMessage(), [
+                'user_id' => $user->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return redirect()->back()->withErrors([
+                'reason' => 'Gagal memproses pengajuan: ' . $e->getMessage(),
+            ]);
+        }
 
         $stageName = strtoupper(str_replace('_', ' ', $leaveRequest->current_stage));
         return redirect()->route('leave-requests.index')
