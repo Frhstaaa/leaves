@@ -247,8 +247,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $migOut = runCmd("php artisan migrate --force 2>&1", $basePath);
             $logs[] = "✓ php artisan migrate: " . ($migOut ?: 'Tabel up-to-date.');
 
-            $seedOut = runCmd("php artisan db:seed --force 2>&1", $basePath);
-            $logs[] = "✓ php artisan db:seed: " . ($seedOut ?: 'Role & Akun tersinkronisasi.');
+            $logs[] = "✓ Database up-to-date (Seeder dilewati demi keamanan data).";
 
             // Fallback SQL Import if tables count is 0
             if (count($tables) === 0 && file_exists($basePath . '/database.sql')) {
