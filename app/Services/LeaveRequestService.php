@@ -66,12 +66,12 @@ class LeaveRequestService
                 $mime = $attachmentFile->getMimeType();
                 $ext = strtolower($attachmentFile->getClientOriginalExtension());
 
-                if (str_contains($mime, 'image') || in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'])) {
+                if (str_contains($mime, 'image') || in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif'])) {
                     $attachmentPath = MediaOptimizer::convertImageToWebp($attachmentFile, 'attachments/leave_requests');
                 } elseif (str_contains($mime, 'pdf') || $ext === 'pdf') {
                     $attachmentPath = MediaOptimizer::optimizePdfAndStore($attachmentFile, 'attachments/leave_requests');
                 } else {
-                    $attachmentPath = $attachmentFile->store('attachments/leave_requests', config('filesystems.default', 'public'));
+                    $attachmentPath = $attachmentFile->store('attachments/leave_requests', 'public');
                 }
             }
 

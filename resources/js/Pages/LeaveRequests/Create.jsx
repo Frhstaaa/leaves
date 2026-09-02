@@ -40,6 +40,7 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [filePreviewName, setFilePreviewName] = useState('');
   const [fileSizeText, setFileSizeText] = useState('');
+  const [isCompressing, setIsCompressing] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
   const [agreedError, setAgreedError] = useState('');
@@ -80,19 +81,41 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
   }, [data.start_date, data.end_date, data.unit]);
 
   const handleFileChange = async (e) => {
-    const originalFile = e.target.files[0];
-    if (originalFile) {
-      if (originalFile.type.startsWith('image/')) {
+    const originalFile = e.target.files?.[0];
+    if (!originalFile) return;
+
+    setIsCompressing(true);
+    try {
+      const isImage = (originalFile.type && originalFile.type.startsWith('image/')) || /\.(jpe?g|png|webp|bmp|gif)$/i.test(originalFile.name || '');
+
+      if (isImage) {
+        setFilePreviewName(originalFile.name);
+        setFileSizeText('Sedang mengompresi foto...');
         const webpFile = await convertImageFileToWebp(originalFile);
         setData('attachment', webpFile);
         setFilePreviewName(webpFile.name);
-        setFileSizeText((webpFile.size / (1024 * 1024)).toFixed(2) + ' MB (WebP)');
+        const isConverted = webpFile.type === 'image/webp' && webpFile.name.endsWith('.webp');
+        setFileSizeText((webpFile.size / (1024 * 1024)).toFixed(2) + (isConverted ? ' MB (WebP Dioptimalkan)' : ' MB'));
       } else {
         setData('attachment', originalFile);
         setFilePreviewName(originalFile.name);
         setFileSizeText((originalFile.size / (1024 * 1024)).toFixed(2) + ' MB');
       }
+    } catch (err) {
+      setData('attachment', originalFile);
+      setFilePreviewName(originalFile.name);
+      setFileSizeText((originalFile.size / (1024 * 1024)).toFixed(2) + ' MB');
+    } finally {
+      setIsCompressing(false);
     }
+  };
+
+  const handleRemoveAttachment = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setData('attachment', null);
+    setFilePreviewName('');
+    setFileSizeText('');
   };
 
   const handleSelectCategory = (cat) => {
@@ -114,6 +137,14 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
       setAgreedError('');
     }
     if (currentStep === 2) {
+      if (isCompressing) {
+        showAlert({
+          title: 'Sedang Memproses Lampiran',
+          text: 'Mohon tunggu sebentar, foto sedang dioptimasi sebelum melanjutkan ke tahap pratinjau.',
+          icon: 'info'
+        });
+        return;
+      }
       if (!data.start_date) {
         showAlert({ title: 'Tanggal Belum Diisi', text: 'Tanggal Mulai permohonan wajib diisi.', icon: 'warning' });
         return;
@@ -161,6 +192,14 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (isCompressing) {
+      showAlert({
+        title: 'Sedang Mengompresi Foto',
+        text: 'Mohon tunggu beberapa detik hingga proses kompresi foto selesai sebelum mengirim formulir.',
+        icon: 'info'
+      });
+      return;
+    }
     if (data.approval_agreed !== 'Ya') {
       setAgreedError('Anda wajib menyetujui persetujuan kepala departemen.');
       setCurrentStep(1);
@@ -172,7 +211,15 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
       return;
     }
     post(route('leave-requests.store'), {
+      forceFormData: true,
       onError: (errs) => {
+        const errorList = Object.values(errs);
+        const errorText = errorList.length > 0 ? errorList.join('\n') : 'Terjadi kesalahan saat memproses pengajuan cuti.';
+        showAlert({
+          title: 'Pengajuan Gagal Dikirim',
+          text: errorText,
+          icon: 'error'
+        });
         if (errs.reason || errs.start_date || errs.end_date || errs.amount || errs.attachment) {
           setCurrentStep(2);
         } else if (errs.submission_type || errs.approval_agreed || errs.leave_category_id) {
@@ -567,26 +614,49 @@ export default function CreateLeaveRequest({ user, categories, quota }) {
 
                 {/* Attachment File Upload (Auto Convert to WebP for images) */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 uppercase">
-                    File Lampiran Pendukung {selectedCategory?.requires_attachment ? <span className="text-rose-600">(Wajib *)</span> : '(Opsional)'}
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-700 uppercase">
+                      File Lampiran Pendukung {selectedCategory?.requires_attachment ? <span className="text-rose-600">(Wajib *)</span> : '(Opsional)'}
+                    </label>
+                    {data.attachment && !isCompressing && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveAttachment}
+                        className="text-[11px] font-bold text-rose-600 hover:text-rose-800 flex items-center gap-1 transition"
+                      >
+                        <X size={13} />
+                        <span>Hapus File</span>
+                      </button>
+                    )}
+                  </div>
                   <div className="p-5 rounded-2xl border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-slate-50 text-center cursor-pointer transition-colors relative">
                     <input
                       type="file"
-                      accept=".pdf,.png,.jpg,.jpeg,.webp"
+                      accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.heif,image/*,application/pdf"
                       onChange={handleFileChange}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      disabled={isCompressing}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                     />
-                    <Upload size={26} className="mx-auto text-emerald-600 mb-1.5" />
-                    {filePreviewName ? (
+                    {isCompressing ? (
+                      <div className="flex flex-col items-center py-2">
+                        <div className="w-7 h-7 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mb-2" />
+                        <p className="text-xs font-bold text-emerald-800">Sedang mengompresi foto...</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Mengubah format ke WebP untuk mempercepat unggahan</p>
+                      </div>
+                    ) : filePreviewName ? (
                       <div>
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-1.5">
+                          <Check size={18} />
+                        </div>
                         <p className="text-xs font-bold text-emerald-800">{filePreviewName}</p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">{fileSizeText} &bull; Siap diunggah (Otomatis WebP)</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">{fileSizeText} &bull; Siap diunggah</p>
+                        <p className="text-[10px] text-emerald-600 font-semibold mt-1">Klik di sini jika ingin mengganti file</p>
                       </div>
                     ) : (
                       <div>
-                        <p className="text-xs font-bold text-slate-700">Pilih atau Seret File Surat Keterangan / Bukti Lampiran</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">PDF, PNG, JPG, WEBP (Maksimal 10 MB)</p>
+                        <Upload size={26} className="mx-auto text-emerald-600 mb-1.5" />
+                        <p className="text-xs font-bold text-slate-700">Pilih atau Seret Foto / Dokumen Lampiran</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Kamera HP, Galeri, PDF, PNG, JPG, WEBP (Maksimal 20 MB)</p>
                       </div>
                     )}
                   </div>

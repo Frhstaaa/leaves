@@ -269,7 +269,19 @@ class LeaveRequestController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'reason' => 'required|string|min:3|max:1000',
-            'attachment' => 'nullable|file|mimes:pdf,png,jpg,jpeg|max:10240',
+            'attachment' => [
+                'nullable',
+                'file',
+                'max:20480',
+                function ($attribute, $value, $fail) {
+                    if (!$value) return;
+                    $allowedExts = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'heic', 'heif', 'bmp'];
+                    $ext = strtolower($value->getClientOriginalExtension());
+                    if (!in_array($ext, $allowedExts, true)) {
+                        $fail('Format file lampiran tidak didukung. Harap unggah file foto dokumen (JPG, PNG, WEBP, HEIC) atau file PDF.');
+                    }
+                },
+            ],
         ], [
             'submission_type.required' => 'Silakan pilih jenis pengajuan (PEMBERITAHUAN / PERMOHONAN).',
             'approval_agreed.required' => 'Anda harus menyetujui persetujuan kepala departemen untuk melanjutkan.',
@@ -277,7 +289,7 @@ class LeaveRequestController extends Controller
             'start_date.required' => 'Tanggal permohonan wajib diisi.',
             'end_date.after_or_equal' => 'Tanggal akhir harus sama atau setelah tanggal mulai.',
             'reason.required' => 'Detail alasan cuti / ketidakhadiran wajib diisi.',
-            'attachment.max' => 'Ukuran file lampiran tidak boleh melebihi 10 MB.',
+            'attachment.max' => 'Ukuran file lampiran tidak boleh melebihi 20 MB.',
         ]);
 
         $leaveRequest = $this->leaveRequestService->createRequest(

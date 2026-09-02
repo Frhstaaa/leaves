@@ -154,7 +154,8 @@ class CloudflareR2
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 4);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 12);
         
         $res = curl_exec($ch);
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -213,7 +214,8 @@ class CloudflareR2
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 4);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 12);
         
         $res = curl_exec($ch);
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -273,7 +275,8 @@ class CloudflareR2
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 4);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         
         curl_exec($ch);
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -333,7 +336,8 @@ class CloudflareR2
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 4);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         
         curl_exec($ch);
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);

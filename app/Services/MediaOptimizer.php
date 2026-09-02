@@ -12,7 +12,7 @@ class MediaOptimizer
 {
     public static function getDisk(): string
     {
-        return config('filesystems.default', 'public');
+        return 'public';
     }
 
     /**
