@@ -75,12 +75,30 @@ class LeaveRequestService
                     if ($ext === 'webp' || str_contains($mime, 'webp')) {
                         $storedName = 'opt_' . uniqid() . '_' . time() . '.webp';
                         $attachmentPath = $attachmentFile->storeAs('attachments/leave_requests', $storedName, 'public');
+
+                        // Dual-write & sync to Cloudflare R2
+                        if (CloudflareR2::isConfigured() && $attachmentPath) {
+                            try {
+                                $content = file_get_contents($attachmentFile->getRealPath());
+                                CloudflareR2::put($attachmentPath, $content, 'image/webp');
+                            } catch (\Throwable $e) {
+                                \Illuminate\Support\Facades\Log::warning('Cloudflare R2 sync failed: ' . $e->getMessage());
+                            }
+                        }
                     } elseif (str_contains($mime, 'image') || in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'heic', 'heif'])) {
                         $attachmentPath = MediaOptimizer::convertImageToWebp($attachmentFile, 'attachments/leave_requests');
                     } elseif (str_contains($mime, 'pdf') || $ext === 'pdf') {
                         $attachmentPath = MediaOptimizer::optimizePdfAndStore($attachmentFile, 'attachments/leave_requests');
                     } else {
                         $attachmentPath = $attachmentFile->store('attachments/leave_requests', 'public');
+                        if (CloudflareR2::isConfigured() && $attachmentPath) {
+                            try {
+                                $content = file_get_contents($attachmentFile->getRealPath());
+                                CloudflareR2::put($attachmentPath, $content, $mime ?: 'application/octet-stream');
+                            } catch (\Throwable $e) {
+                                \Illuminate\Support\Facades\Log::warning('Cloudflare R2 sync failed: ' . $e->getMessage());
+                            }
+                        }
                     }
                 } catch (\Throwable $e) {
                     \Illuminate\Support\Facades\Log::warning('Attachment optimization failed, using direct store: ' . $e->getMessage());
